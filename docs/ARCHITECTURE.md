@@ -378,7 +378,7 @@ create table messages (
   sender_sub         text,
   sender_name        text,
   body               text not null,
-  options            jsonb,                   -- menu buttons [{ id, title }]
+  options            jsonb,                   -- menu buttons [{ id, title }], added in step 4
   client_message_id  text,
   created_at         timestamptz not null,
   unique (conversation_id, client_message_id)
@@ -391,7 +391,7 @@ create table conversation_events (
   type               text not null,           -- CREATED | HANDOFF | ACCEPTED | RESOLVED | RETURNED_TO_BOT | REOPENED | IDENTIFIED
   actor_type         text not null,           -- CUSTOMER | BOT | AGENT | SYSTEM
   actor_sub          text,
-  data               jsonb,
+  reason             text,                    -- e.g. EMERGENCY for a handoff
   created_at         timestamptz not null
 );
 create index on conversation_events (conversation_id, created_at);

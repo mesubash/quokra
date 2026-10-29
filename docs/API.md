@@ -273,7 +273,7 @@ interface ConversationEvent {
   type: "CREATED" | "HANDOFF" | "ACCEPTED" | "RESOLVED" | "RETURNED_TO_BOT" | "REOPENED" | "IDENTIFIED";
   actorType: SenderType;
   actorName: string | null;
-  data: Record<string, unknown> | null;   // e.g. { reason: "EMERGENCY" }
+  reason: string | null;                  // e.g. "EMERGENCY" for a handoff
   createdAt: string;
 }
 ```
