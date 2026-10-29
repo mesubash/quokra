@@ -54,7 +54,7 @@ WebSocket: send the same bearer token in the STOMP `CONNECT` frame header `Autho
 200
 {
   "slug": "demo",
-  "displayName": "Demo Travel",
+  "displayName": "Demo Company",
   "branding": { "logoUrl": "https://…/logo.png", "primaryColor": "#0A7C66" }
 }
 ```
@@ -112,10 +112,10 @@ History, oldest first after the cursor. Use without `after` for the latest page.
 
 ```json
 // free text
-{ "clientMessageId": "c-7f3a", "body": "How do I make a claim?" }
+{ "clientMessageId": "c-7f3a", "body": "How do I reset my password?" }
 
 // menu button
-{ "clientMessageId": "c-7f3b", "optionId": "claim" }
+{ "clientMessageId": "c-7f3b", "optionId": "account" }
 
 // 201
 { "message": Message, "conversation": Conversation }
@@ -141,7 +141,7 @@ All require an agent token. The agent only sees tenants they're a member of (`te
 ### 4.1 `GET /agent/tenants`
 
 ```json
-200 { "items": [{ "id": "…", "slug": "demo", "displayName": "Demo Travel" }] }
+200 { "items": [{ "id": "…", "slug": "demo", "displayName": "Demo Company" }] }
 ```
 
 ### 4.2 `GET /agent/conversations`
@@ -231,7 +231,7 @@ Typing is sent by clients to `/app/conversations/{id}/typing` with `{ "on": true
 type Status = "BOT" | "WAITING" | "HUMAN" | "RESOLVED";
 type Priority = "NORMAL" | "HIGH" | "URGENT";
 type SenderType = "CUSTOMER" | "BOT" | "AGENT" | "SYSTEM";
-type HandoffReason = "CUSTOMER_REQUEST" | "FALLBACK_LIMIT" | "EMERGENCY" | "BOT_ERROR";
+type HandoffReason = "CUSTOMER_REQUEST" | "FALLBACK_LIMIT" | "URGENT" | "BOT_ERROR";
 
 interface Conversation {
   id: string;
@@ -273,7 +273,7 @@ interface ConversationEvent {
   type: "CREATED" | "HANDOFF" | "ACCEPTED" | "RESOLVED" | "RETURNED_TO_BOT" | "REOPENED" | "IDENTIFIED";
   actorType: SenderType;
   actorName: string | null;
-  reason: string | null;                  // e.g. "EMERGENCY" for a handoff
+  reason: string | null;                  // e.g. "URGENT" for a handoff
   createdAt: string;
 }
 ```

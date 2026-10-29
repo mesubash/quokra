@@ -150,7 +150,7 @@ web/
 ## 5. Conversation state machine
 
 ```text
-              HANDOFF (customer request / fallback limit / emergency / bot error)
+              HANDOFF (customer request / fallback limit / urgent keyword / bot error)
      BOT ─────────────────────────────────────────────────────────────► WAITING
       ▲                                                                    │
       │ RETURN_TO_BOT (agent)                                ACCEPT (agent)│
@@ -180,7 +180,7 @@ Any other combination throws `InvalidTransition` (HTTP 409). `ACCEPT` uses the `
 
 ```text
 decide(config, conversation, message):
-  if matches(config.emergency.keywords):    return Handoff(EMERGENCY, URGENT, config.emergency.message)
+  if matches(config.urgent.keywords):       return Handoff(URGENT, priority URGENT, config.urgent.message)
   if message.optionId == HUMAN_OPTION or matches(config.human_keywords): return Handoff(CUSTOMER_REQUEST)
   if message.optionId in config.menu:       return Answer(option.answer, menu)
   if keywordMatch(config.menu, message):    return Answer(best.answer, menu)
@@ -189,7 +189,7 @@ decide(config, conversation, message):
   return Fallback(config.fallback, menu)
 ```
 
-- Emergency is checked **first**, so it always wins: the conversation gets priority `URGENT` and the emergency message, even if the text also matches a menu option or asks for a person.
+- Urgent keywords are checked **first**, so they always win: the conversation gets priority `URGENT` and the tenant's urgent message, even if the text also matches a menu option or asks for a person. Each tenant chooses its own urgent keywords (e.g. "outage", "payment failed", or real emergencies).
 - Keyword matching: lowercase, accents stripped, whole-word match; the option with the most keyword hits wins; ties go to the first option in the file.
 - Any exception inside the engine is caught by `ConversationService` → `Handoff(BOT_ERROR)`.
 - v3 replaces "no match" with retrieval + LLM; the decision type stays the same.
@@ -391,7 +391,7 @@ create table conversation_events (
   type               text not null,           -- CREATED | HANDOFF | ACCEPTED | RESOLVED | RETURNED_TO_BOT | REOPENED | IDENTIFIED
   actor_type         text not null,           -- CUSTOMER | BOT | AGENT | SYSTEM
   actor_sub          text,
-  reason             text,                    -- e.g. EMERGENCY for a handoff
+  reason             text,                    -- e.g. URGENT for a handoff
   created_at         timestamptz not null
 );
 create index on conversation_events (conversation_id, created_at);
@@ -434,7 +434,7 @@ All errors use one envelope: `{ "error": { "code": "...", "message": "...", "det
 | CORS | None needed for the UI (same origin); cross-origin API calls are rejected | Config test |
 | Content | Bodies stored and rendered as text | Component test |
 | Secrets | Environment variables only; tenant secrets encrypted at rest; never logged | Review |
-| Emergencies | Emergency rule always produces an urgent handoff | Unit test |
+| Urgent keywords | Urgent rule always produces a top-priority handoff | Unit test |
 
 **Checklist for v1 release:** every row above has its test or review done.
 
@@ -491,7 +491,7 @@ Migrations run on server start (Flyway). Backups: PostgreSQL dumps with the exis
 | # | Decision | Why | Alternatives rejected |
 |---|---|---|---|
 | D1 | Build our own instead of Chatwoot/Libredesk | Full ownership, embeddable console, own branding, small codebase | Chatwoot (separate dashboard, branding, Rails fork); Libredesk (AGPL, can't own changes) |
-| D2 | Customer chat and console as iframes loaded by `sdk.js` | Works on any host without a build step; style isolation; one deploy updates all hosts; proven by the booking widget | npm React components (only React hosts; every host redeploys to update) |
+| D2 | Customer chat and console as iframes loaded by `sdk.js` | Works on any host without a build step; style isolation; one deploy updates all hosts; the usual pattern for embeddable widgets (Intercom, Stripe, Calendly) | npm React components (only React hosts; every host redeploys to update) |
 | D3 | Web UI is a Vite React SPA served by the Spring Boot server | One deployable, one origin (no CORS), no frontend server to run; the panel opens on click, so server rendering adds nothing | Next.js app as a second service |
 | D4 | Spring Boot + PostgreSQL | Same as other services: OIDC resource server, Flyway, deployment, monitoring | FastAPI (better AI libraries, but AI comes in v3 and can be a separate service) |
 | D5 | STOMP over WebSocket | Built into Spring, topics + auth interceptors out of the box | Raw WebSocket (more custom code), SSE (no client → server messages) |

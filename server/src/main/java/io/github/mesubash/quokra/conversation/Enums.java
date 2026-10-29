@@ -6,7 +6,7 @@ public final class Enums {
 
     public enum Priority { NORMAL, HIGH, URGENT }
 
-    public enum HandoffReason { CUSTOMER_REQUEST, FALLBACK_LIMIT, EMERGENCY, BOT_ERROR }
+    public enum HandoffReason { CUSTOMER_REQUEST, FALLBACK_LIMIT, URGENT, BOT_ERROR }
 
     public enum SenderType { CUSTOMER, BOT, AGENT, SYSTEM }
 

@@ -84,7 +84,7 @@ public class Conversation {
 
     void handOff(HandoffReason reason, Instant now) {
         handoffReason = reason;
-        priority = reason == HandoffReason.EMERGENCY ? Priority.URGENT : Priority.NORMAL;
+        priority = reason == HandoffReason.URGENT ? Priority.URGENT : Priority.NORMAL;
         updatedAt = now;
     }
 

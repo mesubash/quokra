@@ -77,13 +77,13 @@ class ConversationServiceTests {
     void customerMessageIsStored() {
         UUID id = service.startOrResume(TENANT, visitor).conversation().getId();
 
-        service.addCustomerMessage(id, "c-1", "How do I make a claim?");
+        service.addCustomerMessage(id, "c-1", "How do I reset my password?");
 
         assertThat(service.messages(id, null, 50))
             .extracting(Message::getSenderType, Message::getBody)
             .containsExactly(
                 tuple(SenderType.BOT, ConversationService.GREETING),
-                tuple(SenderType.CUSTOMER, "How do I make a claim?"));
+                tuple(SenderType.CUSTOMER, "How do I reset my password?"));
     }
 
     @Test
@@ -134,10 +134,10 @@ class ConversationServiceTests {
     }
 
     @Test
-    void emergencyHandoffIsUrgent() {
+    void urgentHandoffGetsTopPriority() {
         UUID id = service.startOrResume(TENANT, visitor).conversation().getId();
 
-        assertThat(service.handoff(id, HandoffReason.EMERGENCY, SenderType.BOT).getPriority())
+        assertThat(service.handoff(id, HandoffReason.URGENT, SenderType.BOT).getPriority())
             .isEqualTo(Priority.URGENT);
     }
 
@@ -153,7 +153,7 @@ class ConversationServiceTests {
     @Test
     void messageOnResolvedConversationReopensIt() {
         UUID id = service.startOrResume(TENANT, visitor).conversation().getId();
-        service.handoff(id, HandoffReason.EMERGENCY, SenderType.BOT);
+        service.handoff(id, HandoffReason.URGENT, SenderType.BOT);
         Conversation c = service.get(id);
         c.moveTo(StateMachine.next(c.getStatus(), Transition.RESOLVE), c.getUpdatedAt());
 

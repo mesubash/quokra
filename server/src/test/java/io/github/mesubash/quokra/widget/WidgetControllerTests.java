@@ -40,7 +40,7 @@ class WidgetControllerTests {
     void addTenant() {
         jdbc.update("""
             insert into tenants (id, slug, display_name, publishable_key, primary_color, logo_url, bot_config)
-            values (?, 'acme', 'Acme Travel', 'pk_test_acme', '#123456', 'https://acme.test/logo.png', 'acme')
+            values (?, 'acme', 'Acme Inc', 'pk_test_acme', '#123456', 'https://acme.test/logo.png', 'acme')
             """, TENANT_ID);
     }
 
@@ -50,7 +50,7 @@ class WidgetControllerTests {
 
         assertThat(result).hasStatusOk();
         assertThat(result).bodyJson().extractingPath("$.slug").isEqualTo("acme");
-        assertThat(result).bodyJson().extractingPath("$.displayName").isEqualTo("Acme Travel");
+        assertThat(result).bodyJson().extractingPath("$.displayName").isEqualTo("Acme Inc");
         assertThat(result).bodyJson().extractingPath("$.branding.primaryColor").isEqualTo("#123456");
         assertThat(result).bodyJson().extractingPath("$.branding.logoUrl").isEqualTo("https://acme.test/logo.png");
     }

@@ -32,11 +32,11 @@ Customer on any website / app                 Agent in any dashboard
 
 1. A customer opens the chat bubble on a website.
 2. The **bot** greets them with a menu of common questions and answers from a config file.
-3. If the customer asks for a person, the bot fails to understand them twice, it detects an emergency, or it hits an error, the conversation goes to the **queue**.
+3. If the customer asks for a person, the bot fails to understand them twice, it sees an urgent keyword, or it hits an error, the conversation goes to the **queue**.
 4. An **agent** (console embedded in their dashboard) accepts it, sees the full history, and replies live.
 5. The agent resolves the conversation, or returns it to the bot.
 
-The embedding follows the same pattern as the existing booking widget SDK: a hosted app inside an iframe, loaded by one `<script>` tag, branded per tenant (slug + publishable key).
+The embedding follows the usual pattern for embeddable widgets (Intercom, Stripe, Calendly): a hosted app inside an iframe, loaded by one `<script>` tag, branded per tenant (slug + publishable key).
 
 ---
 
@@ -76,7 +76,7 @@ A version starts only when the previous one is in real use and there's a clear n
 | Area | Contents |
 |---|---|
 | Customer chat | Bubble, inline and popup modes; menu buttons; free text; agent name shown; unread badge; reconnect without losing messages |
-| Bot | Per-tenant YAML: greeting, menu, keywords, emergency rule, fallback, handoff after N misses, any error → handoff |
+| Bot | Per-tenant YAML: greeting, menu, keywords, urgent rule, fallback, handoff after N misses, any error → handoff |
 | Handoff | States `BOT → WAITING → HUMAN → RESOLVED`, return to bot, reopen on new message |
 | Agent console | Full-page or bubble mode; queue, my chats, resolved list, conversation view with timeline, accept / reply / resolve / return to bot, new-chat sound |
 | Tenants | Slug + publishable key + secret key, allowed origins (widget and console), branding, bot file, agent membership |
@@ -97,7 +97,7 @@ Standalone console login, notes, canned replies, transfers, business hours, noti
 | 1 | **Skeleton:** Spring Boot app, PostgreSQL in compose, Flyway, health endpoint; Vite React app in `web/` with placeholder routes, served by the server; static test-host page | Server serves the placeholder UI; `test-host` loads it |
 | 2 | **Tenants + sessions:** `tenants` table, demo tenant via migration, public tenant endpoint, guest session tokens | Chat panel shows demo branding and gets a session |
 | 3 | **Conversations:** tables, state machine, widget endpoints | Tests cover every allowed and rejected transition; customer can chat via HTTP |
-| 4 | **FAQ bot:** YAML loading + validation, menu, keywords, emergency, fallback, error → handoff | Table-driven tests for every branch |
+| 4 | **FAQ bot:** YAML loading + validation, menu, keywords, urgent rule, fallback, error → handoff | Table-driven tests for every branch |
 | 5 | **Realtime:** STOMP, CONNECT auth, SUBSCRIBE checks, event publishing, catch-up | Two browsers see live messages; reconnect loses nothing |
 | 6 | **Chat panel + sdk.js (customer):** bubble, inline, popup, postMessage protocol, branding, unread badge, CSP `frame-ancestors` | Works embedded on the test-host page from another origin |
 | 7 | **Agent API:** OIDC validation, role + tenant membership, lists, accept (optimistic lock), reply, resolve, return to bot | Concurrent-accept test: exactly one winner |
@@ -127,6 +127,6 @@ Standalone console login, notes, canned replies, transfers, business hours, noti
 |---|---|
 | Chatwoot | Conversation status as the bot/human switch; notes on handoff (v2); signed webhooks (v4) |
 | Libredesk | Simple deployment; AI assistant that hands off to agents (v3) |
-| Booking widget SDK | Hosted iframe app + `sdk.js`, slug + publishable key, branding with contrast checks, postMessage protocol with origin checks |
+| Intercom / Stripe / Calendly embeds | Hosted iframe app + `sdk.js`, publishable key per tenant, postMessage protocol with origin checks |
 
 **Licence rule:** read anything; copy code only from MIT/Apache projects (keeping their notice) or our own projects; never copy AGPL or proprietary code.
