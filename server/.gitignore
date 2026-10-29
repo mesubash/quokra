@@ -31,3 +31,6 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Built web UI (from web/)
+src/main/resources/static/
