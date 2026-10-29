@@ -246,6 +246,10 @@ Any agent of the tenant. Notes are never sent to the customer.
 interface Note { id: string; author: { sub: string; name: string }; body: string; createdAt: string }
 ```
 
+### 4.15 `GET /agent/conversations/counts`
+
+`200 { "waiting": 3, "mine": 1 }`: waiting conversations across the caller's tenants, and the caller's open (`HUMAN`) chats. For badges, so the console doesn't have to load whole lists to count them.
+
 ---
 
 ## 5. Realtime events
