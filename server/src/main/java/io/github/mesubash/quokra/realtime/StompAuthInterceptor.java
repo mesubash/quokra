@@ -32,6 +32,8 @@ class StompAuthInterceptor implements ChannelInterceptor {
 
     static final String CONVERSATION_TOPIC = "/topic/conversations/";
     static final String TENANT_TOPIC = "/topic/tenants/";
+    // Agent-only notes of a conversation: /topic/conversations/{id}/notes
+    static final String NOTES_SUFFIX = "/notes";
     static final String QUEUE_SUFFIX = "/queue";
 
     static String queueTopic(UUID tenantId) {
@@ -127,7 +129,8 @@ class StompAuthInterceptor implements ChannelInterceptor {
         if (destination.startsWith(TENANT_TOPIC)) {
             tenantId = idAfter(destination, TENANT_TOPIC, QUEUE_SUFFIX);
         } else {
-            UUID conversationId = idAfter(destination, CONVERSATION_TOPIC, "");
+            UUID conversationId = idAfter(destination, CONVERSATION_TOPIC,
+                destination.endsWith(NOTES_SUFFIX) ? NOTES_SUFFIX : "");
             try {
                 tenantId = conversations.get(conversationId).getTenantId();
             } catch (RuntimeException e) {

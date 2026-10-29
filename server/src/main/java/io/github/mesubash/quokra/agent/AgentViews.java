@@ -18,15 +18,15 @@ final class AgentViews {
 
     record Person(String sub, String name) {}
 
-    record Customer(String sub, UUID contactId, String name, String email) {}
+    record Customer(String sub, UUID contactId, String name, String email, boolean blocked) {}
 
     record ConversationView(UUID id, String tenantSlug, Status status, Priority priority, HandoffReason handoffReason,
                             Customer customer, Person assignee, Instant createdAt, Instant lastMessageAt,
                             Instant waitingSince, Instant resolvedAt) {
 
-        static ConversationView of(Conversation c, String tenantSlug) {
+        static ConversationView of(Conversation c, String tenantSlug, boolean blocked) {
             return new ConversationView(c.getId(), tenantSlug, c.getStatus(), c.getPriority(), c.getHandoffReason(),
-                customerOf(c), assigneeOf(c), c.getCreatedAt(), c.getLastMessageAt(), c.getWaitingSince(), c.getResolvedAt());
+                customerOf(c, blocked), assigneeOf(c), c.getCreatedAt(), c.getLastMessageAt(), c.getWaitingSince(), c.getResolvedAt());
         }
     }
 
@@ -53,11 +53,11 @@ final class AgentViews {
         }
     }
 
-    private static Customer customerOf(Conversation c) {
+    private static Customer customerOf(Conversation c, boolean blocked) {
         if (c.getCustomerSub() == null && c.getContactId() == null) {
             return null;
         }
-        return new Customer(c.getCustomerSub(), c.getContactId(), c.getCustomerName(), c.getCustomerEmail());
+        return new Customer(c.getCustomerSub(), c.getContactId(), c.getCustomerName(), c.getCustomerEmail(), blocked);
     }
 
     private static Person assigneeOf(Conversation c) {

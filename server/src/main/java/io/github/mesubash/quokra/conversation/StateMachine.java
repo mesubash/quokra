@@ -20,7 +20,10 @@ final class StateMachine {
         new Key(WAITING, Transition.RESOLVE), RESOLVED,
         new Key(HUMAN, Transition.RESOLVE), RESOLVED,
         new Key(HUMAN, Transition.RETURN_TO_BOT), BOT,
-        new Key(RESOLVED, Transition.REOPEN), BOT);
+        new Key(HUMAN, Transition.TRANSFER_TO_QUEUE), WAITING,
+        // The customer writes again: the bot picks it up. An agent reopens it: it's theirs.
+        new Key(RESOLVED, Transition.REOPEN), BOT,
+        new Key(RESOLVED, Transition.AGENT_REOPEN), HUMAN);
 
     private StateMachine() {}
 

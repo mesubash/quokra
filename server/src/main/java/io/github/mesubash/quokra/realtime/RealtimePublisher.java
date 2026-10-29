@@ -2,6 +2,7 @@ package io.github.mesubash.quokra.realtime;
 
 import io.github.mesubash.quokra.conversation.ConversationUpdated;
 import io.github.mesubash.quokra.conversation.MessageCreated;
+import io.github.mesubash.quokra.conversation.NoteCreated;
 import io.github.mesubash.quokra.conversation.Status;
 import java.time.Clock;
 import java.time.Instant;
@@ -27,6 +28,12 @@ class RealtimePublisher {
     @TransactionalEventListener
     void on(MessageCreated event) {
         send("message.created", event.conversationId(), event.message());
+    }
+
+    @TransactionalEventListener
+    void on(NoteCreated event) {
+        messaging.convertAndSend(StompAuthInterceptor.CONVERSATION_TOPIC + event.conversationId() + StompAuthInterceptor.NOTES_SUFFIX,
+            new Event("note.created", event.conversationId(), clock.instant(), event.note()));
     }
 
     @TransactionalEventListener

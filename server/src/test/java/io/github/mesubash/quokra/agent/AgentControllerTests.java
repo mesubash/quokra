@@ -2,6 +2,7 @@ package io.github.mesubash.quokra.agent;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.jayway.jsonpath.JsonPath;
 import io.github.mesubash.quokra.TestcontainersConfiguration;
 import io.github.mesubash.quokra.conversation.ConversationService;
 import io.github.mesubash.quokra.conversation.Enums.HandoffReason;
@@ -263,5 +264,146 @@ class AgentControllerTests {
                 .header(HttpHeaders.ORIGIN, "http://localhost:5500")
                 .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "GET"))
             .doesNotContainHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN);
+    }
+    UUID taken(String token) {
+        UUID id = waiting(tenant, HandoffReason.CUSTOMER_REQUEST);
+        post(token, "/conversations/" + id + "/accept", null);
+        return id;
+    }
+
+    @Test
+    void blockClosesTheChatAndStopsTheContact() {
+        UUID id = taken(alice);
+
+        MvcTestResult result = post(alice, "/conversations/" + id + "/block", null);
+
+        assertThat(result).hasStatusOk();
+        assertThat(result).bodyJson().extractingPath("$.conversation.status").isEqualTo("RESOLVED");
+        assertThat(result).bodyJson().extractingPath("$.conversation.customer.blocked").isEqualTo(true);
+        assertThat(post(alice, "/conversations/" + id + "/reopen", null)).hasStatus(HttpStatus.FORBIDDEN);
+    }
+
+    @Test
+    void unblockLetsTheContactBack() throws Exception {
+        UUID id = taken(alice);
+        post(alice, "/conversations/" + id + "/block", null);
+        String contactId = JsonPath.read(get(alice, "/conversations/" + id).getResponse().getContentAsString(),
+            "$.conversation.customer.contactId");
+
+        assertThat(post(alice, "/contacts/" + contactId + "/unblock", null)).hasStatus(HttpStatus.NO_CONTENT);
+        assertThat(get(alice, "/conversations/" + id)).bodyJson()
+            .extractingPath("$.conversation.customer.blocked").isEqualTo(false);
+    }
+
+    @Test
+    void agentsOfOtherTenantsCantUnblock() throws Exception {
+        UUID id = taken(alice);
+        post(alice, "/conversations/" + id + "/block", null);
+        String contactId = JsonPath.read(get(alice, "/conversations/" + id).getResponse().getContentAsString(),
+            "$.conversation.customer.contactId");
+        String carol = devTokens.sign("carol", "Carol", List.of("SUPPORT_AGENT"));
+
+        assertThat(post(carol, "/contacts/" + contactId + "/unblock", null)).hasStatus(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void reopenGivesTheChatBackToTheAgent() {
+        UUID id = taken(alice);
+        post(alice, "/conversations/" + id + "/resolve", null);
+
+        MvcTestResult result = post(bob, "/conversations/" + id + "/reopen", null);
+
+        assertThat(result).hasStatusOk();
+        assertThat(result).bodyJson().extractingPath("$.conversation.status").isEqualTo("HUMAN");
+        assertThat(result).bodyJson().extractingPath("$.conversation.assignee.sub").isEqualTo("bob");
+    }
+
+    @Test
+    void transferToAnotherAgent() {
+        UUID id = taken(alice);
+        get(bob, "/me"); // remembers Bob's name
+
+        MvcTestResult result = post(alice, "/conversations/" + id + "/transfer", "{\"agentSub\":\"bob\"}");
+
+        assertThat(result).hasStatusOk();
+        assertThat(result).bodyJson().extractingPath("$.conversation.assignee.name").isEqualTo("Bob");
+        assertThat(post(alice, "/conversations/" + id + "/messages", "{\"body\":\"hi\"}"))
+            .hasStatus(HttpStatus.FORBIDDEN);
+    }
+
+    @Test
+    void transferBackToTheQueueKeepsThePriority() {
+        UUID id = waiting(tenant, HandoffReason.URGENT);
+        post(alice, "/conversations/" + id + "/accept", null);
+
+        MvcTestResult result = post(alice, "/conversations/" + id + "/transfer", "{}");
+
+        assertThat(result).bodyJson().extractingPath("$.conversation.status").isEqualTo("WAITING");
+        assertThat(result).bodyJson().extractingPath("$.conversation.priority").isEqualTo("URGENT");
+        assertThat(result).bodyJson().extractingPath("$.conversation.assignee").isNull();
+    }
+
+    @Test
+    void cantTransferToSomeoneOutsideTheTenant() {
+        UUID id = taken(alice);
+
+        assertThat(post(alice, "/conversations/" + id + "/transfer", "{\"agentSub\":\"carol\"}"))
+            .hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(post(bob, "/conversations/" + id + "/transfer", "{}")).hasStatus(HttpStatus.FORBIDDEN);
+    }
+
+    @Test
+    void listsTheTenantsAgents() {
+        UUID id = taken(alice);
+        get(alice, "/me");
+
+        assertThat(get(alice, "/conversations/" + id + "/agents")).bodyJson()
+            .extractingPath("$.items[*].sub").isEqualTo(List.of("alice", "bob"));
+    }
+
+    @Test
+    void notesAreForAgentsOnly() {
+        UUID id = taken(alice);
+
+        assertThat(post(bob, "/conversations/" + id + "/notes", "{\"body\":\"VIP, be nice\"}"))
+            .hasStatus(HttpStatus.CREATED);
+
+        assertThat(get(alice, "/conversations/" + id)).bodyJson().extractingPath("$.notes[0].body")
+            .isEqualTo("VIP, be nice");
+        assertThat(get(alice, "/conversations/" + id)).bodyJson().extractingPath("$.messages[*].body")
+            .asArray().doesNotContain("VIP, be nice");
+    }
+    @Test
+    void queuePagesFollowEachOtherWithoutGapsOrRepeats() throws Exception {
+        UUID urgent = waiting(tenant, HandoffReason.URGENT);
+        UUID first = waiting(tenant, HandoffReason.CUSTOMER_REQUEST);
+        UUID second = waiting(tenant, HandoffReason.CUSTOMER_REQUEST);
+
+        String page1 = get(alice, "/conversations?status=WAITING&limit=2").getResponse().getContentAsString();
+        String cursor = JsonPath.read(page1, "$.nextCursor");
+        MvcTestResult page2 = get(alice, "/conversations?status=WAITING&limit=2&cursor=" + cursor);
+
+        assertThat(JsonPath.<List<String>>read(page1, "$.items[*].id"))
+            .containsExactly(urgent.toString(), first.toString());
+        assertThat(page2).bodyJson().extractingPath("$.items[*].id").isEqualTo(List.of(second.toString()));
+        assertThat(page2).bodyJson().extractingPath("$.nextCursor").isNull();
+    }
+
+    @Test
+    void recentListPagesByLastMessage() throws Exception {
+        UUID older = taken(alice);
+        UUID newer = taken(alice);
+
+        String page1 = get(alice, "/conversations?status=HUMAN&assignee=me&limit=1").getResponse().getContentAsString();
+        MvcTestResult page2 = get(alice, "/conversations?status=HUMAN&assignee=me&limit=1&cursor="
+            + JsonPath.read(page1, "$.nextCursor"));
+
+        assertThat(JsonPath.<List<String>>read(page1, "$.items[*].id")).containsExactly(newer.toString());
+        assertThat(page2).bodyJson().extractingPath("$.items[*].id").isEqualTo(List.of(older.toString()));
+    }
+
+    @Test
+    void badCursorIsRejected() {
+        assertThat(get(alice, "/conversations?status=WAITING&cursor=nope")).hasStatus(HttpStatus.BAD_REQUEST);
     }
 }

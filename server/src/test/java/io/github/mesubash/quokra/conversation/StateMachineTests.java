@@ -18,7 +18,9 @@ class StateMachineTests {
         "WAITING RESOLVE", Status.RESOLVED,
         "HUMAN RESOLVE", Status.RESOLVED,
         "HUMAN RETURN_TO_BOT", Status.BOT,
-        "RESOLVED REOPEN", Status.BOT);
+        "HUMAN TRANSFER_TO_QUEUE", Status.WAITING,
+        "RESOLVED REOPEN", Status.BOT,
+        "RESOLVED AGENT_REOPEN", Status.HUMAN);
 
     static Stream<Arguments> everyCombination() {
         return Stream.of(Status.values())

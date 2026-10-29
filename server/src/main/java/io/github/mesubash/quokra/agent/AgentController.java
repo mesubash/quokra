@@ -7,7 +7,11 @@ import io.github.mesubash.quokra.common.ApiException;
 import io.github.mesubash.quokra.conversation.AgentRef;
 import io.github.mesubash.quokra.conversation.Conversation;
 import io.github.mesubash.quokra.conversation.ConversationService;
+import io.github.mesubash.quokra.contact.Contact;
+import io.github.mesubash.quokra.contact.ContactRepository;
 import io.github.mesubash.quokra.conversation.MessageView;
+import io.github.mesubash.quokra.conversation.NoteView;
+import io.github.mesubash.quokra.conversation.PageCursor;
 import io.github.mesubash.quokra.conversation.Status;
 import io.github.mesubash.quokra.security.AgentJwtConverter;
 import io.github.mesubash.quokra.tenant.Tenant;
@@ -38,7 +42,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/agent")
 public class AgentController {
 
-    static final int DEFAULT_LIMIT = 50;
+    static final int DEFAULT_LIMIT = 25;
     static final int MAX_LIMIT = 200;
     static final int HISTORY_LIMIT = 100;
 
@@ -48,7 +52,8 @@ public class AgentController {
 
     record Page<T>(List<T> items, String nextCursor) {}
 
-    record Detail(ConversationView conversation, List<MessageView> messages, List<EventView> events) {}
+    record Detail(ConversationView conversation, List<MessageView> messages, List<EventView> events,
+                  List<NoteView> notes) {}
 
     record One(ConversationView conversation) {}
 
@@ -56,18 +61,28 @@ public class AgentController {
 
     record ReplyResponse(MessageView message) {}
 
+    record TransferRequest(@Size(max = 255) String agentSub) {}
+
+    record NoteRequest(String body) {}
+
+    record NoteResponse(NoteView note) {}
+
     private final ConversationService service;
     private final TenantRepository tenants;
     private final TenantAgents tenantAgents;
+    private final ContactRepository contacts;
 
-    public AgentController(ConversationService service, TenantRepository tenants, TenantAgents tenantAgents) {
+    public AgentController(ConversationService service, TenantRepository tenants, TenantAgents tenantAgents,
+                           ContactRepository contacts) {
         this.service = service;
         this.tenants = tenants;
         this.tenantAgents = tenantAgents;
+        this.contacts = contacts;
     }
 
     @GetMapping("/me")
     public Me me(@AuthenticationPrincipal Jwt jwt) {
+        tenantAgents.rememberName(jwt.getSubject(), AgentJwtConverter.displayName(jwt));
         return new Me(jwt.getSubject(), AgentJwtConverter.displayName(jwt),
             myTenants(jwt).values().stream().map(Tenant::getSlug).sorted().toList());
     }
@@ -85,6 +100,7 @@ public class AgentController {
                                        @RequestParam Status status,
                                        @RequestParam(required = false) String tenant,
                                        @RequestParam(required = false) String assignee,
+                                       @RequestParam(required = false) String cursor,
                                        @RequestParam(defaultValue = "" + DEFAULT_LIMIT) int limit) {
         if (status == Status.BOT) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "status must be WAITING, HUMAN or RESOLVED");
@@ -94,11 +110,15 @@ public class AgentController {
             : mine.values().stream().filter(t -> t.getSlug().equals(tenant)).map(Tenant::getId).toList();
         String assigneeSub = "me".equals(assignee) ? jwt.getSubject() : null;
 
+        int size = Math.clamp(limit, 1, MAX_LIMIT);
+        List<Conversation> page = service.list(ids, status, assigneeSub, cursor == null ? null : PageCursor.decode(cursor),
+            size);
         // ponytail: one query per row for the preview; fine for a page of 50, batch it if lists grow.
-        List<Summary> items = service.list(ids, status, assigneeSub, Math.clamp(limit, 1, MAX_LIMIT)).stream()
+        List<Summary> items = page.stream()
             .map(c -> Summary.of(c, mine.get(c.getTenantId()).getSlug(), service.lastMessage(c.getId()).orElse(null)))
             .toList();
-        return new Page<>(items, null);
+        String next = page.size() == size ? PageCursor.after(page.getLast()).encode() : null;
+        return new Page<>(items, next);
     }
 
     @GetMapping("/conversations/{id}")
@@ -106,7 +126,8 @@ public class AgentController {
         Conversation c = visible(jwt, id);
         return new Detail(view(c),
             service.messages(id, null, HISTORY_LIMIT).stream().map(MessageView::of).toList(),
-            service.events(id).stream().map(EventView::of).toList());
+            service.events(id).stream().map(EventView::of).toList(),
+            service.notes(id).stream().map(NoteView::of).toList());
     }
 
     @PostMapping("/conversations/{id}/accept")
@@ -141,6 +162,60 @@ public class AgentController {
         return new One(view(service.returnToBot(id, agent(jwt))));
     }
 
+    @PostMapping("/conversations/{id}/reopen")
+    public One reopen(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
+        visible(jwt, id);
+        return new One(view(service.reopen(id, agent(jwt))));
+    }
+
+    // Who the conversation can be transferred to.
+    @GetMapping("/conversations/{id}/agents")
+    public Page<TenantAgents.Member> agents(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
+        return new Page<>(tenantAgents.members(visible(jwt, id).getTenantId()), null);
+    }
+
+    @PostMapping("/conversations/{id}/transfer")
+    public One transfer(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id,
+                        @Valid @RequestBody TransferRequest request) {
+        Conversation c = visible(jwt, id);
+        AgentRef to = null;
+        if (request.agentSub() != null) {
+            if (request.agentSub().equals(jwt.getSubject())) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "You already have this conversation");
+            }
+            to = tenantAgents.members(c.getTenantId()).stream()
+                .filter(m -> m.sub().equals(request.agentSub()))
+                .map(m -> new AgentRef(m.sub(), m.name()))
+                .findFirst()
+                .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR",
+                    "That agent doesn't work on this tenant"));
+        }
+        return new One(view(service.transfer(id, agent(jwt), to)));
+    }
+
+    @PostMapping("/conversations/{id}/block")
+    public One block(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
+        visible(jwt, id);
+        return new One(view(service.block(id, agent(jwt))));
+    }
+
+    @PostMapping("/contacts/{contactId}/unblock")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void unblock(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID contactId) {
+        Contact contact = contacts.findById(contactId)
+            .filter(c -> tenantAgents.tenantIdsFor(jwt.getSubject()).contains(c.getTenantId()))
+            .orElseThrow(() -> ApiException.notFound("CONTACT_NOT_FOUND", "Contact not found"));
+        service.unblock(contact.getId());
+    }
+
+    @PostMapping("/conversations/{id}/notes")
+    @ResponseStatus(HttpStatus.CREATED)
+    public NoteResponse note(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id,
+                             @Valid @RequestBody NoteRequest request) {
+        visible(jwt, id);
+        return new NoteResponse(NoteView.of(service.addNote(id, agent(jwt), request.body())));
+    }
+
     private Conversation visible(Jwt jwt, UUID id) {
         Conversation c;
         try {
@@ -155,7 +230,9 @@ public class AgentController {
     }
 
     private ConversationView view(Conversation c) {
-        return ConversationView.of(c, tenants.findById(c.getTenantId()).map(Tenant::getSlug).orElse(null));
+        boolean blocked = c.getContactId() != null
+            && contacts.findById(c.getContactId()).map(Contact::isBlocked).orElse(false);
+        return ConversationView.of(c, tenants.findById(c.getTenantId()).map(Tenant::getSlug).orElse(null), blocked);
     }
 
     private Map<UUID, Tenant> myTenants(Jwt jwt) {

@@ -37,4 +37,9 @@ class SecurityConfigTests {
     void pagesCanBeFramed() {
         assertThat(mvc.get().uri("/actuator/health")).doesNotContainHeader("X-Frame-Options");
     }
+
+    @Test
+    void errorPageIsNotHiddenBehindForbidden() {
+        assertThat(mvc.get().uri("/error").exchange().getResponse().getStatus()).isNotEqualTo(HttpStatus.FORBIDDEN.value());
+    }
 }

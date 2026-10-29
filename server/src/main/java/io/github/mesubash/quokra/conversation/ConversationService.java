@@ -54,19 +54,21 @@ public class ConversationService {
     private final ConversationEventRepository events;
     private final TenantRepository tenants;
     private final ContactRepository contacts;
+    private final NoteRepository notes;
     private final BotConfigRegistry bots;
     private final ApplicationEventPublisher publisher;
     private final Clock clock;
 
     public ConversationService(ConversationRepository conversations, MessageRepository messages,
                                ConversationEventRepository events, TenantRepository tenants,
-                               ContactRepository contacts, BotConfigRegistry bots,
+                               ContactRepository contacts, NoteRepository notes, BotConfigRegistry bots,
                                ApplicationEventPublisher publisher, Clock clock) {
         this.conversations = conversations;
         this.messages = messages;
         this.events = events;
         this.tenants = tenants;
         this.contacts = contacts;
+        this.notes = notes;
         this.bots = bots;
         this.publisher = publisher;
         this.clock = clock;
@@ -242,6 +244,89 @@ public class ConversationService {
         return conversation;
     }
 
+    // Blocks the customer's contact and closes the conversation. They can't chat again until unblocked.
+    @Transactional
+    public Conversation block(UUID conversationId, AgentRef agent) {
+        Conversation conversation = get(conversationId);
+        if (conversation.getContactId() == null) {
+            throw new ApiException(HttpStatus.CONFLICT, "NO_CONTACT", "This conversation has no contact to block");
+        }
+        if (conversation.getStatus() == Status.HUMAN) {
+            requireAssignee(conversation, agent);
+        }
+        Instant now = clock.instant();
+        contacts.findById(conversation.getContactId()).ifPresent(c -> c.block(agent.sub(), now));
+        events.save(ConversationEvent.byAgent(conversationId, EventType.BLOCKED, agent, now));
+        if (conversation.isOpen()) {
+            conversation.moveTo(StateMachine.next(conversation.getStatus(), Transition.RESOLVE), now);
+            conversation.touch(now);
+            save(Message.create(conversationId, SenderType.SYSTEM, null, null, RESOLVED_MESSAGE, null, null, now));
+        }
+        publishUpdate(conversation);
+        return conversation;
+    }
+
+    @Transactional
+    public void unblock(UUID contactId) {
+        contacts.findById(contactId).ifPresent(c -> c.unblock(clock.instant()));
+    }
+
+    // An agent picks a closed conversation up again, e.g. to follow up.
+    @Transactional
+    public Conversation reopen(UUID conversationId, AgentRef agent) {
+        Conversation conversation = get(conversationId);
+        requireNotBlocked(conversation);
+        Instant now = clock.instant();
+        conversation.moveTo(StateMachine.next(conversation.getStatus(), Transition.AGENT_REOPEN), now);
+        conversation.assign(agent.sub(), agent.name());
+        conversation.touch(now);
+        events.save(ConversationEvent.byAgent(conversationId, EventType.REOPENED, agent, now));
+        save(Message.create(conversationId, SenderType.SYSTEM, null, null, agent.name() + " reopened the chat", null,
+            null, now));
+        publishUpdate(conversation);
+        return conversation;
+    }
+
+    // Hands the conversation to another agent, or back to the queue when `to` is null.
+    @Transactional
+    public Conversation transfer(UUID conversationId, AgentRef agent, AgentRef to) {
+        Conversation conversation = get(conversationId);
+        if (conversation.getStatus() != Status.HUMAN) {
+            throw new ApiException(HttpStatus.CONFLICT, "INVALID_TRANSITION", "Only an accepted conversation can be transferred");
+        }
+        requireAssignee(conversation, agent);
+        Instant now = clock.instant();
+        ConversationEvent event = ConversationEvent.byAgent(conversationId, EventType.TRANSFERRED, agent, now);
+        if (to == null) {
+            conversation.moveTo(StateMachine.next(conversation.getStatus(), Transition.TRANSFER_TO_QUEUE), now);
+            conversation.release();
+            save(Message.create(conversationId, SenderType.SYSTEM, null, null, HANDOFF_MESSAGE, null, null, now));
+        } else {
+            conversation.assign(to.sub(), to.name());
+            event.setReason(to.name());
+            save(Message.create(conversationId, SenderType.SYSTEM, null, null, to.name() + " joined the chat", null,
+                null, now));
+        }
+        conversation.touch(now);
+        events.save(event);
+        publishUpdate(conversation);
+        return conversation;
+    }
+
+    // Any agent of the tenant can leave a note; customers never see them.
+    @Transactional
+    public ConversationNote addNote(UUID conversationId, AgentRef agent, String body) {
+        get(conversationId);
+        ConversationNote note = notes.save(ConversationNote.create(conversationId, agent, checkBody(body), clock.instant()));
+        publisher.publishEvent(new NoteCreated(conversationId, NoteView.of(note)));
+        return note;
+    }
+
+    @Transactional(readOnly = true)
+    public List<ConversationNote> notes(UUID conversationId) {
+        return notes.findByConversationIdOrderByIdAsc(conversationId);
+    }
+
     @Transactional
     public Conversation returnToBot(UUID conversationId, AgentRef agent) {
         Conversation conversation = get(conversationId);
@@ -259,19 +344,20 @@ public class ConversationService {
     }
 
     // WAITING: the queue (urgent first, longest wait first). Others: most recent first.
+    // `after` continues from the last row of the previous page.
     @Transactional(readOnly = true)
-    public List<Conversation> list(Collection<UUID> tenantIds, Status status, String assigneeSub, int limit) {
+    public List<Conversation> list(Collection<UUID> tenantIds, Status status, String assigneeSub, PageCursor after,
+                                   int limit) {
         if (tenantIds.isEmpty()) {
             return List.of();
         }
+        Limit size = Limit.of(limit);
         if (status == Status.WAITING) {
-            return conversations.findQueue(tenantIds, Limit.of(limit));
+            return after == null ? conversations.findQueue(tenantIds, size)
+                : conversations.findQueueAfter(tenantIds, after.rank(), after.at(), after.id(), size);
         }
-        if (assigneeSub != null) {
-            return conversations.findByTenantIdInAndStatusAndAssigneeSubOrderByLastMessageAtDesc(
-                tenantIds, status, assigneeSub, Limit.of(limit));
-        }
-        return conversations.findByTenantIdInAndStatusOrderByLastMessageAtDesc(tenantIds, status, Limit.of(limit));
+        return after == null ? conversations.findRecent(tenantIds, status, assigneeSub, size)
+            : conversations.findRecentAfter(tenantIds, status, assigneeSub, after.at(), after.id(), size);
     }
 
     @Transactional(readOnly = true)

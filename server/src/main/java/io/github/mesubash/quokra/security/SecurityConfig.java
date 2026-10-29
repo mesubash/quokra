@@ -54,6 +54,8 @@ public class SecurityConfig {
             .addFilterBefore(new SessionAuthFilter(sessionTokens), AuthorizationFilter.class)
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/actuator/health/**").permitAll()
+                // Unexpected errors are forwarded here; without this they'd show up as 403 instead of 500.
+                .requestMatchers("/error").permitAll()
                 // The socket checks its own token on CONNECT.
                 .requestMatchers("/ws", "/ws/**").permitAll()
                 .requestMatchers("/", "/index.html", "/sdk.js", "/robot.svg", "/assets/**", "/vendor/**", "/animations/**", "/w/**", "/console",

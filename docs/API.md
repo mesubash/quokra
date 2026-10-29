@@ -157,12 +157,13 @@ All require an agent token. The agent only sees tenants they're a member of (`te
 | `tenant` | slug (optional; default: all my tenants) |
 | `status` | `WAITING`, `HUMAN`, `RESOLVED` (required) |
 | `assignee` | `me` (optional) |
-| `limit` | default 50, max 200 (cursor paging comes later; `nextCursor` is `null` for now) |
+| `limit` | default 25, max 200 |
+| `cursor` | `nextCursor` from the previous page |
 
-`WAITING` is sorted by priority (URGENT first), then oldest first. The others are newest first.
+`WAITING` is sorted by priority (URGENT first), then oldest first. The others are newest first. Paging continues from the last row shown (keyset), so new conversations arriving meanwhile don't shift pages. `nextCursor` is `null` on the last page. A bad cursor is `400 VALIDATION_ERROR`.
 
 ```json
-200 { "items": [ConversationSummary, …], "nextCursor": null }
+200 { "items": [ConversationSummary, …], "nextCursor": "MnwyMDI2LTEwLTI5VDEw…" }
 ```
 
 ### 4.3 `GET /agent/conversations/{id}`
@@ -172,9 +173,12 @@ All require an agent token. The agent only sees tenants they're a member of (`te
 {
   "conversation": Conversation,
   "messages": [Message, …],      // latest 100
-  "events": [ConversationEvent, …]
+  "events": [ConversationEvent, …],
+  "notes": [Note, …]             // agent-only, oldest first
 }
 ```
+
+`conversation.customer` includes `contactId` and `blocked` when the customer left their details.
 
 ### 4.4 `POST /agent/conversations/{id}/accept`
 
@@ -203,6 +207,45 @@ Allowed only when the status is `HUMAN` and the caller is the assignee. Otherwis
 200 { "sub": "agent-7", "name": "Ram", "tenants": ["demo"] }
 ```
 
+Also remembers the agent's display name, so other agents can pick them in a transfer.
+
+### 4.9 `POST /agent/conversations/{id}/reopen`
+
+`RESOLVED → HUMAN`, assigned to the caller, e.g. to follow up. `200 { "conversation": Conversation }`. Errors: `403 CONTACT_BLOCKED`, `409 INVALID_TRANSITION`.
+
+### 4.10 `GET /agent/conversations/{id}/agents`
+
+Agents of the conversation's tenant: `200 { "items": [{ "sub": "agent-7", "name": "Ram" }, …], "nextCursor": null }`.
+
+### 4.11 `POST /agent/conversations/{id}/transfer`
+
+```json
+{ "agentSub": "agent-9" }   // or {} to put it back in the queue
+```
+
+Assignee only, `HUMAN` only. To an agent: stays `HUMAN`, assigned to them. To the queue: `HUMAN → WAITING`, keeping its priority. `200 { "conversation": Conversation }`. Errors: `400 VALIDATION_ERROR` (not an agent of this tenant, or yourself), `403 NOT_ASSIGNEE`, `409 INVALID_TRANSITION`.
+
+### 4.12 `POST /agent/conversations/{id}/block`
+
+Blocks the conversation's contact and closes the conversation if it's open. The customer can't send messages or reach the team with that email until unblocked. Same rule as resolve: any agent while `WAITING`, the assignee while `HUMAN`. `200 { "conversation": Conversation }`. Errors: `409 NO_CONTACT`.
+
+### 4.13 `POST /agent/contacts/{contactId}/unblock`
+
+`204`. `404 CONTACT_NOT_FOUND` if the contact isn't in one of the caller's tenants.
+
+### 4.14 `POST /agent/conversations/{id}/notes`
+
+```json
+{ "body": "Called them back, waiting on a reply." }
+// 201 { "note": Note }
+```
+
+Any agent of the tenant. Notes are never sent to the customer.
+
+```ts
+interface Note { id: string; author: { sub: string; name: string }; body: string; createdAt: string }
+```
+
 ---
 
 ## 5. Realtime events
@@ -213,6 +256,7 @@ STOMP over WebSocket at `wss://chat.<domain>/ws`.
 |---|---|
 | `/topic/conversations/{conversationId}` | The conversation's customer session; agents of its tenant |
 | `/topic/tenants/{tenantId}/queue` | Agents of that tenant |
+| `/topic/conversations/{conversationId}/notes` | Agents of its tenant (never customers) |
 
 Every event has this envelope:
 
@@ -225,6 +269,7 @@ Every event has this envelope:
 | `message.created` | conversation | `Message` |
 | `conversation.updated` | conversation, queue | `Conversation` (customers get the customer view) |
 | `conversation.waiting` | queue | Agent snapshot of the conversation (as `ConversationSummary`, without `lastMessagePreview`; `tenantId` instead of `tenantSlug`) |
+| `note.created` | notes | `Note` |
 | `typing` | conversation | `{ "senderType": "AGENT" \| "CUSTOMER", "on": true }` |
 
 Typing is sent by clients to `/app/conversations/{id}/typing` with `{ "on": true }`; the server relays it. It is never stored. *(Not built yet: until then the server rejects any client `SEND` over the socket.)*

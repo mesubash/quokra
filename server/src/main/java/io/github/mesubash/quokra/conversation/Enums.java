@@ -11,5 +11,5 @@ public final class Enums {
     public enum SenderType { CUSTOMER, BOT, AGENT, SYSTEM }
 
     public enum EventType { CREATED, HANDOFF, ACCEPTED, RESOLVED, RETURNED_TO_BOT, REOPENED, IDENTIFIED,
-        CONTACT_ADDED }
+        CONTACT_ADDED, BLOCKED, TRANSFERRED }
 }

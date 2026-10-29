@@ -2,6 +2,7 @@ package io.github.mesubash.quokra.conversation;
 
 import io.github.mesubash.quokra.conversation.Enums.HandoffReason;
 import io.github.mesubash.quokra.conversation.Enums.Priority;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -52,6 +53,10 @@ public class Conversation {
     @Enumerated(EnumType.STRING)
     private Priority priority;
 
+    // Computed by the database from priority (V7); used for sorting and paging the queue.
+    @Column(insertable = false, updatable = false)
+    private int priorityRank;
+
     @Enumerated(EnumType.STRING)
     private HandoffReason handoffReason;
 
@@ -98,6 +103,12 @@ public class Conversation {
     void assign(String agentSub, String agentName) {
         assigneeSub = agentSub;
         assigneeName = agentName;
+    }
+
+    // Back to the queue with the same reason and priority, for someone else to take.
+    void release() {
+        assigneeSub = null;
+        assigneeName = null;
     }
 
     void unassign() {

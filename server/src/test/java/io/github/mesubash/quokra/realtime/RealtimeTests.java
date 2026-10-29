@@ -60,6 +60,7 @@ class RealtimeTests {
     String otherAgentSub = "agent-" + otherTenantId;
     WebSocketStompClient stomp;
     RestClient http;
+    RestClient agentHttp;
 
     @BeforeEach
     void setUp() {
@@ -78,6 +79,7 @@ class RealtimeTests {
         stomp.setMessageConverter(new CompositeMessageConverter(
             List.of(new StringMessageConverter(), new JacksonJsonMessageConverter())));
         http = RestClient.create("http://localhost:" + port + "/api/v1/widget");
+        agentHttp = RestClient.create("http://localhost:" + port + "/api/v1/agent");
     }
 
     @AfterEach
@@ -172,6 +174,33 @@ class RealtimeTests {
         subscribeTo(session, queueTopic(tenantId));
 
         assertThat(errors.poll(5, TimeUnit.SECONDS)).isNotNull();
+    }
+
+    @Test
+    void customerCannotReadAgentNotes() throws Exception {
+        String customer = sessionTokens.issue(tenantId).token();
+        String conversationId = startConversation(customer);
+        BlockingQueue<String> errors = new LinkedBlockingQueue<>();
+
+        subscribeTo(connect(customer, errors), "/topic/conversations/" + conversationId + "/notes");
+
+        assertThat(errors.poll(5, TimeUnit.SECONDS)).isNotNull();
+    }
+
+    @Test
+    void agentsSeeNotesLive() throws Exception {
+        String customer = sessionTokens.issue(tenantId).token();
+        String conversationId = startConversation(customer);
+        String token = agentToken(agentSub);
+        BlockingQueue<Object> notes = subscribeTo(connect(token), "/topic/conversations/" + conversationId + "/notes");
+
+        agentHttp.post().uri("/conversations/" + conversationId + "/notes")
+            .header(HttpHeaders.AUTHORIZATION, "Bearer " + token).contentType(MediaType.APPLICATION_JSON)
+            .body("{\"body\":\"Called them back\"}").retrieve().toBodilessEntity();
+
+        Object event = notes.poll(5, TimeUnit.SECONDS);
+        assertThat(JsonPath.<String>read(event, "$.type")).isEqualTo("note.created");
+        assertThat(JsonPath.<String>read(event, "$.data.body")).isEqualTo("Called them back");
     }
 
     @Test

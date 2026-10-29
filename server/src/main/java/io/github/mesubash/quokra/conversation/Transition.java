@@ -5,5 +5,7 @@ public enum Transition {
     ACCEPT,
     RESOLVE,
     RETURN_TO_BOT,
-    REOPEN
+    REOPEN,
+    AGENT_REOPEN,
+    TRANSFER_TO_QUEUE
 }

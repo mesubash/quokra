@@ -51,6 +51,10 @@ public class ConversationEvent {
         return e;
     }
 
+    void setReason(String reason) {
+        this.reason = reason;
+    }
+
     static ConversationEvent byAgent(UUID conversationId, EventType type, AgentRef agent, Instant now) {
         ConversationEvent e = of(conversationId, type, SenderType.AGENT, agent.sub(), null, now);
         e.actorName = agent.name();
