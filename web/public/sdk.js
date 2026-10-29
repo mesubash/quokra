@@ -78,24 +78,24 @@
       ".quokra-button svg{width:26px;height:26px}" +
       ".quokra-anim{display:none}.quokra-button.animated .quokra-icon-chat{display:none}" +
       // Once the animation is ready, the robot itself is the button.
-      ".quokra-button.animated:not(.open){width:120px;height:95px;border:0;border-radius:24px;background:none;" +
+      ".quokra-button.animated{width:104px;height:102px;border:0;border-radius:24px;background:none;" +
       "box-shadow:none;filter:drop-shadow(0 6px 12px rgba(0,0,0,.18))}" +
-      ".quokra-button.animated:not(.open) .quokra-anim{display:block;width:120px;height:95px}" +
-      ".quokra-button.animated:not(.open):hover{transform:translateY(-3px);box-shadow:none}" +
-      ".quokra-icon-close{display:none}.quokra-button.open .quokra-icon-close{display:block}" +
-      ".quokra-button.open .quokra-anim,.quokra-button.open .quokra-icon-chat{display:none}" +
+      ".quokra-button.animated .quokra-anim{display:block;width:104px;height:102px}" +
+      ".quokra-button.animated:hover{transform:translateY(-3px);box-shadow:none}" +
+      // While the chat is open the panel's own close button is used, so the launcher steps aside.
+      ".quokra-button.open{display:none}" +
       ".quokra-badge{position:absolute;top:-4px;right:-4px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;" +
       "background:#cf222e;color:#fff;font:600 12px/20px system-ui,sans-serif;text-align:center;animation:quokra-pop .3s ease}" +
       ".quokra-teaser{position:fixed;bottom:92px;max-width:260px;display:flex;align-items:flex-start;gap:4px;" +
       "background:#fff;color:#1f2328;border-radius:14px;box-shadow:0 8px 28px rgba(0,0,0,.18);z-index:2147483646;" +
       "font:14px/1.4 system-ui,sans-serif;animation:quokra-rise .35s ease}" +
-      ".quokra-teaser.right{right:20px}.quokra-teaser.left{left:20px}.quokra-teaser.above-mascot{bottom:122px}" +
+      ".quokra-teaser.right{right:20px}.quokra-teaser.left{left:20px}.quokra-teaser.above-mascot{bottom:128px}" +
       ".quokra-teaser-text{flex:1;border:0;background:none;padding:12px 4px 12px 14px;text-align:left;font:inherit;" +
       "color:inherit;cursor:pointer}" +
       ".quokra-teaser-close{border:0;background:none;padding:8px;color:#6e7781;cursor:pointer;line-height:0}" +
       ".quokra-teaser-close svg{width:16px;height:16px}" +
       ".quokra-teaser-text:focus-visible,.quokra-teaser-close:focus-visible{outline:2px solid var(--quokra-color," + DEFAULT_COLOR + ");border-radius:8px}" +
-      ".quokra-panel{position:fixed;bottom:92px;width:380px;height:580px;max-height:calc(100vh - 112px);border:0;" +
+      ".quokra-panel{position:fixed;bottom:20px;width:380px;height:600px;max-height:calc(100vh - 40px);border:0;" +
       "border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.22);background:#fff;z-index:2147483647;" +
       "opacity:0;visibility:hidden;transform:translateY(12px) scale(.98);transform-origin:bottom right;" +
       "transition:opacity .2s ease,transform .2s ease,visibility 0s linear .2s}" +
@@ -164,6 +164,8 @@
         loop: false,
         autoplay: !reducedMotion,
         animationData: window.QuokraAnimations.helloBot,
+        // Crop to the robot and its "Hello!" bubble (the canvas has empty space around them).
+        rendererSettings: { viewBoxSize: "10 30 345 340" },
       });
       // A still robot for people who prefer less motion: the frame where it's waving.
       if (reducedMotion) state.animation.goToAndStop(Math.floor(state.animation.totalFrames / 2), true);
@@ -305,9 +307,7 @@
           button.setAttribute("aria-expanded", "false");
           button.setAttribute("aria-controls", FRAME_ID);
           button.innerHTML =
-            '<span class="quokra-anim"></span>' +
-            ICON_CHAT.replace("<svg ", '<svg class="quokra-icon-chat" ') +
-            ICON_CLOSE.replace("<svg ", '<svg class="quokra-icon-close" ');
+            '<span class="quokra-anim"></span>' + ICON_CHAT.replace("<svg ", '<svg class="quokra-icon-chat" ');
           button.addEventListener("click", function () {
             state.open ? chat.close() : chat.open();
           });

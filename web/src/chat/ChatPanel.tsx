@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { embedded, onHostMessage, postToHost } from "../lib/bridge";
+import { textOn } from "../lib/color";
+import { CloseIcon } from "../lib/icons";
 import { widgetApi, type Conversation, type Tenant } from "../lib/api";
 import { Composer } from "./Composer";
 import { MessageList } from "./MessageList";
+import { RobotAvatar } from "./RobotAvatar";
 import { activeOptions, countUnread } from "./messages";
 import { forgetSession, getSession } from "./session";
 import { useChat } from "./useChat";
@@ -48,6 +51,7 @@ export function ChatPanel({ slug }: { slug: string }) {
         }
         if (tenant.branding.primaryColor) {
           document.documentElement.style.setProperty("--primary", tenant.branding.primaryColor);
+          document.documentElement.style.setProperty("--on-primary", textOn(tenant.branding.primaryColor));
         }
         setSetup({ status: "ready", tenant, token: session.sessionToken });
         postToHost({ type: "chat.ready", color: tenant.branding.primaryColor, teaser: tenant.teaser });
@@ -87,10 +91,14 @@ interface ChatProps {
 
 function Chat({ tenant, token, visible, onUnauthorized }: ChatProps) {
   const chat = useChat(token, onUnauthorized);
-  const options = chat.conversation?.status === "BOT" ? activeOptions(chat.messages) : [];
+  const status = chat.conversation?.status;
+  const options = status === "BOT" ? activeOptions(chat.messages) : [];
   const [seenUpTo, setSeenUpTo] = useState<string | null>(null);
-  const lastId = chat.messages[chat.messages.length - 1]?.id ?? null;
+  const [awaitingBot, setAwaitingBot] = useState(false);
+  const last = chat.messages[chat.messages.length - 1];
+  const lastId = last?.id ?? null;
   const unread = visible ? 0 : countUnread(chat.messages, seenUpTo);
+  const typing = awaitingBot && status === "BOT" && last?.senderType === "CUSTOMER";
 
   // History loaded on start counts as seen; after that, only what arrives while visible.
   useEffect(() => {
@@ -99,14 +107,36 @@ function Chat({ tenant, token, visible, onUnauthorized }: ChatProps) {
 
   useEffect(() => postToHost({ type: "chat.unread", count: unread }), [unread]);
 
+  // The typing dots never hang around if a reply doesn't come.
+  useEffect(() => {
+    if (!awaitingBot) return;
+    const timer = setTimeout(() => setAwaitingBot(false), 6000);
+    return () => clearTimeout(timer);
+  }, [awaitingBot, lastId]);
+
+  async function send(message: { body?: string; optionId?: string }) {
+    setAwaitingBot(true);
+    try {
+      await chat.send(message);
+    } catch (e) {
+      setAwaitingBot(false);
+      throw e;
+    }
+  }
+
   return (
     <main className="chat">
       <header className="panel-header">
-        {tenant.branding.logoUrl && <img src={tenant.branding.logoUrl} alt="" height={24} />}
-        <h1>{tenant.displayName}</h1>
+        <span className="header-avatar">
+          {tenant.branding.logoUrl ? <img src={tenant.branding.logoUrl} alt="" /> : <RobotAvatar size={40} wave={visible} />}
+        </span>
+        <div className="header-text">
+          <h1>{tenant.displayName}</h1>
+          <HeaderStatus conversation={chat.conversation} online={chat.online} />
+        </div>
         {startsHidden && (
-          <button type="button" className="close" aria-label="Close chat" onClick={() => postToHost({ type: "chat.close" })}>
-            ×
+          <button type="button" className="icon-button" aria-label="Close chat" onClick={() => postToHost({ type: "chat.close" })}>
+            <CloseIcon size={22} />
           </button>
         )}
       </header>
@@ -114,26 +144,41 @@ function Chat({ tenant, token, visible, onUnauthorized }: ChatProps) {
         <p className="panel muted">{chat.error}</p>
       ) : (
         <>
-          <StatusLine conversation={chat.conversation} online={chat.online} />
           <MessageList
             messages={chat.messages}
             options={options}
-            onOption={(o) => void chat.send({ optionId: o.id }).catch(() => {})}
+            onOption={(o) => void send({ optionId: o.id }).catch(() => {})}
             disabled={!chat.conversation}
+            botName={tenant.displayName}
+            typing={typing}
           />
-          <Composer onSend={(body) => chat.send({ body })} disabled={!chat.conversation} focus={visible} />
+          <Composer
+            onSend={(body) => send({ body })}
+            disabled={!chat.conversation}
+            focus={visible}
+            placeholder={status === "HUMAN" && chat.conversation?.assignee ? `Reply to ${chat.conversation.assignee.name}…` : `Reply to ${tenant.displayName}…`}
+          />
         </>
       )}
     </main>
   );
 }
 
-function StatusLine({ conversation, online }: { conversation: Conversation | null; online: boolean }) {
-  if (conversation && !online) return <p className="status">Reconnecting…</p>;
-  if (conversation?.status === "WAITING") return <p className="status">Waiting for someone from our team…</p>;
-  if (conversation?.status === "HUMAN" && conversation.assignee) {
-    return <p className="status">You're chatting with {conversation.assignee.name}</p>;
+function HeaderStatus({ conversation, online }: { conversation: Conversation | null; online: boolean }) {
+  if (conversation && !online) return <p className="header-status">Reconnecting…</p>;
+  switch (conversation?.status) {
+    case "WAITING":
+      return <p className="header-status"><span className="dot dot-waiting" />Connecting you with our team…</p>;
+    case "HUMAN":
+      return (
+        <p className="header-status">
+          <span className="dot" />
+          {conversation.assignee ? `Chatting with ${conversation.assignee.name}` : "Chatting with our team"}
+        </p>
+      );
+    case "RESOLVED":
+      return <p className="header-status">Conversation closed · write again any time</p>;
+    default:
+      return <p className="header-status"><span className="dot" />Online · replies instantly</p>;
   }
-  if (conversation?.status === "RESOLVED") return <p className="status">This conversation is closed. Write again any time.</p>;
-  return null;
 }
