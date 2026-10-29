@@ -24,6 +24,7 @@
 - Write code and comments the way a person on the team would: plain, short, only where they help. No AI-sounding phrasing.
 - Docs and code change together; `docs/API.md` is the contract.
 - No secrets in the repo.
+- Keep everything domain-neutral: no references to specific companies, industries or private projects in code, examples, docs or test data.
 
 ## Answers
 
