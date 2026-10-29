@@ -76,7 +76,7 @@ The iframes are served by the same server as the API, so they call it on the sam
 Package by feature. Each feature owns its controller, service, repository and DTOs.
 
 ```text
-com.mesubash.quokra
+io.github.mesubash.quokra
 ├── tenant/          Tenant entity, lookup by pk/slug, branding, allowed origins, agent membership
 ├── session/         Guest sessions, identify, session token signing/verification
 ├── conversation/    Conversation + Message + Event entities, ConversationService, StateMachine
