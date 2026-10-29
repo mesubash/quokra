@@ -1,9 +1,21 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 
 const MAX_LENGTH = 2000;
 
-export function Composer({ onSend, disabled }: { onSend: (text: string) => Promise<void>; disabled: boolean }) {
+interface Props {
+  onSend: (text: string) => Promise<void>;
+  disabled: boolean;
+  // Focus the input whenever this becomes true (e.g. the panel was just opened).
+  focus?: boolean;
+}
+
+export function Composer({ onSend, disabled, focus = false }: Props) {
+  const input = useRef<HTMLInputElement>(null);
   const [text, setText] = useState("");
+
+  useEffect(() => {
+    if (focus && !disabled) input.current?.focus();
+  }, [focus, disabled]);
   const [sending, setSending] = useState(false);
   const [failed, setFailed] = useState(false);
 
@@ -28,6 +40,7 @@ export function Composer({ onSend, disabled }: { onSend: (text: string) => Promi
       {failed && <p className="composer-error">Couldn't send. Try again.</p>}
       <div className="composer-row">
         <input
+          ref={input}
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Type your message"

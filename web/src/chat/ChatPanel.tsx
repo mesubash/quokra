@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { embedded, onHostMessage, postToHost } from "../lib/bridge";
 import { widgetApi, type Conversation, type Tenant } from "../lib/api";
 import { Composer } from "./Composer";
 import { MessageList } from "./MessageList";
 import { activeOptions, countUnread } from "./messages";
-import { getSession } from "./session";
+import { forgetSession, getSession } from "./session";
 import { useChat } from "./useChat";
 
 // Bubble and popup panels start hidden and are opened by sdk.js; inline and full-page ones are always shown.
@@ -20,9 +20,18 @@ export function ChatPanel({ slug }: { slug: string }) {
   const pk = new URLSearchParams(window.location.search).get("pk");
   const [setup, setSetup] = useState<Setup>({ status: "loading" });
   const [visible, setVisible] = useState(!startsHidden);
+  const renewed = useRef(false);
 
   // Listen before telling the host we're ready, so its "open" reply isn't missed.
   useEffect(() => onHostMessage((m) => setVisible(m.type === "chat.open")), []);
+
+  // Escape closes a bubble or popup panel, like any dialog.
+  useEffect(() => {
+    if (!startsHidden) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && postToHost({ type: "chat.close" });
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   useEffect(() => {
     if (!pk) {
@@ -41,7 +50,7 @@ export function ChatPanel({ slug }: { slug: string }) {
           document.documentElement.style.setProperty("--primary", tenant.branding.primaryColor);
         }
         setSetup({ status: "ready", tenant, token: session.sessionToken });
-        postToHost({ type: "chat.ready", color: tenant.branding.primaryColor });
+        postToHost({ type: "chat.ready", color: tenant.branding.primaryColor, teaser: tenant.teaser });
       })
       .catch(() => !cancelled && setSetup({ status: "error", message: "Chat is unavailable right now." }));
     return () => {
@@ -49,13 +58,35 @@ export function ChatPanel({ slug }: { slug: string }) {
     };
   }, [pk, slug]);
 
+  // A stored session can stop working (expired, or the server's key changed): start a new one, once.
+  const renewSession = useCallback(() => {
+    if (!pk || renewed.current) {
+      setSetup({ status: "error", message: "Chat is unavailable right now." });
+      return;
+    }
+    renewed.current = true;
+    forgetSession(pk);
+    getSession(pk)
+      .then((session) => setSetup((s) => (s.status === "ready" ? { ...s, token: session.sessionToken } : s)))
+      .catch(() => setSetup({ status: "error", message: "Chat is unavailable right now." }));
+  }, [pk]);
+
   if (setup.status === "loading") return <p className="panel muted">Loading…</p>;
   if (setup.status === "error") return <p className="panel muted">{setup.message}</p>;
-  return <Chat tenant={setup.tenant} token={setup.token} visible={visible} />;
+  return (
+    <Chat key={setup.token} tenant={setup.tenant} token={setup.token} visible={visible} onUnauthorized={renewSession} />
+  );
 }
 
-function Chat({ tenant, token, visible }: { tenant: Tenant; token: string; visible: boolean }) {
-  const chat = useChat(token);
+interface ChatProps {
+  tenant: Tenant;
+  token: string;
+  visible: boolean;
+  onUnauthorized: () => void;
+}
+
+function Chat({ tenant, token, visible, onUnauthorized }: ChatProps) {
+  const chat = useChat(token, onUnauthorized);
   const options = chat.conversation?.status === "BOT" ? activeOptions(chat.messages) : [];
   const [seenUpTo, setSeenUpTo] = useState<string | null>(null);
   const lastId = chat.messages[chat.messages.length - 1]?.id ?? null;
@@ -90,7 +121,7 @@ function Chat({ tenant, token, visible }: { tenant: Tenant; token: string; visib
             onOption={(o) => void chat.send({ optionId: o.id }).catch(() => {})}
             disabled={!chat.conversation}
           />
-          <Composer onSend={(body) => chat.send({ body })} disabled={!chat.conversation} />
+          <Composer onSend={(body) => chat.send({ body })} disabled={!chat.conversation} focus={visible} />
         </>
       )}
     </main>

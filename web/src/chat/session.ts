@@ -13,6 +13,15 @@ function stored(pk: string): Session | null {
   }
 }
 
+// Drops a stored session the server no longer accepts (expired, or the server's key changed).
+export function forgetSession(pk: string) {
+  try {
+    localStorage.removeItem(storageKey(pk));
+  } catch {
+    // Nothing stored if storage is blocked.
+  }
+}
+
 // Reuses the visitor's session if there is a valid one, otherwise starts a new one.
 export async function getSession(pk: string): Promise<Session> {
   const existing = stored(pk);

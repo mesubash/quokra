@@ -3,6 +3,9 @@ spring:
     locations: classpath:db/migration,classpath:db/dev
 
 quokra:
+  session:
+    # Fixed dev-only key so chat sessions survive restarts locally. Never use this value elsewhere.
+    signing-key: dev-only-session-signing-key-change-me-0123456789
   dev:
     # Local agent login: POST /dev/agent-token. Never in production.
     agent-tokens: true

@@ -31,6 +31,7 @@ afterEach(() => {
   chat().destroy();
   delete (window as unknown as { Quokra?: unknown }).Quokra;
   document.body.innerHTML = "";
+  document.documentElement.style.removeProperty("--quokra-color");
 });
 
 describe("sdk.js", () => {
@@ -95,12 +96,80 @@ describe("sdk.js", () => {
   });
 
   it("only uses a plain colour from the panel", () => {
-    const button = document.querySelector<HTMLButtonElement>(".quokra-button")!;
+    const color = () => document.documentElement.style.getPropertyValue("--quokra-color");
 
     fromFrame({ source: "quokra", type: "chat.ready", color: "red;background:url(x)" });
-    expect(button.style.background).toBe("");
+    expect(color()).toBe("");
 
     fromFrame({ source: "quokra", type: "chat.ready", color: "#0A7C66" });
-    expect(button.style.background).not.toBe("");
+    expect(color()).toBe("#0A7C66");
+  });
+
+  it("tells screen readers whether the chat is open", () => {
+    const button = document.querySelector<HTMLButtonElement>(".quokra-button")!;
+    expect(button.getAttribute("aria-expanded")).toBe("false");
+
+    button.click();
+
+    expect(button.getAttribute("aria-expanded")).toBe("true");
+    expect(button.getAttribute("aria-controls")).toBe(frame().id);
+  });
+});
+
+describe("sdk.js greeting card", () => {
+  const teaser = () => document.querySelector(".quokra-teaser");
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    sessionStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("appears a few seconds after the panel is ready", () => {
+    fromFrame({ source: "quokra", type: "chat.ready", teaser: "Hi! Need any help?" });
+    expect(teaser()).toBeNull();
+
+    vi.advanceTimersByTime(5000);
+
+    expect(teaser()?.textContent).toContain("Hi! Need any help?");
+  });
+
+  it("opens the chat when clicked", () => {
+    fromFrame({ source: "quokra", type: "chat.ready", teaser: "Hi!" });
+    vi.advanceTimersByTime(5000);
+
+    document.querySelector<HTMLButtonElement>(".quokra-teaser-text")!.click();
+
+    expect(frame().classList.contains("open")).toBe(true);
+    expect(teaser()).toBeNull();
+  });
+
+  it("stays away for the rest of the visit once dismissed", () => {
+    fromFrame({ source: "quokra", type: "chat.ready", teaser: "Hi!" });
+    vi.advanceTimersByTime(5000);
+    document.querySelector<HTMLButtonElement>(".quokra-teaser-close")!.click();
+
+    fromFrame({ source: "quokra", type: "chat.ready", teaser: "Hi!" });
+    vi.advanceTimersByTime(5000);
+
+    expect(teaser()).toBeNull();
+  });
+
+  it("isn't shown if the chat was already opened", () => {
+    chat().open();
+    fromFrame({ source: "quokra", type: "chat.ready", teaser: "Hi!" });
+    vi.advanceTimersByTime(5000);
+
+    expect(teaser()).toBeNull();
+  });
+
+  it("isn't shown without a teaser text", () => {
+    fromFrame({ source: "quokra", type: "chat.ready" });
+    vi.advanceTimersByTime(10000);
+
+    expect(teaser()).toBeNull();
   });
 });

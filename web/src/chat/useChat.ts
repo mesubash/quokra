@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { widgetApi, type Conversation, type Message } from "../lib/api";
+import { ApiError, widgetApi, type Conversation, type Message } from "../lib/api";
 import { connectConversation } from "../lib/realtime";
 import { mergeMessages } from "./messages";
 
@@ -10,7 +10,8 @@ export interface ChatState {
   error: string | null;
 }
 
-export function useChat(token: string | null) {
+// onUnauthorized: the server rejected the session token; the caller should get a new session.
+export function useChat(token: string | null, onUnauthorized?: () => void) {
   const [state, setState] = useState<ChatState>({ conversation: null, messages: [], online: false, error: null });
   const messagesRef = useRef<Message[]>([]);
   messagesRef.current = state.messages;
@@ -44,13 +45,17 @@ export function useChat(token: string | null) {
           onDisconnect: () => setState((s) => ({ ...s, online: false })),
         });
       })
-      .catch(() => !cancelled && setState((s) => ({ ...s, error: "Chat is unavailable right now." })));
+      .catch((e) => {
+        if (cancelled) return;
+        if (e instanceof ApiError && e.status === 401 && onUnauthorized) onUnauthorized();
+        else setState((s) => ({ ...s, error: "Chat is unavailable right now." }));
+      });
 
     return () => {
       cancelled = true;
       stop?.();
     };
-  }, [token, addMessages]);
+  }, [token, addMessages, onUnauthorized]);
 
   const send = useCallback(
     async (message: { body?: string; optionId?: string }) => {

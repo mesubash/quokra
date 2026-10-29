@@ -2,6 +2,7 @@ export interface Tenant {
   slug: string;
   displayName: string;
   branding: { logoUrl: string | null; primaryColor: string | null };
+  teaser: string | null;
 }
 
 export interface Session {

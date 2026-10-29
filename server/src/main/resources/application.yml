@@ -23,6 +23,13 @@ quokra:
     # Origins allowed to open the WebSocket: where the chat panel and console are served.
     allowed-origins: ${PUBLIC_BASE_URL:http://localhost:8080}
 
+server:
+  compression:
+    # sdk.js, the Lottie player and the animation compress well.
+    enabled: true
+    mime-types: text/html,text/css,text/javascript,application/javascript,application/json
+    min-response-size: 1KB
+
 management:
   endpoints:
     web:
