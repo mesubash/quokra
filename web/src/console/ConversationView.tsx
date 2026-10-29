@@ -10,7 +10,7 @@ import {
   type Person,
 } from "../lib/api";
 import type { Socket } from "../lib/realtime";
-import { BackIcon, MoreIcon, PanelIcon } from "../lib/icons";
+import { BackIcon, CloseIcon, MoreIcon, PanelIcon } from "../lib/icons";
 import { Composer } from "../chat/Composer";
 import { MessageList, type TimelineItem } from "../chat/MessageList";
 import { mergeMessages } from "../chat/messages";
@@ -23,6 +23,8 @@ interface Props {
   socket: Socket;
   // Narrow screens show one pane at a time; this goes back to the list.
   onBack: () => void;
+  // In the dashboard drawer: close the whole console.
+  onClose?: () => void;
   onChanged: () => void;
   onError: (e: unknown) => void;
 }
@@ -32,7 +34,7 @@ const STATUS_LABEL = { BOT: "With the bot", WAITING: "Waiting", HUMAN: "Open", R
 type Mode = "reply" | "note";
 type Dialog = "transfer" | "block" | null;
 
-export function ConversationView({ id, api, me, socket, onBack, onChanged, onError }: Props) {
+export function ConversationView({ id, api, me, socket, onBack, onClose, onChanged, onError }: Props) {
   const [conversation, setConversation] = useState<AgentConversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
@@ -195,6 +197,11 @@ export function ConversationView({ id, api, me, socket, onBack, onChanged, onErr
             >
               <PanelIcon size={20} />
             </button>
+            {onClose && (
+              <button type="button" className="icon-button quiet" aria-label="Close console" onClick={onClose}>
+                <CloseIcon size={18} />
+              </button>
+            )}
           </div>
         </header>
         {notice && (

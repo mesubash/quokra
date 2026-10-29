@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { agentApi, ApiError, type ConversationSummary, type Me, type TenantItem } from "../lib/api";
 import { postToHost } from "../lib/bridge";
-import { CloseIcon } from "../lib/icons";
+import { BellIcon, CloseIcon } from "../lib/icons";
+import { chime, setSoundEnabled, soundEnabled } from "../lib/sound";
 import { openSocket, type QueueSnapshot, type Socket } from "../lib/realtime";
 import { ConversationView } from "./ConversationView";
 import { ago, initials, priorityLabel, reasonLabel } from "./format";
@@ -30,6 +31,7 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose }: Pro
   const [counts, setCounts] = useState({ waiting: 0, mine: 0 });
   const [selected, setSelected] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [sound, setSound] = useState(soundEnabled);
   const list = useConversationList(api, tab, me?.sub ?? null, tenants);
 
   const failed = useCallback(
@@ -62,8 +64,8 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose }: Pro
   }, [api, failed, refreshCounts]);
 
   // The socket outlives tab switches, so it calls whatever the latest handlers are.
-  const live = useRef({ apply: list.apply, refresh: list.refresh, refreshCounts });
-  live.current = { apply: list.apply, refresh: list.refresh, refreshCounts };
+  const live = useRef({ apply: list.apply, refresh: list.refresh, refreshCounts, sound });
+  live.current = { apply: list.apply, refresh: list.refresh, refreshCounts, sound };
 
   // One socket for the whole console: tenant queues here, the open chat in ConversationView.
   // After a reconnect, reload what's on screen, since events may have been missed.
@@ -85,6 +87,7 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose }: Pro
     if (!socket) return;
     const stops = tenants.map((t) =>
       socket.subscribe(`/topic/tenants/${t.id}/queue`, (event) => {
+        if (event.type === "conversation.waiting" && live.current.sound) chime();
         live.current.apply(event.data as unknown as QueueSnapshot);
         live.current.refreshCounts();
       }),
@@ -122,6 +125,19 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose }: Pro
             <strong>{me?.name ?? "…"}</strong>
             <span className="muted">Support</span>
           </div>
+          <button
+            type="button"
+            className="icon-button quiet"
+            aria-label={sound ? "Mute new-chat sound" : "Play a sound for new chats"}
+            aria-pressed={sound}
+            onClick={() => {
+              setSoundEnabled(!sound);
+              setSound(!sound);
+              if (!sound) chime();
+            }}
+          >
+            <BellIcon size={18} off={!sound} />
+          </button>
           {onSignOut && (
             <button type="button" className="link-button" onClick={onSignOut}>
               Sign out
@@ -184,6 +200,7 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose }: Pro
             me={me}
             socket={socket}
             onBack={() => setSelected(null)}
+            onClose={onClose}
             onChanged={refreshCounts}
             onError={failed}
           />
