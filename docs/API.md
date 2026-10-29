@@ -1,0 +1,384 @@
+# API
+
+The contract between the chat app, hosts and the support server: REST endpoints, realtime events, the postMessage protocol, and the `sdk.js` JavaScript API. Scope: **v1**.
+
+**Other docs:** [Plan](PLAN.md) · [Architecture](ARCHITECTURE.md) · [Embedding guide](EMBEDDING.md) · [Development](DEVELOPMENT.md)
+
+---
+
+## Contents
+
+1. [Conventions](#1-conventions)
+2. [Authentication](#2-authentication)
+3. [Widget endpoints](#3-widget-endpoints)
+4. [Agent endpoints](#4-agent-endpoints)
+5. [Realtime events](#5-realtime-events)
+6. [Shared types](#6-shared-types)
+7. [postMessage: customer chat](#7-postmessage-customer-chat)
+8. [postMessage: agent console](#8-postmessage-agent-console)
+9. [sdk.js JavaScript API](#9-sdkjs-javascript-api)
+10. [UI URLs](#10-ui-urls)
+11. [Errors](#11-errors)
+
+---
+
+## 1. Conventions
+
+- Base URL: `https://chat.<domain>/api/v1`
+- JSON in and out, UTF-8, `camelCase` fields.
+- Timestamps: ISO 8601 UTC (`2026-10-29T08:15:00Z`).
+- IDs: UUIDs; message ids are UUIDv7 (time-ordered).
+- Lists: `?limit=` (default 50, max 200) and cursor `?before=` / `?after=` (an id). Responses: `{ "items": [...], "nextCursor": "..." | null }`.
+- Writes that can be retried take a `clientMessageId` (any unique string from the client, max 64 chars).
+- The OpenAPI spec is served at `/v3/api-docs` (springdoc); this document is the human-readable version.
+
+---
+
+## 2. Authentication
+
+| Caller | Header | Token |
+|---|---|---|
+| Chat panel (customer) | `Authorization: Bearer <chat session token>` | From `POST /widget/sessions` |
+| Console (agent) | `Authorization: Bearer <agent access token>` | OIDC token from the host dashboard; audience `quokra-api`, role `SUPPORT_AGENT` |
+| Public | none | Only `GET /widget/tenants/{pk}` and `POST /widget/sessions` |
+
+WebSocket: send the same bearer token in the STOMP `CONNECT` frame header `Authorization`.
+
+---
+
+## 3. Widget endpoints
+
+### 3.1 `GET /widget/tenants/{pk}`: public tenant config
+
+```json
+200
+{
+  "slug": "demo",
+  "displayName": "Demo Travel",
+  "branding": { "logoUrl": "https://…/logo.png", "primaryColor": "#0A7C66" }
+}
+```
+
+`404 TENANT_NOT_FOUND` for unknown keys.
+
+### 3.2 `POST /widget/sessions`: start a guest session
+
+```json
+// request
+{ "publishableKey": "pk_live_…" }
+
+// 201
+{ "sessionToken": "eyJ…", "visitorId": "0192…", "expiresAt": "2026-11-28T08:15:00Z" }
+```
+
+### 3.3 `POST /widget/sessions/identify`: link a logged-in customer
+
+Auth: chat session token.
+
+```json
+// request
+{ "identityToken": "eyJ…" }   // signed by the host backend, see EMBEDDING.md §4
+
+// 200
+{ "sessionToken": "eyJ…", "customer": { "sub": "user-123", "name": "Asha", "email": "asha@example.com" } }
+```
+
+Any open guest conversation for this visitor is attached to the customer. Errors: `401 IDENTITY_TOKEN_INVALID`, `401 IDENTITY_TOKEN_EXPIRED`.
+
+### 3.4 `GET /widget/conversation`: current conversation
+
+```json
+200  { "conversation": Conversation | null }
+```
+
+### 3.5 `POST /widget/conversation`: start or resume
+
+Returns the open conversation, creating one (status `BOT`, greeting + menu) if none exists.
+
+```json
+201 / 200
+{ "conversation": Conversation, "messages": [Message, …] }
+```
+
+### 3.6 `GET /widget/conversation/messages?after={messageId}&limit=50`
+
+History, oldest first after the cursor. Use without `after` for the latest page.
+
+```json
+200 { "items": [Message, …], "nextCursor": "0192…" }
+```
+
+### 3.7 `POST /widget/conversation/messages`: send
+
+```json
+// free text
+{ "clientMessageId": "c-7f3a", "body": "How do I make a claim?" }
+
+// menu button
+{ "clientMessageId": "c-7f3b", "optionId": "claim" }
+
+// 201
+{ "message": Message, "conversation": Conversation }
+```
+
+The customer message is stored first. Bot replies arrive as realtime events, and also in the next `GET …/messages`. Errors: `409 NO_OPEN_CONVERSATION`, `422 MESSAGE_TOO_LONG`, `429 RATE_LIMITED`.
+
+### 3.8 `POST /widget/conversation/handoff`: "Talk to a person"
+
+```json
+// request
+{ "clientMessageId": "c-7f3c" }
+// 200
+{ "conversation": Conversation }
+```
+
+---
+
+## 4. Agent endpoints
+
+All require an agent token. The agent only sees tenants they're a member of (`tenant_agents`).
+
+### 4.1 `GET /agent/tenants`
+
+```json
+200 { "items": [{ "id": "…", "slug": "demo", "displayName": "Demo Travel" }] }
+```
+
+### 4.2 `GET /agent/conversations`
+
+| Query | Values |
+|---|---|
+| `tenant` | slug (optional; default: all my tenants) |
+| `status` | `WAITING`, `HUMAN`, `RESOLVED` (required) |
+| `assignee` | `me` (optional) |
+| `limit`, `before` | paging |
+
+`WAITING` is sorted by priority (URGENT first), then oldest first. The others are newest first.
+
+```json
+200 { "items": [ConversationSummary, …], "nextCursor": null }
+```
+
+### 4.3 `GET /agent/conversations/{id}`
+
+```json
+200
+{
+  "conversation": Conversation,
+  "messages": [Message, …],      // latest 100
+  "events": [ConversationEvent, …]
+}
+```
+
+### 4.4 `POST /agent/conversations/{id}/accept`
+
+`WAITING → HUMAN`, assigns the caller. `200 { "conversation": Conversation }`. Errors: `409 ALREADY_ACCEPTED`, `409 INVALID_TRANSITION`.
+
+### 4.5 `POST /agent/conversations/{id}/messages`
+
+```json
+{ "clientMessageId": "a-91c2", "body": "Hi Asha, I can help with that." }
+// 201 { "message": Message }
+```
+
+Allowed only when the status is `HUMAN` and the caller is the assignee. Otherwise `403 NOT_ASSIGNEE` or `409 INVALID_TRANSITION`.
+
+### 4.6 `POST /agent/conversations/{id}/resolve`
+
+`HUMAN → RESOLVED` (assignee), or `WAITING → RESOLVED` (any agent of the tenant, for spam). `200 { "conversation": Conversation }`.
+
+### 4.7 `POST /agent/conversations/{id}/return-to-bot`
+
+`HUMAN → BOT` (assignee). The bot sends the menu again. `200 { "conversation": Conversation }`.
+
+### 4.8 `GET /agent/me`
+
+```json
+200 { "sub": "agent-7", "name": "Ram", "tenants": ["demo"] }
+```
+
+---
+
+## 5. Realtime events
+
+STOMP over WebSocket at `wss://chat.<domain>/ws`.
+
+| Destination | Subscribers |
+|---|---|
+| `/topic/conversations/{conversationId}` | The conversation's customer session; agents of its tenant |
+| `/topic/tenants/{tenantId}/queue` | Agents of that tenant |
+
+Every event has this envelope:
+
+```json
+{ "type": "message.created", "conversationId": "…", "at": "2026-10-29T08:15:00Z", "data": { … } }
+```
+
+| Type | Topic | `data` |
+|---|---|---|
+| `message.created` | conversation | `Message` |
+| `conversation.updated` | conversation, queue | `Conversation` (customers get the customer view) |
+| `conversation.waiting` | queue | `ConversationSummary` (new item in the queue) |
+| `typing` | conversation | `{ "senderType": "AGENT" \| "CUSTOMER", "on": true }` |
+
+Typing is sent by clients to `/app/conversations/{id}/typing` with `{ "on": true }`; the server relays it. It is never stored.
+
+---
+
+## 6. Shared types
+
+```ts
+type Status = "BOT" | "WAITING" | "HUMAN" | "RESOLVED";
+type Priority = "NORMAL" | "HIGH" | "URGENT";
+type SenderType = "CUSTOMER" | "BOT" | "AGENT" | "SYSTEM";
+type HandoffReason = "CUSTOMER_REQUEST" | "FALLBACK_LIMIT" | "EMERGENCY" | "BOT_ERROR";
+
+interface Conversation {
+  id: string;
+  status: Status;
+  priority: Priority;          // agent view only
+  handoffReason: HandoffReason | null;  // agent view only
+  assignee: { name: string } | null;
+  customer: { sub: string | null; name: string | null; email: string | null } | null; // agent view only
+  createdAt: string;
+  lastMessageAt: string;
+  resolvedAt: string | null;
+}
+
+interface ConversationSummary {
+  id: string;
+  tenantSlug: string;
+  status: Status;
+  priority: Priority;
+  handoffReason: HandoffReason | null;
+  customerName: string | null;  // null = guest
+  lastMessagePreview: string;   // first 120 chars
+  lastMessageAt: string;
+  waitingSince: string | null;
+  assignee: { sub: string; name: string } | null;
+}
+
+interface Message {
+  id: string;
+  senderType: SenderType;
+  senderName: string | null;    // agent name, or bot display name
+  body: string;                 // plain text
+  options: { id: string; title: string }[] | null;   // menu buttons
+  clientMessageId: string | null;
+  createdAt: string;
+}
+
+interface ConversationEvent {
+  id: string;
+  type: "CREATED" | "HANDOFF" | "ACCEPTED" | "RESOLVED" | "RETURNED_TO_BOT" | "REOPENED" | "IDENTIFIED";
+  actorType: SenderType;
+  actorName: string | null;
+  data: Record<string, unknown> | null;   // e.g. { reason: "EMERGENCY" }
+  createdAt: string;
+}
+```
+
+Customers never receive `priority`, `handoffReason`, customer details of others, or agent `sub`s.
+
+---
+
+## 7. postMessage: customer chat
+
+Every message: `{ "source": "quokra", "type": "...", ...fields }`. Receivers check `event.origin`, `event.source` and `source`.
+
+| Direction | Type | Fields | Meaning |
+|---|---|---|---|
+| panel → host | `chat.ready` | | Panel loaded |
+| panel → host | `chat.resize` | `height` | Inline mode content height |
+| panel → host | `chat.close` | | User closed the panel |
+| panel → host | `chat.unread` | `count` | Unread messages while closed |
+| host → panel | `chat.open` / `chat.close` | | Open or close from the host |
+| host → panel | `chat.identify` | `token` | Identity token from the host backend |
+
+The host side (`sdk.js`) only accepts messages from the Quokra origin. The panel only sends `chat.*` messages to the parent and never sends tokens out.
+
+---
+
+## 8. postMessage: agent console
+
+| Direction | Type | Fields | Meaning |
+|---|---|---|---|
+| console → host | `console.ready` | | Console loaded, waiting for a token |
+| console → host | `auth.request` | `reason` (`initial`, `expired`, `unauthorized`) | Please send a fresh agent token |
+| host → console | `auth.token` | `token` | Agent access token |
+| console → host | `console.unread` | `count` | Waiting conversations (for a nav badge) |
+| console → host | `console.resize` | `height` | Optional, if the host doesn't give a fixed height |
+
+The console accepts `auth.token` only from origins in the tenant's `console_origins`. `sdk.js` sends tokens only to the Quokra origin.
+
+---
+
+## 9. sdk.js JavaScript API
+
+```html
+<script src="https://chat.<domain>/sdk.js" async></script>
+```
+
+### 9.1 Customer chat: `window.Quokra.chat`
+
+| Call | Purpose |
+|---|---|
+| `Quokra.chat.init({ slug, pk, mode?, container?, position? })` | Mount the chat. `mode`: `"bubble"` (default), `"inline"`, `"popup"`. `container`: element or selector for inline. `position`: `"right"` (default) or `"left"` |
+| `Quokra.chat.open()` / `Quokra.chat.close()` | Open or close the panel |
+| `Quokra.chat.identify(token)` | Identify the customer (token from the host backend) |
+| `Quokra.chat.on(event, handler)` | Events: `ready`, `open`, `close`, `unread` (count) |
+| `Quokra.chat.destroy()` | Remove bubble and iframe |
+
+Declarative alternatives, no JavaScript needed:
+
+```html
+<script src="https://chat.<domain>/sdk.js" data-quokra-chat="demo" data-quokra-pk="pk_live_…" async></script>
+<div data-quokra-chat-inline="demo" data-quokra-pk="pk_live_…"></div>
+<button data-quokra-chat-trigger="demo" data-quokra-pk="pk_live_…">Chat with us</button>
+```
+
+### 9.2 Agent console: `window.Quokra.console`
+
+| Call | Purpose |
+|---|---|
+| `Quokra.console.mount(target, { tenant?, getToken, height? })` | **Full-page mode:** mount the console in `target`. `getToken`: function returning a Promise of a fresh agent access token. `tenant`: slug to focus on (optional) |
+| `Quokra.console.init({ mode: "bubble", tenant?, getToken, position? })` | **Bubble mode:** floating button with the waiting-chats badge; opens the console in a side drawer |
+| `Quokra.console.open()` / `Quokra.console.close()` | Open or close the drawer (bubble mode) |
+| `Quokra.console.on(event, handler)` | Events: `ready`, `unread` (waiting count) |
+| `Quokra.console.unmount()` | Remove it |
+
+---
+
+## 10. UI URLs
+
+| URL | What |
+|---|---|
+| `/sdk.js` | Embed loader |
+| `/w/{slug}?pk={pk}&mode={bubble\|inline\|popup\|full}` | Customer chat panel (`full` = whole page, e.g. a mobile WebView) |
+| `/console?tenant={slug}` | Agent console (expects a token via postMessage in v1) |
+
+---
+
+## 11. Errors
+
+Envelope:
+
+```json
+{ "error": { "code": "INVALID_TRANSITION", "message": "Conversation is RESOLVED", "details": { "from": "RESOLVED", "to": "HUMAN" } } }
+```
+
+| HTTP | Code | When |
+|---|---|---|
+| 400 | `VALIDATION_ERROR` | Bad or missing fields (`details` lists them) |
+| 401 | `UNAUTHORIZED` | Missing, invalid or expired token |
+| 401 | `IDENTITY_TOKEN_INVALID` / `IDENTITY_TOKEN_EXPIRED` | Identify failed |
+| 403 | `FORBIDDEN` | Valid token, but no access (role, tenant membership, other customer's conversation) |
+| 403 | `NOT_ASSIGNEE` | Agent action on a conversation assigned to someone else |
+| 403 | `ORIGIN_NOT_ALLOWED` | Request origin not allowed for the tenant |
+| 404 | `TENANT_NOT_FOUND` / `CONVERSATION_NOT_FOUND` | Unknown id or key |
+| 409 | `INVALID_TRANSITION` | State change not allowed |
+| 409 | `ALREADY_ACCEPTED` | Another agent accepted first |
+| 409 | `NO_OPEN_CONVERSATION` | Sending without an open conversation |
+| 422 | `MESSAGE_TOO_LONG` | Body over 2,000 characters |
+| 429 | `RATE_LIMITED` | Too many requests (`Retry-After` header set) |
+| 500 | `INTERNAL_ERROR` | Unexpected; logged with the request id |
