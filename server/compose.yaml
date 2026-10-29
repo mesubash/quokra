@@ -1,0 +1,11 @@
+# Local development database. Started automatically by spring-boot-docker-compose
+# when running the server from this directory.
+services:
+  postgres:
+    image: 'postgres:17-alpine'
+    environment:
+      - 'POSTGRES_DB=quokra'
+      - 'POSTGRES_USER=quokra'
+      - 'POSTGRES_PASSWORD=quokra'
+    ports:
+      - '5432'

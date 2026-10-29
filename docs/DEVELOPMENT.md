@@ -24,8 +24,8 @@ How to work on this repository: setup, layout, conventions, and what "done" mean
 support-agent-platform/
 ├── README.md
 ├── docs/                    PLAN, ARCHITECTURE, API, EMBEDDING, DEVELOPMENT
-├── docker-compose.yml       PostgreSQL for local development
 ├── server/                  Spring Boot 4.1 (Maven): API, realtime, bot; serves the built web UI
+│   └── compose.yaml         PostgreSQL for local development
 ├── web/                     React + TypeScript (Vite): chat panel, console, sdk.js
 └── test-host/               static pages on another port, for embedding tests
 ```
@@ -37,8 +37,7 @@ support-agent-platform/
 ## 3. Running locally *(planned)*
 
 ```bash
-docker compose up -d                 # PostgreSQL on localhost:5432
-cd server && ./mvnw spring-boot:run  # API on http://localhost:8080
+cd server && ./mvnw spring-boot:run  # starts PostgreSQL from compose.yaml, API on http://localhost:8080
 cd web && pnpm install && pnpm dev   # UI with hot reload on http://localhost:5173 (proxies /api, /ws to :8080)
 cd test-host && python3 -m http.server 5500   # host pages on http://localhost:5500
 ```
