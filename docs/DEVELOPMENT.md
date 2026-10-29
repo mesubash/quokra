@@ -37,8 +37,9 @@ support-agent-platform/
 ## 3. Running locally *(planned)*
 
 ```bash
-cd server && ./mvnw spring-boot:run  # starts PostgreSQL from compose.yaml, API on http://localhost:8080
-cd web && pnpm install && pnpm dev   # UI with hot reload on http://localhost:5173 (proxies /api, /ws to :8080)
+cd web && pnpm install && pnpm build   # builds the UI into the server
+cd server && ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev   # starts PostgreSQL, loads the demo tenant, http://localhost:8080
+cd web && pnpm dev   # optional: UI with hot reload on http://localhost:5173 (proxies /api, /ws to :8080)
 cd test-host && python3 -m http.server 5500   # host pages on http://localhost:5500
 ```
 

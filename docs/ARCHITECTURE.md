@@ -330,10 +330,11 @@ create table tenants (
   slug               text not null unique,
   display_name       text not null,
   publishable_key    text not null unique,
-  secret_key_enc     bytea not null,          -- encrypted, see §8.2
-  widget_origins     text[] not null,
-  console_origins    text[] not null,
-  branding           jsonb not null,          -- { logoUrl, primaryColor }
+  secret_key_enc     bytea,                   -- added in step 9 (identify); encrypted, see §8.2
+  widget_origins     text[] not null default '{}',
+  console_origins    text[] not null default '{}',
+  logo_url           text,
+  primary_color      text,
   bot_config         text not null,           -- file name in bots/
   created_at         timestamptz not null
 );
