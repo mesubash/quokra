@@ -1,5 +1,7 @@
 package io.github.mesubash.quokra.widget;
 
+import io.github.mesubash.quokra.bot.BotConfig;
+import io.github.mesubash.quokra.bot.BotConfigRegistry;
 import io.github.mesubash.quokra.common.ApiException;
 import io.github.mesubash.quokra.session.SessionTokens;
 import io.github.mesubash.quokra.tenant.Tenant;
@@ -21,7 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/widget")
 public class WidgetController {
 
-    public record TenantView(String slug, String displayName, Branding branding) {
+    public record TenantView(String slug, String displayName, Branding branding, String teaser) {
         public record Branding(String logoUrl, String primaryColor) {}
     }
 
@@ -31,17 +33,20 @@ public class WidgetController {
 
     private final TenantRepository tenants;
     private final SessionTokens sessionTokens;
+    private final BotConfigRegistry bots;
 
-    public WidgetController(TenantRepository tenants, SessionTokens sessionTokens) {
+    public WidgetController(TenantRepository tenants, SessionTokens sessionTokens, BotConfigRegistry bots) {
         this.tenants = tenants;
         this.sessionTokens = sessionTokens;
+        this.bots = bots;
     }
 
     @GetMapping("/tenants/{publishableKey}")
     public TenantView tenant(@PathVariable String publishableKey) {
         Tenant tenant = findTenant(publishableKey);
         return new TenantView(tenant.getSlug(), tenant.getDisplayName(),
-            new TenantView.Branding(tenant.getLogoUrl(), tenant.getPrimaryColor()));
+            new TenantView.Branding(tenant.getLogoUrl(), tenant.getPrimaryColor()),
+            bots.find(tenant.getBotConfig()).map(BotConfig::teaser).orElse(null));
     }
 
     @PostMapping("/sessions")

@@ -45,6 +45,12 @@ class BotConfigParserTests {
     }
 
     @Test
+    void teaserIsOptional() {
+        assertThat(BotConfigParser.parse("valid.yaml", VALID).teaser()).isNull();
+        assertThat(BotConfigParser.parse("valid.yaml", "teaser: Need help?\n" + VALID).teaser()).isEqualTo("Need help?");
+    }
+
+    @Test
     void builtInDemoBotIsValid() throws IOException {
         String yaml = new ClassPathResource("bots/demo.yml").getContentAsString(StandardCharsets.UTF_8);
 

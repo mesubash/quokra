@@ -6,6 +6,8 @@ import java.util.Optional;
 
 public record BotConfig(
     String greeting,
+    // Optional short line shown next to the chat button before the chat is opened.
+    String teaser,
     List<MenuItem> menu,
     Human human,
     Urgent urgent,

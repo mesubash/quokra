@@ -1,4 +1,5 @@
 greeting: "Hi! How can we help? Pick a topic below or type your question."
+teaser: "Hi 👋 Need any help? We're here."
 
 menu:
   - id: pricing

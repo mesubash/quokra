@@ -19,6 +19,7 @@ class BotEngineTests {
 
     static final BotConfig CONFIG = new BotConfig(
         "Hi",
+        null,
         List.of(
             new MenuItem("pricing", "Pricing", List.of("price", "cost", "plan"), "Pricing answer"),
             new MenuItem("account", "Account", List.of("password", "sign in", "plan"), "Account answer")),

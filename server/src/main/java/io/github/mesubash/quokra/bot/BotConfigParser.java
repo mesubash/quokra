@@ -62,6 +62,7 @@ final class BotConfigParser {
 
         return new BotConfig(
             text(map, "greeting"),
+            optionalText(map, "teaser"),
             menu,
             new Human(text(human, "human.title"), keywords(human.get("keywords"), "human.keywords")),
             new Urgent(keywords(urgent.get("keywords"), "urgent.keywords"), text(urgent, "urgent.message")),
@@ -93,6 +94,17 @@ final class BotConfigParser {
             return s.strip();
         }
         throw error(field + " is required");
+    }
+
+    private String optionalText(Map<String, Object> map, String field) {
+        Object value = map.get(field);
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof String s && !s.isBlank()) {
+            return s.strip();
+        }
+        throw error(field + " must be text");
     }
 
     @SuppressWarnings("unchecked")
