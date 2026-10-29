@@ -33,6 +33,7 @@
   var STYLE_ID = "quokra-chat-style";
   var FRAME_ID = "quokra-chat-frame";
   var DEFAULT_COLOR = "#4c4fba";
+  var WAVE_EVERY_MS = 15000;
   var DEFAULT_TEASER_DELAY = 5000;
   var ROBOT_URL = ORIGIN + "/robot.svg";
   // The waving robot is an upgrade loaded after the page; until then (or without it) the still image shows.
@@ -300,6 +301,7 @@
         open: mode === "inline",
         teaserText: null,
         animation: null,
+        waveTimer: null,
         teaserDelay: options.teaserDelay === "off" ? -1 : isFinite(delay) && options.teaserDelay !== undefined ? delay : DEFAULT_TEASER_DELAY,
       };
 
@@ -337,6 +339,11 @@
           });
           document.body.appendChild(button);
           state.button = button;
+
+          // A friendly wave now and then while the chat is closed, but not while the tab is hidden.
+          state.waveTimer = setInterval(function () {
+            if (!state.open && !document.hidden) wave();
+          }, WAVE_EVERY_MS);
 
           if (document.readyState === "complete") setTimeout(startAnimation, 300);
           else window.addEventListener("load", function () { setTimeout(startAnimation, 300); }, { once: true });
@@ -382,6 +389,7 @@
       if (!state) return;
       window.removeEventListener("message", onMessage);
       hideTeaser(false);
+      clearInterval(state.waveTimer);
       if (state.animation) state.animation.destroy();
       state.frame.remove();
       if (state.button) state.button.remove();
