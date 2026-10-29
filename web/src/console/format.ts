@@ -25,3 +25,41 @@ export function reasonLabel(reason: HandoffReason) {
       return "Bot error";
   }
 }
+
+export function initials(name: string | null) {
+  if (!name) return "?";
+  return name.split(/\s+/).filter(Boolean).map((p) => p[0]).join("").slice(0, 2).toUpperCase();
+}
+
+export function dateTime(iso: string | null) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "" : d.toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+}
+
+// One line for the activity list, e.g. "Sam accepted".
+export function eventLabel(type: string, actorName: string | null, reason: string | null) {
+  const who = actorName ?? "Customer";
+  switch (type) {
+    case "CREATED":
+      return "Chat started";
+    case "CONTACT_ADDED":
+      return "Left their email";
+    case "HANDOFF":
+      return "Handed to the team";
+    case "ACCEPTED":
+      return `${who} accepted`;
+    case "RESOLVED":
+      return `${who} resolved`;
+    case "RETURNED_TO_BOT":
+      return `${who} handed back to the bot`;
+    case "REOPENED":
+      return actorName ? `${actorName} reopened` : "Customer wrote again";
+    case "TRANSFERRED":
+      return reason ? `${who} transferred to ${reason}` : `${who} put it back in the queue`;
+    case "BLOCKED":
+      return `${who} blocked the contact`;
+    default:
+      return type.toLowerCase().replace(/_/g, " ");
+  }
+}

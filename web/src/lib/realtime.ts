@@ -1,10 +1,25 @@
 import { Client, type StompSubscription } from "@stomp/stompjs";
-import type { Conversation, Message } from "./api";
+import type { Conversation, HandoffReason, Message, Note, Person, Priority, Status } from "./api";
 
 export type RealtimeEvent =
   | { type: "message.created"; conversationId: string; at: string; data: Message }
   | { type: "conversation.updated"; conversationId: string; at: string; data: Conversation }
-  | { type: "conversation.waiting"; conversationId: string; at: string; data: unknown };
+  | { type: "conversation.waiting"; conversationId: string; at: string; data: QueueSnapshot }
+  | { type: "note.created"; conversationId: string; at: string; data: Note };
+
+// What agents get on the queue topic when a conversation changes.
+export interface QueueSnapshot {
+  id: string;
+  tenantId: string;
+  status: Status;
+  priority: Priority;
+  handoffReason: HandoffReason | null;
+  customerName: string | null;
+  assignee: Person | null;
+  lastMessageAt: string;
+  waitingSince: string | null;
+  resolvedAt: string | null;
+}
 
 interface SocketHandlers {
   // Called on every (re)connect, so the caller can fetch anything missed while offline.

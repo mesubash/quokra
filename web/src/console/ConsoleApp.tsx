@@ -2,11 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { agentApi, ApiError, type ConversationSummary, type Me, type TenantItem } from "../lib/api";
 import { postToHost } from "../lib/bridge";
 import { CloseIcon } from "../lib/icons";
-import { openSocket, type Socket } from "../lib/realtime";
+import { openSocket, type QueueSnapshot, type Socket } from "../lib/realtime";
 import { ConversationView } from "./ConversationView";
-import { ago, priorityLabel, reasonLabel } from "./format";
-
-type Tab = "queue" | "mine" | "resolved";
+import { ago, initials, priorityLabel, reasonLabel } from "./format";
+import { useConversationList, type Tab } from "./useConversationList";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "queue", label: "Queue" },
@@ -28,10 +27,10 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose }: Pro
   const [tenants, setTenants] = useState<TenantItem[]>([]);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [tab, setTab] = useState<Tab>("queue");
-  const [items, setItems] = useState<ConversationSummary[]>([]);
-  const [waiting, setWaiting] = useState(0);
+  const [counts, setCounts] = useState({ waiting: 0, mine: 0 });
   const [selected, setSelected] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const list = useConversationList(api, tab, me?.sub ?? null, tenants);
 
   const failed = useCallback(
     (e: unknown) => {
@@ -41,11 +40,16 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose }: Pro
     [onUnauthorized],
   );
 
-  const reload = useCallback(() => {
-    const status = tab === "queue" ? "WAITING" : tab === "mine" ? "HUMAN" : "RESOLVED";
-    api.list(status, tab === "mine").then((page) => setItems(page.items)).catch(failed);
-    api.list("WAITING").then((page) => setWaiting(page.items.length)).catch(() => {});
-  }, [api, tab, failed]);
+  useEffect(() => {
+    if (list.error) failed(list.error);
+  }, [list.error, failed]);
+
+  // Counts change with every queue event; a burst of events makes one request.
+  const countTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const refreshCounts = useCallback(() => {
+    clearTimeout(countTimer.current);
+    countTimer.current = setTimeout(() => api.counts().then(setCounts).catch(() => {}), 300);
+  }, [api]);
 
   useEffect(() => {
     Promise.all([api.me(), api.tenants()])
@@ -54,97 +58,186 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose }: Pro
         setTenants(t.items);
       })
       .catch(failed);
-  }, [api, failed]);
+    refreshCounts();
+  }, [api, failed, refreshCounts]);
 
-  useEffect(reload, [reload]);
-
-  // The socket stays open across tab switches; it always calls the latest reload.
-  const reloadRef = useRef(reload);
-  reloadRef.current = reload;
+  // The socket outlives tab switches, so it calls whatever the latest handlers are.
+  const live = useRef({ apply: list.apply, refresh: list.refresh, refreshCounts });
+  live.current = { apply: list.apply, refresh: list.refresh, refreshCounts };
 
   // One socket for the whole console: tenant queues here, the open chat in ConversationView.
+  // After a reconnect, reload what's on screen, since events may have been missed.
   useEffect(() => {
-    const s = openSocket(getToken, { onConnect: () => reloadRef.current(), onDisconnect: () => {} });
+    let connected = false;
+    const s = openSocket(getToken, {
+      onConnect: () => {
+        if (connected) live.current.refresh();
+        connected = true;
+        live.current.refreshCounts();
+      },
+      onDisconnect: () => {},
+    });
     setSocket(s);
     return () => s.close();
   }, [getToken]);
 
   useEffect(() => {
     if (!socket) return;
-    const stops = tenants.map((t) => socket.subscribe(`/topic/tenants/${t.id}/queue`, () => reloadRef.current()));
+    const stops = tenants.map((t) =>
+      socket.subscribe(`/topic/tenants/${t.id}/queue`, (event) => {
+        live.current.apply(event.data as unknown as QueueSnapshot);
+        live.current.refreshCounts();
+      }),
+    );
     return () => stops.forEach((stop) => stop());
   }, [socket, tenants]);
 
   useEffect(() => {
-    document.title = waiting > 0 ? `(${waiting}) Quokra console` : "Quokra console";
-    postToHost({ type: "console.unread", count: waiting });
-  }, [waiting]);
+    document.title = counts.waiting > 0 ? `(${counts.waiting}) Quokra console` : "Quokra console";
+    postToHost({ type: "console.unread", count: counts.waiting });
+  }, [counts.waiting]);
+
+  // Loads the next page when the end of the list scrolls into view.
+  const sentinel = useRef<HTMLLIElement>(null);
+  const { hasMore, loadMore } = list;
+  useEffect(() => {
+    const el = sentinel.current;
+    if (!el || !hasMore || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver((entries) => entries[0].isIntersecting && loadMore());
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore, loadMore]);
+
+  function badge(id: Tab) {
+    const n = id === "queue" ? counts.waiting : id === "mine" ? counts.mine : 0;
+    return n > 0 ? <span className="count">{n > 99 ? "99+" : n}</span> : null;
+  }
 
   return (
-    <main className="console">
-      <aside className="console-sidebar">
-        <header className="console-me">
-          <strong>{me?.name ?? "…"}</strong>
+    <main className={`console ${selected ? "has-selection" : ""}`}>
+      <aside className="console-list-pane" aria-label="Conversations">
+        <header className="pane-header">
+          <span className="avatar avatar-agent">{initials(me?.name ?? null)}</span>
+          <div className="pane-title">
+            <strong>{me?.name ?? "…"}</strong>
+            <span className="muted">Support</span>
+          </div>
           {onSignOut && (
             <button type="button" className="link-button" onClick={onSignOut}>
               Sign out
             </button>
           )}
           {onClose && (
-            <button type="button" className="icon-button console-close" aria-label="Close console" onClick={onClose}>
+            <button type="button" className="icon-button quiet" aria-label="Close console" onClick={onClose}>
               <CloseIcon size={18} />
             </button>
           )}
         </header>
-        <nav className="console-tabs" role="tablist">
+        <nav className="segmented" role="tablist" aria-label="Lists">
           {TABS.map((t) => (
             <button
               key={t.id}
               type="button"
               role="tab"
               aria-selected={tab === t.id}
-              className={tab === t.id ? "active" : ""}
-              onClick={() => setTab(t.id)}
+              onClick={() => {
+                setError(null);
+                setTab(t.id);
+              }}
             >
               {t.label}
-              {t.id === "queue" && waiting > 0 && <span className="count">{waiting}</span>}
+              {badge(t.id)}
             </button>
           ))}
         </nav>
-        {error && <p className="error-text console-error">{error}</p>}
+        {error && (
+          <p className="console-error" role="alert">
+            {error}{" "}
+            <button type="button" className="link-button" onClick={() => (setError(null), list.refresh())}>
+              Retry
+            </button>
+          </p>
+        )}
         <ul className="console-list">
-          {items.length === 0 && <li className="empty muted">{tab === "queue" ? "No one is waiting." : "Nothing here."}</li>}
-          {items.map((c) => (
+          {list.items.length === 0 && !list.loading && <li className="empty muted">{emptyText(tab)}</li>}
+          {list.items.map((c) => (
             <li key={c.id}>
-              <button
-                type="button"
-                className={`console-item ${selected === c.id ? "selected" : ""}`}
-                onClick={() => setSelected(c.id)}
-              >
-                <span className="item-top">
-                  <strong>{c.customerName ?? "Guest"}</strong>
-                  <span className="muted">{ago(c.waitingSince ?? c.lastMessageAt)}</span>
-                </span>
-                <span className="item-preview">{c.lastMessagePreview}</span>
-                <span className="item-tags">
-                  {c.priority !== "NORMAL" && (
-                    <span className={`badge badge-${c.priority.toLowerCase()}`}>{priorityLabel(c.priority)}</span>
-                  )}
-                  {c.handoffReason && <span className="badge">{reasonLabel(c.handoffReason)}</span>}
-                  {tenants.length > 1 && <span className="badge">{c.tenantSlug}</span>}
-                </span>
-              </button>
+              <Row conversation={c} selected={selected === c.id} showTenant={tenants.length > 1} onSelect={setSelected} />
             </li>
           ))}
+          {list.loading && <li className="empty muted">Loading…</li>}
+          {list.hasMore && !list.loading && (
+            <li ref={sentinel}>
+              <button type="button" className="load-more" onClick={list.loadMore}>
+                Load more
+              </button>
+            </li>
+          )}
         </ul>
       </aside>
-      <section className="console-main">
+      <section className="console-chat-pane">
         {selected && me && socket ? (
-          <ConversationView key={selected} id={selected} api={api} me={me} socket={socket} onChanged={reload} onError={failed} />
+          <ConversationView
+            key={selected}
+            id={selected}
+            api={api}
+            me={me}
+            socket={socket}
+            onBack={() => setSelected(null)}
+            onChanged={refreshCounts}
+            onError={failed}
+          />
         ) : (
-          <p className="console-placeholder muted">Pick a conversation from the list.</p>
+          <div className="console-empty">
+            <p className="muted">Pick a conversation to start.</p>
+          </div>
         )}
       </section>
     </main>
+  );
+}
+
+function emptyText(tab: Tab) {
+  if (tab === "queue") return "No one is waiting. Nice.";
+  if (tab === "mine") return "You have no open chats.";
+  return "No resolved chats yet.";
+}
+
+function Row({
+  conversation: c,
+  selected,
+  showTenant,
+  onSelect,
+}: {
+  conversation: ConversationSummary;
+  selected: boolean;
+  showTenant: boolean;
+  onSelect: (id: string) => void;
+}) {
+  const name = c.customerName ?? "Guest";
+  return (
+    <button
+      type="button"
+      className={`console-item ${selected ? "selected" : ""}`}
+      aria-current={selected || undefined}
+      onClick={() => onSelect(c.id)}
+    >
+      <span className="avatar avatar-customer">{initials(name)}</span>
+      <span className="item-body">
+        <span className="item-top">
+          <strong>{name}</strong>
+          <span className="muted item-time">{ago(c.waitingSince ?? c.lastMessageAt)}</span>
+        </span>
+        {c.lastMessagePreview && <span className="item-preview">{c.lastMessagePreview}</span>}
+        <span className="item-tags">
+          {c.priority !== "NORMAL" && (
+            <span className={`badge badge-${c.priority.toLowerCase()}`}>{priorityLabel(c.priority)}</span>
+          )}
+          {c.status === "WAITING" && c.handoffReason && <span className="badge">{reasonLabel(c.handoffReason)}</span>}
+          {c.status !== "WAITING" && c.assignee && <span className="badge">{c.assignee.name}</span>}
+          {showTenant && <span className="badge">{c.tenantSlug}</span>}
+        </span>
+      </span>
+    </button>
   );
 }

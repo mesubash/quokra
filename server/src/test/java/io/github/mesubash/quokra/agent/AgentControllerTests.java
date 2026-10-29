@@ -406,4 +406,16 @@ class AgentControllerTests {
     void badCursorIsRejected() {
         assertThat(get(alice, "/conversations?status=WAITING&cursor=nope")).hasStatus(HttpStatus.BAD_REQUEST);
     }
+
+    @Test
+    void countsWaitingAndMine() {
+        waiting(tenant, HandoffReason.CUSTOMER_REQUEST);
+        waiting(otherTenant, HandoffReason.CUSTOMER_REQUEST);
+        taken(alice);
+
+        MvcTestResult result = get(alice, "/conversations/counts");
+
+        assertThat(result).bodyJson().extractingPath("$.waiting").isEqualTo(1);
+        assertThat(result).bodyJson().extractingPath("$.mine").isEqualTo(1);
+    }
 }

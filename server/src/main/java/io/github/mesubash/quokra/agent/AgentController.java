@@ -121,6 +121,11 @@ public class AgentController {
         return new Page<>(items, next);
     }
 
+    @GetMapping("/conversations/counts")
+    public ConversationService.Counts counts(@AuthenticationPrincipal Jwt jwt) {
+        return service.counts(myTenants(jwt).keySet(), jwt.getSubject());
+    }
+
     @GetMapping("/conversations/{id}")
     public Detail conversation(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
         Conversation c = visible(jwt, id);

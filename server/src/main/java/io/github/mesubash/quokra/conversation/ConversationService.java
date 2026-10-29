@@ -360,6 +360,18 @@ public class ConversationService {
             : conversations.findRecentAfter(tenantIds, status, assigneeSub, after.at(), after.id(), size);
     }
 
+    public record Counts(long waiting, long mine) {}
+
+    // For badges: how many are waiting, and how many open chats the agent has.
+    @Transactional(readOnly = true)
+    public Counts counts(Collection<UUID> tenantIds, String agentSub) {
+        if (tenantIds.isEmpty()) {
+            return new Counts(0, 0);
+        }
+        return new Counts(conversations.countByTenantIdInAndStatus(tenantIds, Status.WAITING),
+            conversations.countByTenantIdInAndStatusAndAssigneeSub(tenantIds, Status.HUMAN, agentSub));
+    }
+
     @Transactional(readOnly = true)
     public Optional<Message> lastMessage(UUID conversationId) {
         return messages.findLatest(conversationId, Limit.of(1)).stream().findFirst();

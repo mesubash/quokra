@@ -13,9 +13,11 @@ interface Props {
   focus?: boolean;
   // What the bot just asked for, so phones show the right keyboard and browsers can autofill.
   asking?: "EMAIL" | "NAME" | null;
+  // Agent-only note: styled differently so it's never mistaken for a reply.
+  note?: boolean;
 }
 
-export function Composer({ onSend, disabled, placeholder = "Type your message…", focus = false, asking = null }: Props) {
+export function Composer({ onSend, disabled, placeholder = "Type your message…", focus = false, asking = null, note = false }: Props) {
   const input = useRef<HTMLTextAreaElement>(null);
   const [text, setText] = useState("");
 
@@ -55,7 +57,7 @@ export function Composer({ onSend, disabled, placeholder = "Type your message…
   const canSend = !disabled && text.trim().length > 0;
 
   return (
-    <form className="composer" onSubmit={submit}>
+    <form className={note ? "composer composer-note" : "composer"} onSubmit={submit}>
       <div className="composer-row">
         <textarea
           ref={input}
@@ -70,7 +72,7 @@ export function Composer({ onSend, disabled, placeholder = "Type your message…
           maxLength={MAX_LENGTH}
           disabled={disabled}
         />
-        <button type="submit" className="send" disabled={!canSend} aria-label="Send">
+        <button type="submit" className="send" disabled={!canSend} aria-label={note ? "Add note" : "Send"}>
           <SendIcon size={18} />
         </button>
       </div>

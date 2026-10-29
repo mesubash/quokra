@@ -16,7 +16,7 @@ function conversation(overrides: Partial<AgentConversation> = {}): AgentConversa
     status: "WAITING",
     priority: "URGENT",
     handoffReason: "URGENT",
-    customer: null,
+    customer: { sub: null, contactId: "p1", name: "Pat", email: "pat@example.test", blocked: false },
     assignee: null,
     createdAt: "2026-10-29T10:00:00Z",
     lastMessageAt: "2026-10-29T10:00:00Z",
@@ -26,44 +26,92 @@ function conversation(overrides: Partial<AgentConversation> = {}): AgentConversa
   };
 }
 
-function fakeApi(c: AgentConversation, extra: Partial<AgentApi> = {}): AgentApi {
+const taken = (c: AgentConversation): AgentConversation => ({ ...c, status: "HUMAN", assignee: { sub: "sam", name: "Sam" } });
+
+// Acts like the server: actions change the conversation, and the next detail call returns it.
+function fakeApi(start: AgentConversation, extra: Partial<AgentApi> = {}) {
+  let current = start;
+  const change = (next: AgentConversation) => {
+    current = next;
+    return Promise.resolve({ conversation: next });
+  };
   return {
-    detail: vi.fn().mockResolvedValue({ conversation: c, messages: [], events: [] }),
-    accept: vi.fn().mockResolvedValue({ conversation: { ...c, status: "HUMAN", assignee: { sub: "sam", name: "Sam" } } }),
+    detail: vi.fn(() => Promise.resolve({ conversation: current, messages: [], events: [], notes: [] })),
+    accept: vi.fn(() => change(taken(current))),
+    reply: vi.fn((_id: string, clientMessageId: string, body: string) =>
+      Promise.resolve({
+        message: { id: "m9", senderType: "AGENT", senderName: "Sam", body, options: null, clientMessageId, createdAt: "" },
+      }),
+    ),
+    note: vi.fn((_id: string, body: string) =>
+      Promise.resolve({ note: { id: "n1", author: { sub: "sam", name: "Sam" }, body, createdAt: "" } }),
+    ),
     ...extra,
-  } as unknown as AgentApi;
+  } as unknown as AgentApi & Record<string, ReturnType<typeof vi.fn>>;
 }
 
 function renderView(api: AgentApi) {
-  return render(<ConversationView id="c1" api={api} me={me} socket={socket} onChanged={() => {}} onError={() => {}} />);
+  return render(
+    <ConversationView id="c1" api={api} me={me} socket={socket} onBack={() => {}} onChanged={() => {}} onError={() => {}} />,
+  );
+}
+
+function send(text: string) {
+  const input = screen.getByLabelText("Message");
+  fireEvent.change(input, { target: { value: text } });
+  fireEvent.keyDown(input, { key: "Enter" });
 }
 
 describe("ConversationView", () => {
-  it("offers Accept for a waiting conversation and shows why it's here", async () => {
+  it("offers Accept for a waiting conversation and shows who it is", async () => {
     renderView(fakeApi(conversation()));
 
     expect(await screen.findByRole("button", { name: "Accept" })).toBeTruthy();
-    expect(screen.getByText("Urgent keyword")).toBeTruthy();
-    expect(screen.getByText("Accept the conversation to reply.")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Pat" })).toBeTruthy();
+    expect(screen.getByText("Sending assigns this chat to you")).toBeTruthy();
   });
 
-  it("lets me reply, resolve or hand back once it's mine", async () => {
+  it("accepts and replies in one go", async () => {
     const api = fakeApi(conversation());
     renderView(api);
+    await screen.findByRole("button", { name: "Accept" });
 
-    fireEvent.click(await screen.findByRole("button", { name: "Accept" }));
+    send("Hi Pat");
 
-    await waitFor(() => expect(screen.getByRole("button", { name: "Return to bot" })).toBeTruthy());
-    expect(screen.getByRole("button", { name: "Resolve" })).toBeTruthy();
-    expect(screen.getByLabelText("Message")).toBeTruthy();
+    await waitFor(() => expect(api.reply).toHaveBeenCalledWith("c1", expect.any(String), "Hi Pat"));
+    expect(api.accept).toHaveBeenCalled();
+    expect(await screen.findByText("Hi Pat")).toBeTruthy();
   });
 
-  it("doesn't let me reply to someone else's conversation", async () => {
-    renderView(fakeApi(conversation({ status: "HUMAN", assignee: { sub: "alex", name: "Alex" } })));
+  it("puts resolve, transfer and block in the menu once it's mine", async () => {
+    renderView(fakeApi(taken(conversation())));
 
-    expect(await screen.findByText("Only the assigned agent can reply.")).toBeTruthy();
-    expect(screen.getByText("With Alex")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Resolve" })).toBeNull();
+    fireEvent.click(await screen.findByRole("button", { name: "More actions" }));
+
+    expect(screen.getByRole("menuitem", { name: "Resolve" })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: "Transfer…" })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: "Return to bot" })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: "Block contact…" })).toBeTruthy();
+  });
+
+  it("only allows a private note on someone else's conversation", async () => {
+    const api = fakeApi(conversation({ status: "HUMAN", assignee: { sub: "alex", name: "Alex" } }));
+    renderView(api);
+
+    expect(await screen.findByText("Alex is handling this chat. You can leave a private note.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "More actions" })).toBeNull();
+
+    send("Customer called too");
+
+    await waitFor(() => expect(api.note).toHaveBeenCalledWith("c1", "Customer called too"));
+    expect(api.reply).not.toHaveBeenCalled();
+    expect(await screen.findByText("Private note · Sam")).toBeTruthy();
+  });
+
+  it("offers Reopen on a resolved conversation", async () => {
+    renderView(fakeApi(conversation({ status: "RESOLVED" })));
+
+    expect(await screen.findByRole("button", { name: "Reopen" })).toBeTruthy();
   });
 
   it("explains when another agent accepted first", async () => {

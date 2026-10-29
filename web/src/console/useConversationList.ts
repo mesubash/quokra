@@ -1,0 +1,107 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { AgentApi, ConversationSummary, ListStatus, Priority, TenantItem } from "../lib/api";
+import type { QueueSnapshot } from "../lib/realtime";
+
+export type Tab = "queue" | "mine" | "resolved";
+
+const STATUS: Record<Tab, ListStatus> = { queue: "WAITING", mine: "HUMAN", resolved: "RESOLVED" };
+const RANK: Record<Priority, number> = { URGENT: 0, HIGH: 1, NORMAL: 2 };
+
+// Same order as the server: the queue by priority then longest wait, the rest newest first.
+export function compare(tab: Tab, a: ConversationSummary, b: ConversationSummary) {
+  if (tab === "queue") {
+    return RANK[a.priority] - RANK[b.priority] || (a.waitingSince ?? "").localeCompare(b.waitingSince ?? "");
+  }
+  return b.lastMessageAt.localeCompare(a.lastMessageAt);
+}
+
+export function belongs(tab: Tab, s: { status: string; assignee: { sub: string } | null }, meSub: string) {
+  if (tab === "mine") return s.status === "HUMAN" && s.assignee?.sub === meSub;
+  return s.status === STATUS[tab];
+}
+
+// Puts a live change into the list: updates the row, adds it, or drops it if it no longer belongs here.
+export function applySnapshot(
+  items: ConversationSummary[],
+  tab: Tab,
+  snapshot: QueueSnapshot,
+  meSub: string,
+  tenantSlug: string,
+): ConversationSummary[] {
+  const rest = items.filter((c) => c.id !== snapshot.id);
+  if (!belongs(tab, snapshot, meSub)) return rest.length === items.length ? items : rest;
+  const old = items.find((c) => c.id === snapshot.id);
+  const row: ConversationSummary = {
+    id: snapshot.id,
+    tenantSlug,
+    status: snapshot.status,
+    priority: snapshot.priority,
+    handoffReason: snapshot.handoffReason,
+    customerName: snapshot.customerName,
+    lastMessagePreview: old?.lastMessagePreview ?? "",
+    lastMessageAt: snapshot.lastMessageAt,
+    waitingSince: snapshot.waitingSince,
+    assignee: snapshot.assignee,
+  };
+  return [...rest, row].sort((a, b) => compare(tab, a, b));
+}
+
+// One page at a time; live queue events patch the rows in place instead of reloading the list.
+export function useConversationList(api: AgentApi, tab: Tab, meSub: string | null, tenants: TenantItem[]) {
+  const [items, setItems] = useState<ConversationSummary[]>([]);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  const generation = useRef(0);
+
+  const refresh = useCallback(() => {
+    const run = ++generation.current;
+    setLoading(true);
+    api
+      .list(STATUS[tab], { mine: tab === "mine" })
+      .then((page) => {
+        if (run !== generation.current) return;
+        setItems(page.items);
+        setCursor(page.nextCursor);
+        setError(null);
+      })
+      .catch((e) => run === generation.current && setError(e))
+      .finally(() => run === generation.current && setLoading(false));
+  }, [api, tab]);
+
+  useEffect(() => {
+    setItems([]);
+    setCursor(null);
+    refresh();
+  }, [refresh]);
+
+  const loadMore = useCallback(() => {
+    if (!cursor || loading) return;
+    const run = generation.current;
+    setLoading(true);
+    api
+      .list(STATUS[tab], { mine: tab === "mine", cursor })
+      .then((page) => {
+        if (run !== generation.current) return;
+        // A row can already be here if it arrived live; keep one copy.
+        setItems((current) => {
+          const known = new Set(current.map((c) => c.id));
+          return [...current, ...page.items.filter((c) => !known.has(c.id))];
+        });
+        setCursor(page.nextCursor);
+      })
+      .catch((e) => run === generation.current && setError(e))
+      .finally(() => run === generation.current && setLoading(false));
+  }, [api, tab, cursor, loading]);
+
+  const apply = useCallback(
+    (snapshot: QueueSnapshot) => {
+      if (!meSub) return;
+      const slug = tenants.find((t) => t.id === snapshot.tenantId)?.slug ?? "";
+      setItems((current) => applySnapshot(current, tab, snapshot, meSub, slug));
+    },
+    [tab, meSub, tenants],
+  );
+
+  return { items, hasMore: cursor !== null, loading, error, refresh, loadMore, apply };
+}

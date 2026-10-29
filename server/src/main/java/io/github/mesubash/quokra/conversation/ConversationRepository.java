@@ -30,6 +30,10 @@ interface ConversationRepository extends JpaRepository<Conversation, UUID> {
         """)
     List<Conversation> findQueueAfter(Collection<UUID> tenantIds, int rank, Instant at, UUID id, Limit limit);
 
+    long countByTenantIdInAndStatus(Collection<UUID> tenantIds, Status status);
+
+    long countByTenantIdInAndStatusAndAssigneeSub(Collection<UUID> tenantIds, Status status, String assigneeSub);
+
     // Most recent first. assigneeSub null means anyone's.
     @Query("""
         select c from Conversation c

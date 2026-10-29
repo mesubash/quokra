@@ -3,8 +3,11 @@ import type { Message, Option } from "../lib/api";
 import { RobotAvatar } from "./RobotAvatar";
 import type { PendingMessage } from "./useChat";
 
+// The console mixes agent-only notes into the thread.
+export type TimelineItem = Omit<Message, "senderType"> & { senderType: Message["senderType"] | "NOTE" };
+
 interface Props {
-  messages: Message[];
+  messages: TimelineItem[];
   options: Option[];
   onOption: (option: Option) => void;
   disabled: boolean;
@@ -19,13 +22,13 @@ interface Props {
 
 interface Group {
   key: string;
-  sender: Message["senderType"];
+  sender: TimelineItem["senderType"];
   name: string | null;
-  messages: Message[];
+  messages: TimelineItem[];
 }
 
 // Consecutive messages from the same sender are shown together, under one name and avatar.
-function groupMessages(messages: Message[]): Group[] {
+function groupMessages(messages: TimelineItem[]): Group[] {
   const groups: Group[] = [];
   for (const m of messages) {
     const last = groups[groups.length - 1];
@@ -76,6 +79,20 @@ export function MessageList({
             <p key={group.key} className="system-note">
               {group.messages[0].body}
             </p>
+          );
+        }
+        if (group.sender === "NOTE") {
+          return (
+            <div key={group.key} className="group group-note">
+              <div className="group-body">
+                <span className="sender">Private note · {group.name}</span>
+                {group.messages.map((m) => (
+                  <p key={m.id} className="bubble" title={time(m.createdAt)}>
+                    {m.body}
+                  </p>
+                ))}
+              </div>
+            </div>
           );
         }
         const isMine = group.sender === mine;
