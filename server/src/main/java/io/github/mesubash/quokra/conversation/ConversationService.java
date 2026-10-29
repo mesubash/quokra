@@ -282,7 +282,8 @@ public class ConversationService {
     }
 
     private void publishUpdate(Conversation conversation) {
-        publisher.publishEvent(new ConversationUpdated(conversation.getId(), CustomerConversationView.of(conversation)));
+        publisher.publishEvent(new ConversationUpdated(conversation.getId(), conversation.getTenantId(),
+            CustomerConversationView.of(conversation), ConversationSnapshot.of(conversation)));
     }
 
     private static void requireAssignee(Conversation conversation, AgentRef agent) {

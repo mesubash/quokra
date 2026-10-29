@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.jayway.jsonpath.JsonPath;
 import io.github.mesubash.quokra.TestcontainersConfiguration;
+import io.github.mesubash.quokra.security.DevAgentTokens;
 import io.github.mesubash.quokra.session.SessionTokens;
 import java.lang.reflect.Type;
 import java.util.List;
@@ -37,7 +38,7 @@ import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 
 // Events are sent after commit, so this runs against a real server without test transactions.
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = "quokra.dev.agent-tokens=true")
 @Import(TestcontainersConfiguration.class)
 class RealtimeTests {
 
@@ -50,7 +51,13 @@ class RealtimeTests {
     @Autowired
     SessionTokens sessionTokens;
 
+    @Autowired
+    DevAgentTokens devTokens;
+
     UUID tenantId = UUID.randomUUID();
+    UUID otherTenantId = UUID.randomUUID();
+    String agentSub = "agent-" + tenantId;
+    String otherAgentSub = "agent-" + otherTenantId;
     WebSocketStompClient stomp;
     RestClient http;
 
@@ -61,6 +68,12 @@ class RealtimeTests {
             insert into tenants (id, slug, display_name, publishable_key, bot_config)
             values (?, ?, 'Realtime Test', ?, 'test')
             """, tenantId, "rt-" + tenantId, key);
+        jdbc.update("""
+            insert into tenants (id, slug, display_name, publishable_key, bot_config)
+            values (?, ?, 'Other', ?, 'test')
+            """, otherTenantId, "rt-" + otherTenantId, "pk_test_" + otherTenantId);
+        jdbc.update("insert into tenant_agents (tenant_id, agent_sub) values (?, ?), (?, ?)",
+            tenantId, agentSub, otherTenantId, otherAgentSub);
         stomp = new WebSocketStompClient(new StandardWebSocketClient());
         stomp.setMessageConverter(new CompositeMessageConverter(
             List.of(new StringMessageConverter(), new JacksonJsonMessageConverter())));
@@ -125,6 +138,67 @@ class RealtimeTests {
         assertThat(events.poll(1, TimeUnit.SECONDS)).isNull();
     }
 
+    @Test
+    void agentSeesNewWaitingConversationsLive() throws Exception {
+        String customer = sessionTokens.issue(tenantId).token();
+        startConversation(customer);
+        BlockingQueue<Object> queue = subscribeTo(connect(agentToken(agentSub)), queueTopic(tenantId));
+
+        send(customer, "our payment failed");
+
+        Object event = queue.poll(5, TimeUnit.SECONDS);
+        assertThat(JsonPath.<String>read(event, "$.type")).isEqualTo("conversation.waiting");
+        assertThat(JsonPath.<String>read(event, "$.data.status")).isEqualTo("WAITING");
+        assertThat(JsonPath.<String>read(event, "$.data.priority")).isEqualTo("URGENT");
+        assertThat(JsonPath.<String>read(event, "$.data.handoffReason")).isEqualTo("URGENT");
+    }
+
+    @Test
+    void agentCanFollowAConversationOfTheirTenant() throws Exception {
+        String customer = sessionTokens.issue(tenantId).token();
+        String conversationId = startConversation(customer);
+        BlockingQueue<Object> events = subscribe(connect(agentToken(agentSub)), conversationId);
+
+        send(customer, "how much does it cost");
+
+        assertThat(JsonPath.<String>read(events.poll(5, TimeUnit.SECONDS), "$.data.senderType")).isEqualTo("CUSTOMER");
+    }
+
+    @Test
+    void agentOfAnotherTenantCannotWatchTheQueue() throws Exception {
+        BlockingQueue<String> errors = new LinkedBlockingQueue<>();
+        StompSession session = connect(agentToken(otherAgentSub), errors);
+
+        subscribeTo(session, queueTopic(tenantId));
+
+        assertThat(errors.poll(5, TimeUnit.SECONDS)).isNotNull();
+    }
+
+    @Test
+    void customerCannotWatchTheQueue() throws Exception {
+        BlockingQueue<String> errors = new LinkedBlockingQueue<>();
+        StompSession session = connect(sessionTokens.issue(tenantId).token(), errors);
+
+        subscribeTo(session, queueTopic(tenantId));
+
+        assertThat(errors.poll(5, TimeUnit.SECONDS)).isNotNull();
+    }
+
+    @Test
+    void agentTokenWithoutTheRoleCannotConnect() throws Exception {
+        String noRole = devTokens.sign(agentSub, "Agent", List.of("SOMETHING_ELSE"));
+
+        assertThatThrownBy(() -> connect(noRole)).isInstanceOf(ExecutionException.class);
+    }
+
+    private String agentToken(String sub) throws Exception {
+        return devTokens.sign(sub, "Agent", List.of("SUPPORT_AGENT"));
+    }
+
+    private static String queueTopic(UUID tenant) {
+        return "/topic/tenants/" + tenant + "/queue";
+    }
+
     private String startConversation(String token) {
         String body = http.post().uri("/conversation").header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
             .retrieve().body(String.class);
@@ -160,8 +234,12 @@ class RealtimeTests {
     }
 
     private static BlockingQueue<Object> subscribe(StompSession session, String conversationId) throws Exception {
+        return subscribeTo(session, "/topic/conversations/" + conversationId);
+    }
+
+    private static BlockingQueue<Object> subscribeTo(StompSession session, String destination) throws Exception {
         BlockingQueue<Object> events = new LinkedBlockingQueue<>();
-        session.subscribe("/topic/conversations/" + conversationId, new StompFrameHandler() {
+        session.subscribe(destination, new StompFrameHandler() {
             @Override
             public Type getPayloadType(StompHeaders headers) {
                 return Map.class;

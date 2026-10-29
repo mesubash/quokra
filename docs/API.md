@@ -220,7 +220,7 @@ Every event has this envelope:
 |---|---|---|
 | `message.created` | conversation | `Message` |
 | `conversation.updated` | conversation, queue | `Conversation` (customers get the customer view) |
-| `conversation.waiting` | queue | `ConversationSummary` (new item in the queue) |
+| `conversation.waiting` | queue | Agent snapshot of the conversation (as `ConversationSummary`, without `lastMessagePreview`; `tenantId` instead of `tenantSlug`) |
 | `typing` | conversation | `{ "senderType": "AGENT" \| "CUSTOMER", "on": true }` |
 
 Typing is sent by clients to `/app/conversations/{id}/typing` with `{ "on": true }`; the server relays it. It is never stored. *(Not built yet: until then the server rejects any client `SEND` over the socket.)*
@@ -229,6 +229,8 @@ Rules enforced today:
 
 - `CONNECT` needs `Authorization: Bearer <chat session token>`; otherwise the server answers with an `ERROR` frame and closes.
 - A customer session may only subscribe to its own conversation's topic.
+- `CONNECT` also accepts an agent access token (same checks as the agent REST API). Agents may subscribe to `/topic/tenants/{tenantId}/queue` and `/topic/conversations/{id}` for their own tenants only.
+- On the queue topic, `conversation.updated` carries the agent snapshot too (accept, resolve, return to bot, reopen).
 - Events are sent only after the change is committed. Heartbeats every 10 s both ways.
 
 ---

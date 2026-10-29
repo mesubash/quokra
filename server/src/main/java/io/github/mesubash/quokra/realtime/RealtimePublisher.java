@@ -2,6 +2,7 @@ package io.github.mesubash.quokra.realtime;
 
 import io.github.mesubash.quokra.conversation.ConversationUpdated;
 import io.github.mesubash.quokra.conversation.MessageCreated;
+import io.github.mesubash.quokra.conversation.Status;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
@@ -31,6 +32,9 @@ class RealtimePublisher {
     @TransactionalEventListener
     void on(ConversationUpdated event) {
         send("conversation.updated", event.conversationId(), event.conversation());
+        String queueType = event.snapshot().status() == Status.WAITING ? "conversation.waiting" : "conversation.updated";
+        messaging.convertAndSend(StompAuthInterceptor.queueTopic(event.tenantId()),
+            new Event(queueType, event.conversationId(), clock.instant(), event.snapshot()));
     }
 
     private void send(String type, UUID conversationId, Object data) {
