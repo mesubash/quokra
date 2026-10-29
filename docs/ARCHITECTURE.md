@@ -251,7 +251,7 @@ The tenant secret must be readable by the server to verify HMAC signatures, so i
 
 ### 8.3 Agent token requirements
 
-Valid signature via the issuer's JWKS, audience `quokra-api`, role `SUPPORT_AGENT`, not expired. The agent's display name comes from the `name` claim.
+Valid signature via the issuer's JWKS, issuer matching `OIDC_ISSUER_URI`, audience `quokra-api`, not expired, and the role `SUPPORT_AGENT` in the configured roles claim (`roles` by default; nested paths like `realm_access.roles` work). The agent's display name comes from `name`, then `preferred_username`, then `email`, then `sub`. Without `OIDC_ISSUER_URI`, agent endpoints refuse every request (logged at startup), except when dev agent tokens are on.
 
 ---
 
@@ -384,6 +384,7 @@ create table conversations (
   created_at         timestamptz not null,
   updated_at         timestamptz not null,
   last_message_at    timestamptz not null,
+  waiting_since      timestamptz,             -- when it entered the queue
   resolved_at        timestamptz
 );
 create index on conversations (tenant_id, status, priority, last_message_at);
@@ -412,6 +413,7 @@ create table conversation_events (
   type               text not null,           -- CREATED | HANDOFF | ACCEPTED | RESOLVED | RETURNED_TO_BOT | REOPENED | IDENTIFIED
   actor_type         text not null,           -- CUSTOMER | BOT | AGENT | SYSTEM
   actor_sub          text,
+  actor_name         text,
   reason             text,                    -- e.g. URGENT for a handoff
   created_at         timestamptz not null
 );

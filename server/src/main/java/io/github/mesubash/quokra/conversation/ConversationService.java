@@ -11,6 +11,7 @@ import io.github.mesubash.quokra.tenant.TenantRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -30,6 +31,8 @@ public class ConversationService {
     // Used when a tenant's bot config can't be found.
     static final String GREETING = "Hi! How can we help?";
     static final String HANDOFF_MESSAGE = "Connecting you with our team. Someone will reply shortly.";
+    static final String RESOLVED_MESSAGE = "This conversation is closed. Write again any time.";
+    static final String BACK_TO_BOT_MESSAGE = "Anything else I can help with?";
 
     public record Started(Conversation conversation, boolean created) {}
 
@@ -109,6 +112,100 @@ public class ConversationService {
         return conversation;
     }
 
+    // Takes a waiting conversation. If two agents try at once, the second gets a conflict when committing.
+    @Transactional
+    public Conversation accept(UUID conversationId, AgentRef agent) {
+        Conversation conversation = get(conversationId);
+        if (conversation.getStatus() == Status.HUMAN) {
+            throw alreadyAccepted();
+        }
+        Instant now = clock.instant();
+        conversation.moveTo(StateMachine.next(conversation.getStatus(), Transition.ACCEPT), now);
+        conversation.assign(agent.sub(), agent.name());
+        conversation.touch(now);
+        events.save(ConversationEvent.byAgent(conversationId, EventType.ACCEPTED, agent, now));
+        save(Message.create(conversationId, SenderType.SYSTEM, null, null, agent.name() + " joined the chat", null, null, now));
+        publishUpdate(conversation);
+        return conversation;
+    }
+
+    @Transactional
+    public Message addAgentMessage(UUID conversationId, AgentRef agent, String clientMessageId, String body) {
+        Conversation conversation = get(conversationId);
+        if (clientMessageId != null) {
+            var existing = messages.findByConversationIdAndClientMessageId(conversationId, clientMessageId);
+            if (existing.isPresent()) {
+                return existing.get();
+            }
+        }
+        String text = checkBody(body);
+        if (conversation.getStatus() != Status.HUMAN) {
+            throw new ApiException(HttpStatus.CONFLICT, "INVALID_TRANSITION", "Accept the conversation before replying");
+        }
+        requireAssignee(conversation, agent);
+        Instant now = clock.instant();
+        conversation.touch(now);
+        return save(Message.create(conversationId, SenderType.AGENT, agent.sub(), agent.name(), text, clientMessageId,
+            null, now));
+    }
+
+    // Closes a conversation. Waiting ones can be closed by any agent (e.g. spam); taken ones only by the assignee.
+    @Transactional
+    public Conversation resolve(UUID conversationId, AgentRef agent) {
+        Conversation conversation = get(conversationId);
+        if (conversation.getStatus() == Status.HUMAN) {
+            requireAssignee(conversation, agent);
+        }
+        Instant now = clock.instant();
+        conversation.moveTo(StateMachine.next(conversation.getStatus(), Transition.RESOLVE), now);
+        conversation.touch(now);
+        events.save(ConversationEvent.byAgent(conversationId, EventType.RESOLVED, agent, now));
+        save(Message.create(conversationId, SenderType.SYSTEM, null, null, RESOLVED_MESSAGE, null, null, now));
+        publishUpdate(conversation);
+        return conversation;
+    }
+
+    @Transactional
+    public Conversation returnToBot(UUID conversationId, AgentRef agent) {
+        Conversation conversation = get(conversationId);
+        Status next = StateMachine.next(conversation.getStatus(), Transition.RETURN_TO_BOT);
+        requireAssignee(conversation, agent);
+        Instant now = clock.instant();
+        conversation.moveTo(next, now);
+        conversation.unassign();
+        conversation.touch(now);
+        events.save(ConversationEvent.byAgent(conversationId, EventType.RETURNED_TO_BOT, agent, now));
+        save(Message.create(conversationId, SenderType.BOT, null, null, BACK_TO_BOT_MESSAGE, null,
+            botFor(conversation.getTenantId()).map(BotConfig::options).orElse(null), now));
+        publishUpdate(conversation);
+        return conversation;
+    }
+
+    // WAITING: the queue (urgent first, longest wait first). Others: most recent first.
+    @Transactional(readOnly = true)
+    public List<Conversation> list(Collection<UUID> tenantIds, Status status, String assigneeSub, int limit) {
+        if (tenantIds.isEmpty()) {
+            return List.of();
+        }
+        if (status == Status.WAITING) {
+            return conversations.findQueue(tenantIds, Limit.of(limit));
+        }
+        if (assigneeSub != null) {
+            return conversations.findByTenantIdInAndStatusAndAssigneeSubOrderByLastMessageAtDesc(
+                tenantIds, status, assigneeSub, Limit.of(limit));
+        }
+        return conversations.findByTenantIdInAndStatusOrderByLastMessageAtDesc(tenantIds, status, Limit.of(limit));
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<Message> lastMessage(UUID conversationId) {
+        return messages.findLatest(conversationId, Limit.of(1)).stream().findFirst();
+    }
+
+    public static ApiException alreadyAccepted() {
+        return new ApiException(HttpStatus.CONFLICT, "ALREADY_ACCEPTED", "Another agent already took this conversation");
+    }
+
     // The visitor's latest conversation, open or resolved.
     @Transactional(readOnly = true)
     public Optional<Conversation> current(UUID tenantId, UUID visitorId) {
@@ -186,6 +283,12 @@ public class ConversationService {
 
     private void publishUpdate(Conversation conversation) {
         publisher.publishEvent(new ConversationUpdated(conversation.getId(), CustomerConversationView.of(conversation)));
+    }
+
+    private static void requireAssignee(Conversation conversation, AgentRef agent) {
+        if (!conversation.isAssignedTo(agent.sub())) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "NOT_ASSIGNEE", "This conversation is assigned to someone else");
+        }
     }
 
     private Optional<BotConfig> botFor(UUID tenantId) {

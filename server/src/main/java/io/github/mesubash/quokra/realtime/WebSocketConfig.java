@@ -33,6 +33,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         // One instance for now; a shared broker is needed to run several (see ARCHITECTURE.md §16).
         registry.enableSimpleBroker("/topic").setHeartbeatValue(new long[] {10_000, 10_000})
             .setTaskScheduler(heartbeatScheduler());
+        // Messages to a client go out on a thread pool; keep them in the order they were sent.
+        registry.setPreservePublishOrder(true);
     }
 
     @Override

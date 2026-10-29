@@ -47,7 +47,14 @@ Then open `http://localhost:5500/` (a page from a different origin that embeds t
 
 ### Local agent login
 
-v1 validates agent tokens from an OIDC provider. For local work, the `dev` Spring profile accepts tokens signed with a local key, and `test-host/console.html` gets one from a small dev endpoint. The `dev` profile must never be enabled in production; the server refuses to start with it when `APP_ENV=production`.
+Agents normally log in through an OIDC provider (`OIDC_ISSUER_URI`). Locally, the `dev` profile turns on `quokra.dev.agent-tokens`: the server signs agent tokens itself with a key made at startup.
+
+```bash
+curl -X POST localhost:8080/dev/agent-token -H 'Content-Type: application/json' -d '{"sub":"dev-agent","name":"Sam"}'
+# → { "accessToken": "eyJ..." }   (8 hours, role SUPPORT_AGENT)
+```
+
+`dev-agent` is a member of the demo tenant (dev seed). Never enable dev agent tokens in production: the server refuses to start with them when `APP_ENV=production`.
 
 ### Environment
 
@@ -56,7 +63,9 @@ v1 validates agent tokens from an OIDC provider. For local work, the `dev` Sprin
 | `SPRING_DATASOURCE_URL` / `_USERNAME` / `_PASSWORD` | server | not needed: Postgres starts from `compose.yaml` |
 | `QUOKRA_SESSION_SIGNING_KEY` | server | unset: a random key is used (sessions reset on restart) |
 | `QUOKRA_BOTS_DIR` | server | unset: only the built-in `demo` bot |
-| `OIDC_ISSUER_URI`, `OIDC_AUDIENCE` | server | step 7 |
+| `OIDC_ISSUER_URI` | server | unset: agent login only through dev tokens |
+| `OIDC_AUDIENCE` | server | `quokra-api` |
+| `QUOKRA_AGENT_ROLES_CLAIM` / `QUOKRA_AGENT_ROLE` | server | `roles` / `SUPPORT_AGENT` |
 | `TENANT_SECRET_ENCRYPTION_KEY` | server | step 9 |
 | `PUBLIC_BASE_URL` | server | step 6 |
 

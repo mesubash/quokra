@@ -35,6 +35,7 @@ public class ConversationEvent {
     private SenderType actorType;
 
     private String actorSub;
+    private String actorName;
     private String reason;
     private Instant createdAt;
 
@@ -47,6 +48,12 @@ public class ConversationEvent {
         e.actorSub = actorSub;
         e.reason = reason;
         e.createdAt = now;
+        return e;
+    }
+
+    static ConversationEvent byAgent(UUID conversationId, EventType type, AgentRef agent, Instant now) {
+        ConversationEvent e = of(conversationId, type, SenderType.AGENT, agent.sub(), null, now);
+        e.actorName = agent.name();
         return e;
     }
 }

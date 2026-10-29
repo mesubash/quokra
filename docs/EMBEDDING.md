@@ -134,8 +134,13 @@ The console runs in an iframe and uses **your dashboard's login**. Your dashboar
 ### 5.1 Requirements
 
 - Agents log in to your dashboard through the OIDC provider the support server trusts.
-- Their access token includes the audience `quokra-api` and the role `SUPPORT_AGENT`.
-- Each agent is a member of the tenant (added by the support admin in v1).
+- Their access token includes the audience `quokra-api` and the role `SUPPORT_AGENT`. Where the role sits in the token is configurable (`QUOKRA_AGENT_ROLES_CLAIM`, e.g. `roles` or `realm_access.roles`).
+- Each agent is a member of the tenant. In v1 the support admin adds them with SQL, using the agent's `sub` from the identity provider:
+
+  ```sql
+  insert into tenant_agents (tenant_id, agent_sub)
+  select id, 'the-agent-sub' from tenants where slug = 'your-slug';
+  ```
 - Your dashboard's origin is registered as a **console origin**.
 
 ### 5.2 Code

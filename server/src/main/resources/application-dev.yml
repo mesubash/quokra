@@ -3,6 +3,9 @@ spring:
     locations: classpath:db/migration,classpath:db/dev
 
 quokra:
+  dev:
+    # Local agent login: POST /dev/agent-token. Never in production.
+    agent-tokens: true
   ws:
     # Includes the Vite dev server.
     allowed-origins: http://localhost:8080,http://localhost:5173

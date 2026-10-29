@@ -57,6 +57,7 @@ public class Conversation {
     private Instant createdAt;
     private Instant updatedAt;
     private Instant lastMessageAt;
+    private Instant waitingSince;
     private Instant resolvedAt;
 
     static Conversation start(UUID tenantId, UUID visitorId, Instant now) {
@@ -80,6 +81,24 @@ public class Conversation {
         status = next;
         updatedAt = now;
         resolvedAt = next == Status.RESOLVED ? now : null;
+        waitingSince = next == Status.WAITING ? now : null;
+    }
+
+    boolean isAssignedTo(String agentSub) {
+        return agentSub != null && agentSub.equals(assigneeSub);
+    }
+
+    void assign(String agentSub, String agentName) {
+        assigneeSub = agentSub;
+        assigneeName = agentName;
+    }
+
+    void unassign() {
+        assigneeSub = null;
+        assigneeName = null;
+        handoffReason = null;
+        priority = Priority.NORMAL;
+        fallbackCount = 0;
     }
 
     void handOff(HandoffReason reason, Instant now) {

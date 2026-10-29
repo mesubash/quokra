@@ -12,6 +12,13 @@ quokra:
   bots:
     # Folder with extra bot files; files here replace built-in ones with the same name.
     dir: ${QUOKRA_BOTS_DIR:}
+  agents:
+    # Identity provider that issues agent access tokens (leave empty to turn agent login off).
+    issuer-uri: ${OIDC_ISSUER_URI:}
+    audience: ${OIDC_AUDIENCE:quokra-api}
+    # Where the roles are in the token, e.g. "roles" or "realm_access.roles".
+    roles-claim: ${QUOKRA_AGENT_ROLES_CLAIM:roles}
+    role: ${QUOKRA_AGENT_ROLE:SUPPORT_AGENT}
   ws:
     # Origins allowed to open the WebSocket: where the chat panel and console are served.
     allowed-origins: ${PUBLIC_BASE_URL:http://localhost:8080}

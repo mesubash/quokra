@@ -153,7 +153,7 @@ All require an agent token. The agent only sees tenants they're a member of (`te
 | `tenant` | slug (optional; default: all my tenants) |
 | `status` | `WAITING`, `HUMAN`, `RESOLVED` (required) |
 | `assignee` | `me` (optional) |
-| `limit`, `before` | paging |
+| `limit` | default 50, max 200 (cursor paging comes later; `nextCursor` is `null` for now) |
 
 `WAITING` is sorted by priority (URGENT first), then oldest first. The others are newest first.
 
