@@ -56,7 +56,7 @@ public class SecurityConfig {
                 .requestMatchers("/actuator/health/**").permitAll()
                 // The socket checks its own token on CONNECT.
                 .requestMatchers("/ws", "/ws/**").permitAll()
-                .requestMatchers("/", "/index.html", "/sdk.js", "/robot.svg", "/assets/**", "/w/**", "/console",
+                .requestMatchers("/", "/index.html", "/sdk.js", "/robot.svg", "/assets/**", "/vendor/**", "/animations/**", "/w/**", "/console",
                     "/console/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/widget/tenants/*").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/widget/sessions").permitAll()

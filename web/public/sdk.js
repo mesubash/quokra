@@ -13,7 +13,7 @@
  * JavaScript: Quokra.chat.init({ slug, pk, mode, container, position, teaserDelay }), open(), close(),
  *             on(event, fn), destroy()
  *
- * Icons: Lucide (ISC). Robot: still frame of "Hello Chat Bot" by Chandalal Kumawat, LottieFiles (Lottie Simple License).
+ * Icons: Lucide (ISC). Robot: "Hello Chat Bot" by Chandalal Kumawat, LottieFiles (Lottie Simple License), recoloured.
  * See THIRD_PARTY_NOTICES.md.
  */
 (function () {
@@ -30,6 +30,11 @@
   var DEFAULT_COLOR = "#4c4fba";
   var DEFAULT_TEASER_DELAY = 5000;
   var ROBOT_URL = ORIGIN + "/robot.svg";
+  // The waving robot is an upgrade loaded after the page; until then (or without it) the still image shows.
+  var LOTTIE_URL = ORIGIN + "/vendor/lottie_light-5.13.0.min.js";
+  var ANIMATION_URL = ORIGIN + "/animations/robot.js";
+  var ROBOT_VIEWBOX = "156 30 196 290"; // the robot and its waving arms, without the empty canvas around them
+  var reducedMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   var SVG_ATTRS =
     'xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
@@ -67,7 +72,7 @@
     if (document.getElementById(STYLE_ID)) return;
     var css =
       // The robot itself is the button. It floats gently and waves on hover or when the greeting shows.
-      ".quokra-button{position:fixed;bottom:16px;width:68px;height:88px;padding:0;border:0;background:none;" +
+      ".quokra-button{position:fixed;bottom:16px;width:64px;height:94px;padding:0;border:0;background:none;" +
       "cursor:pointer;z-index:2147483646;filter:drop-shadow(0 6px 10px rgba(0,0,0,.18))}" +
       ".quokra-button.right{right:18px}.quokra-button.left{left:18px}" +
       ".quokra-button img{display:block;width:100%;height:100%;transform-origin:50% 85%;" +
@@ -79,12 +84,14 @@
       "border-radius:50%;background:#fff;color:var(--quokra-color," + DEFAULT_COLOR + ");display:flex;" +
       "align-items:center;justify-content:center;filter:none;box-shadow:0 6px 20px rgba(0,0,0,.18)}" +
       ".quokra-button.fallback svg{width:26px;height:26px}.quokra-button.fallback img{display:none}" +
+      ".quokra-anim{display:none;position:absolute;inset:0}.quokra-button.animated .quokra-anim{display:block}" +
+      ".quokra-button.animated img{visibility:hidden;animation:none}" +
       ".quokra-icon-chat{display:none}.quokra-button.fallback .quokra-icon-chat{display:block}" +
       // While the chat is open the panel's own close button is used, so the launcher steps aside.
       ".quokra-button.open{display:none}" +
       ".quokra-badge{position:absolute;top:-4px;right:-4px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;" +
       "background:#cf222e;color:#fff;font:600 12px/20px system-ui,sans-serif;text-align:center;animation:quokra-pop .3s ease}" +
-      ".quokra-teaser{position:fixed;bottom:112px;max-width:260px;display:flex;align-items:flex-start;gap:4px;" +
+      ".quokra-teaser{position:fixed;bottom:118px;max-width:260px;display:flex;align-items:flex-start;gap:4px;" +
       "background:#fff;color:#1f2328;border-radius:14px;box-shadow:0 8px 28px rgba(0,0,0,.18);z-index:2147483646;" +
       "font:14px/1.4 system-ui,sans-serif;animation:quokra-rise .35s ease}" +
       ".quokra-teaser.right{right:20px}.quokra-teaser.left{left:20px}.quokra-button.fallback~.quokra-teaser{bottom:92px}" +
@@ -145,10 +152,45 @@
   }
 
   function wave() {
-    if (!state || !state.button) return;
+    if (!state || !state.button || reducedMotion) return;
+    if (state.animation) {
+      state.animation.goToAndPlay(0, true);
+      return;
+    }
     state.button.classList.remove("wave");
-    void state.button.offsetWidth; // restart the animation if it's already running
+    void state.button.offsetWidth; // restart the CSS animation if it's already running
     state.button.classList.add("wave");
+  }
+
+  function loadScript(src, done) {
+    var el = document.createElement("script");
+    el.src = src;
+    el.async = true;
+    el.onload = done;
+    document.head.appendChild(el);
+  }
+
+  // Swap the still robot for the waving one. Reuses a Lottie player the page already has.
+  function startAnimation() {
+    if (!state || !state.button || state.animation || reducedMotion) return;
+    var play = function () {
+      if (!state || !state.button || !window.lottie || !window.QuokraAnimations || !window.QuokraAnimations.robot) return;
+      state.animation = window.lottie.loadAnimation({
+        container: state.button.querySelector(".quokra-anim"),
+        renderer: "svg",
+        loop: false,
+        autoplay: true,
+        animationData: window.QuokraAnimations.robot,
+        rendererSettings: { viewBoxSize: ROBOT_VIEWBOX },
+      });
+      state.button.classList.add("animated");
+    };
+    var withData = function () {
+      if (window.lottie) play();
+      else loadScript(LOTTIE_URL, play);
+    };
+    if (window.QuokraAnimations && window.QuokraAnimations.robot) withData();
+    else loadScript(ANIMATION_URL, withData);
   }
 
   // ---- Greeting card next to the button ----
@@ -252,6 +294,7 @@
         pk: options.pk,
         open: mode === "inline",
         teaserText: null,
+        animation: null,
         teaserDelay: options.teaserDelay === "off" ? -1 : isFinite(delay) && options.teaserDelay !== undefined ? delay : DEFAULT_TEASER_DELAY,
       };
 
@@ -278,7 +321,9 @@
             button.classList.add("fallback");
           });
           button.appendChild(robot);
+          button.insertAdjacentHTML("beforeend", '<span class="quokra-anim"></span>');
           button.insertAdjacentHTML("beforeend", ICON_CHAT.replace("<svg ", '<svg class="quokra-icon-chat" '));
+          button.addEventListener("mouseenter", wave);
           button.addEventListener("animationend", function () {
             button.classList.remove("wave");
           });
@@ -288,6 +333,8 @@
           document.body.appendChild(button);
           state.button = button;
 
+          if (document.readyState === "complete") setTimeout(startAnimation, 300);
+          else window.addEventListener("load", function () { setTimeout(startAnimation, 300); }, { once: true });
         }
       }
       window.addEventListener("message", onMessage);
@@ -330,6 +377,7 @@
       if (!state) return;
       window.removeEventListener("message", onMessage);
       hideTeaser(false);
+      if (state.animation) state.animation.destroy();
       state.frame.remove();
       if (state.button) state.button.remove();
       state = null;
