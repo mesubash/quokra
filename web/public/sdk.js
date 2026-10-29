@@ -27,7 +27,7 @@
   var SOURCE = "quokra";
   var STYLE_ID = "quokra-chat-style";
   var FRAME_ID = "quokra-chat-frame";
-  var DEFAULT_COLOR = "#0a7c66";
+  var DEFAULT_COLOR = "#4f46e5";
   var DEFAULT_TEASER_DELAY = 5000;
   var LOTTIE_URL = ORIGIN + "/vendor/lottie_light-5.13.0.min.js";
   var ANIMATION_URL = ORIGIN + "/animations/hello-bot.js";
