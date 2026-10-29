@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Limit;
 import org.springframework.http.HttpStatus;
@@ -83,6 +84,12 @@ public class ConversationService {
         events.save(ConversationEvent.of(conversationId, EventType.HANDOFF, actor, null, reason.name(), now));
         messages.save(Message.create(conversationId, SenderType.SYSTEM, null, null, HANDOFF_MESSAGE, null, now));
         return conversation;
+    }
+
+    // The visitor's latest conversation, open or resolved.
+    @Transactional(readOnly = true)
+    public Optional<Conversation> current(UUID tenantId, UUID visitorId) {
+        return conversations.findFirstByTenantIdAndVisitorIdOrderByCreatedAtDesc(tenantId, visitorId);
     }
 
     @Transactional(readOnly = true)

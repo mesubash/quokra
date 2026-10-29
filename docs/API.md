@@ -125,12 +125,14 @@ The customer message is stored first. Bot replies arrive as realtime events, and
 
 ### 3.8 `POST /widget/conversation/handoff`: "Talk to a person"
 
+No request body.
+
 ```json
-// request
-{ "clientMessageId": "c-7f3c" }
 // 200
 { "conversation": Conversation }
 ```
+
+Safe to call again: if the conversation is already `WAITING` or `HUMAN`, it is returned unchanged.
 
 ---
 

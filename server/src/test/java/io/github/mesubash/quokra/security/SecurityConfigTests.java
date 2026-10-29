@@ -28,7 +28,9 @@ class SecurityConfigTests {
 
     @Test
     void unknownPathsAreBlocked() {
-        assertThat(mvc.get().uri("/api/v1/anything")).hasStatus(HttpStatus.FORBIDDEN);
+        assertThat(mvc.get().uri("/api/v1/anything"))
+            .hasStatus(HttpStatus.UNAUTHORIZED)
+            .bodyJson().extractingPath("$.error.code").isEqualTo("UNAUTHORIZED");
     }
 
     @Test
