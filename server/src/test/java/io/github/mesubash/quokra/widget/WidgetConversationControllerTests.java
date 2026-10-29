@@ -45,7 +45,7 @@ class WidgetConversationControllerTests {
     void setUp() {
         jdbc.update("""
             insert into tenants (id, slug, display_name, publishable_key, bot_config)
-            values (?, 'acme', 'Acme Inc', 'pk_test_acme', 'acme')
+            values (?, 'acme', 'Acme Inc', 'pk_test_acme', 'test')
             """, TENANT_ID);
         token = sessionTokens.issue(TENANT_ID).token();
     }
@@ -123,13 +123,14 @@ class WidgetConversationControllerTests {
     @Test
     void listsMessagesAfterACursor() {
         post(BASE, null);
-        String firstId = id(post(BASE + "/messages", "{\"clientMessageId\":\"c-1\",\"body\":\"one\"}"), "$.message.id");
-        post(BASE + "/messages", "{\"clientMessageId\":\"c-2\",\"body\":\"two\"}");
+        String firstId = id(post(BASE + "/messages", "{\"clientMessageId\":\"c-1\",\"body\":\"price\"}"), "$.message.id");
+        post(BASE + "/messages", "{\"clientMessageId\":\"c-2\",\"body\":\"password\"}");
 
         MvcTestResult page = get(BASE + "/messages?after=" + firstId);
 
         assertThat(page).hasStatusOk();
-        assertThat(page).bodyJson().extractingPath("$.items[*].body").isEqualTo(List.of("two"));
+        assertThat(page).bodyJson().extractingPath("$.items[*].body")
+            .isEqualTo(List.of("Pricing answer.", "password", "Account answer."));
         assertThat(page).bodyJson().extractingPath("$.nextCursor").isNull();
     }
 

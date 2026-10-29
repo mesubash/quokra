@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 
 import io.github.mesubash.quokra.TestcontainersConfiguration;
+import io.github.mesubash.quokra.bot.BotConfig;
 import io.github.mesubash.quokra.common.ApiException;
 import io.github.mesubash.quokra.conversation.Enums.EventType;
 import io.github.mesubash.quokra.conversation.Enums.HandoffReason;
@@ -22,12 +23,14 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
+// Uses src/test/resources/bots/test.yml.
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
 @Transactional
 class ConversationServiceTests {
 
     static final UUID TENANT = UUID.randomUUID();
+    static final UUID NO_BOT_TENANT = UUID.randomUUID();
 
     @Autowired
     ConversationService service;
@@ -41,32 +44,40 @@ class ConversationServiceTests {
     UUID visitor = UUID.randomUUID();
 
     @BeforeEach
-    void addTenant() {
+    void addTenants() {
         jdbc.update("""
             insert into tenants (id, slug, display_name, publishable_key, bot_config)
-            values (?, 'acme', 'Acme', 'pk_test_acme', 'acme')
-            """, TENANT);
+            values (?, 'acme', 'Acme', 'pk_test_acme', 'test'),
+                   (?, 'nobot', 'No Bot', 'pk_test_nobot', 'missing')
+            """, TENANT, NO_BOT_TENANT);
+    }
+
+    UUID start() {
+        return service.startOrResume(TENANT, visitor).conversation().getId();
+    }
+
+    List<Message> history(UUID id) {
+        return service.messages(id, null, 50);
     }
 
     @Test
-    void startCreatesConversationWithGreeting() {
+    void startCreatesConversationWithGreetingAndMenu() {
         var started = service.startOrResume(TENANT, visitor);
 
         assertThat(started.created()).isTrue();
         assertThat(started.conversation().getStatus()).isEqualTo(Status.BOT);
-        assertThat(service.messages(started.conversation().getId(), null, 50))
-            .singleElement()
-            .satisfies(m -> {
-                assertThat(m.getSenderType()).isEqualTo(SenderType.BOT);
-                assertThat(m.getBody()).isEqualTo(ConversationService.GREETING);
-            });
+        assertThat(history(started.conversation().getId())).singleElement().satisfies(m -> {
+            assertThat(m.getSenderType()).isEqualTo(SenderType.BOT);
+            assertThat(m.getBody()).isEqualTo("Hello from the test bot.");
+            assertThat(m.getOptions()).extracting(BotConfig.Option::id).containsExactly("pricing", "account", "human");
+        });
         assertThat(service.events(started.conversation().getId()))
             .extracting(ConversationEvent::getType).containsExactly(EventType.CREATED);
     }
 
     @Test
     void startAgainResumesTheSameConversation() {
-        UUID first = service.startOrResume(TENANT, visitor).conversation().getId();
+        UUID first = start();
         var again = service.startOrResume(TENANT, visitor);
 
         assertThat(again.created()).isFalse();
@@ -74,76 +85,164 @@ class ConversationServiceTests {
     }
 
     @Test
-    void customerMessageIsStored() {
-        UUID id = service.startOrResume(TENANT, visitor).conversation().getId();
+    void botAnswersFromTheMenu() {
+        UUID id = start();
 
-        service.addCustomerMessage(id, "c-1", "How do I reset my password?");
+        service.addCustomerMessage(id, "c-1", "What does it cost?", null);
 
-        assertThat(service.messages(id, null, 50))
-            .extracting(Message::getSenderType, Message::getBody)
-            .containsExactly(
-                tuple(SenderType.BOT, ConversationService.GREETING),
-                tuple(SenderType.CUSTOMER, "How do I reset my password?"));
+        assertThat(history(id)).extracting(Message::getSenderType, Message::getBody).containsExactly(
+            tuple(SenderType.BOT, "Hello from the test bot."),
+            tuple(SenderType.CUSTOMER, "What does it cost?"),
+            tuple(SenderType.BOT, "Pricing answer."));
+        assertThat(history(id).getLast().getOptions()).isNotEmpty();
+    }
+
+    @Test
+    void menuButtonIsStoredWithItsTitle() {
+        UUID id = start();
+
+        Message sent = service.addCustomerMessage(id, "c-1", null, "account");
+
+        assertThat(sent.getBody()).isEqualTo("Account help");
+        assertThat(history(id).getLast().getBody()).isEqualTo("Account answer.");
+    }
+
+    @Test
+    void unknownMenuButtonIsRejected() {
+        UUID id = start();
+
+        assertThatThrownBy(() -> service.addCustomerMessage(id, "c-1", null, "nope"))
+            .isInstanceOfSatisfying(ApiException.class, e -> assertThat(e.code()).isEqualTo("VALIDATION_ERROR"));
     }
 
     @Test
     void sameClientMessageIdIsStoredOnce() {
-        UUID id = service.startOrResume(TENANT, visitor).conversation().getId();
+        UUID id = start();
 
-        Message first = service.addCustomerMessage(id, "c-1", "hello");
-        Message retry = service.addCustomerMessage(id, "c-1", "hello");
+        Message first = service.addCustomerMessage(id, "c-1", "price", null);
+        Message retry = service.addCustomerMessage(id, "c-1", "price", null);
 
         assertThat(retry.getId()).isEqualTo(first.getId());
-        assertThat(service.messages(id, null, 50)).hasSize(2);
+        assertThat(history(id)).hasSize(3);
     }
 
     @Test
     void messagesAfterReturnsOnlyNewerOnes() {
-        UUID id = service.startOrResume(TENANT, visitor).conversation().getId();
-        Message one = service.addCustomerMessage(id, "c-1", "one");
-        service.addCustomerMessage(id, "c-2", "two");
+        UUID id = start();
+        Message one = service.addCustomerMessage(id, "c-1", "price", null);
+        service.addCustomerMessage(id, "c-2", "password", null);
 
-        List<Message> after = service.messages(id, one.getId(), 50);
+        assertThat(service.messages(id, one.getId(), 50)).extracting(Message::getBody)
+            .containsExactly("Pricing answer.", "password", "Account answer.");
+    }
 
-        assertThat(after).extracting(Message::getBody).containsExactly("two");
+    @Test
+    void oneMissGetsTheFallback() {
+        UUID id = start();
+
+        service.addCustomerMessage(id, "c-1", "hello", null);
+
+        assertThat(history(id).getLast().getBody()).isEqualTo("Fallback message.");
+        assertThat(service.get(id).getStatus()).isEqualTo(Status.BOT);
+    }
+
+    @Test
+    void tooManyMissesHandOff() {
+        UUID id = start();
+
+        service.addCustomerMessage(id, "c-1", "hello", null);
+        service.addCustomerMessage(id, "c-2", "still nothing", null);
+
+        Conversation c = service.get(id);
+        assertThat(c.getStatus()).isEqualTo(Status.WAITING);
+        assertThat(c.getHandoffReason()).isEqualTo(HandoffReason.FALLBACK_LIMIT);
+        assertThat(history(id).getLast()).satisfies(m -> {
+            assertThat(m.getSenderType()).isEqualTo(SenderType.SYSTEM);
+            assertThat(m.getBody()).isEqualTo("Handoff message.");
+        });
+    }
+
+    @Test
+    void anAnswerResetsTheMisses() {
+        UUID id = start();
+
+        service.addCustomerMessage(id, "c-1", "hello", null);
+        service.addCustomerMessage(id, "c-2", "price", null);
+        service.addCustomerMessage(id, "c-3", "hello again", null);
+
+        assertThat(service.get(id).getStatus()).isEqualTo(Status.BOT);
+    }
+
+    @Test
+    void urgentKeywordHandsOffWithTopPriority() {
+        UUID id = start();
+
+        service.addCustomerMessage(id, "c-1", "My payment failed, the price was wrong", null);
+
+        Conversation c = service.get(id);
+        assertThat(c.getStatus()).isEqualTo(Status.WAITING);
+        assertThat(c.getHandoffReason()).isEqualTo(HandoffReason.URGENT);
+        assertThat(c.getPriority()).isEqualTo(Priority.URGENT);
+        assertThat(history(id).getLast().getBody()).isEqualTo("Urgent message.");
+    }
+
+    @Test
+    void askingForAPersonHandsOff() {
+        UUID id = start();
+
+        service.addCustomerMessage(id, "c-1", null, BotConfig.HUMAN_OPTION);
+
+        assertThat(service.get(id).getHandoffReason()).isEqualTo(HandoffReason.CUSTOMER_REQUEST);
+    }
+
+    @Test
+    void botIsSilentOnceHandedOff() {
+        UUID id = start();
+        service.handoff(id, HandoffReason.CUSTOMER_REQUEST, SenderType.CUSTOMER);
+
+        service.addCustomerMessage(id, "c-1", "price", null);
+
+        assertThat(history(id).getLast().getSenderType()).isEqualTo(SenderType.CUSTOMER);
+    }
+
+    @Test
+    void missingBotConfigHandsOffInsteadOfFailing() {
+        UUID id = service.startOrResume(NO_BOT_TENANT, visitor).conversation().getId();
+
+        service.addCustomerMessage(id, "c-1", "hello", null);
+
+        Conversation c = service.get(id);
+        assertThat(c.getStatus()).isEqualTo(Status.WAITING);
+        assertThat(c.getHandoffReason()).isEqualTo(HandoffReason.BOT_ERROR);
+        assertThat(history(id).getFirst().getBody()).isEqualTo(ConversationService.GREETING);
     }
 
     @Test
     void emptyAndTooLongMessagesAreRejected() {
-        UUID id = service.startOrResume(TENANT, visitor).conversation().getId();
+        UUID id = start();
 
-        assertThatThrownBy(() -> service.addCustomerMessage(id, "c-1", "  "))
+        assertThatThrownBy(() -> service.addCustomerMessage(id, "c-1", "  ", null))
             .isInstanceOfSatisfying(ApiException.class, e -> assertThat(e.code()).isEqualTo("VALIDATION_ERROR"));
-        assertThatThrownBy(() -> service.addCustomerMessage(id, "c-2", "x".repeat(Message.MAX_BODY_LENGTH + 1)))
+        assertThatThrownBy(() -> service.addCustomerMessage(id, "c-2", "x".repeat(Message.MAX_BODY_LENGTH + 1), null))
             .isInstanceOfSatisfying(ApiException.class, e -> assertThat(e.code()).isEqualTo("MESSAGE_TOO_LONG"));
     }
 
     @Test
     void handoffMovesToWaitingWithReason() {
-        UUID id = service.startOrResume(TENANT, visitor).conversation().getId();
+        UUID id = start();
 
         Conversation c = service.handoff(id, HandoffReason.CUSTOMER_REQUEST, SenderType.CUSTOMER);
 
         assertThat(c.getStatus()).isEqualTo(Status.WAITING);
-        assertThat(c.getHandoffReason()).isEqualTo(HandoffReason.CUSTOMER_REQUEST);
         assertThat(c.getPriority()).isEqualTo(Priority.NORMAL);
-        assertThat(service.messages(id, null, 50)).last()
-            .satisfies(m -> assertThat(m.getSenderType()).isEqualTo(SenderType.SYSTEM));
+        assertThat(history(id).getLast().getBody()).isEqualTo("Handoff message.");
         assertThat(service.events(id)).extracting(ConversationEvent::getType)
             .containsExactly(EventType.CREATED, EventType.HANDOFF);
     }
 
     @Test
-    void urgentHandoffGetsTopPriority() {
-        UUID id = service.startOrResume(TENANT, visitor).conversation().getId();
-
-        assertThat(service.handoff(id, HandoffReason.URGENT, SenderType.BOT).getPriority())
-            .isEqualTo(Priority.URGENT);
-    }
-
-    @Test
     void secondHandoffIsRejected() {
-        UUID id = service.startOrResume(TENANT, visitor).conversation().getId();
+        UUID id = start();
         service.handoff(id, HandoffReason.CUSTOMER_REQUEST, SenderType.CUSTOMER);
 
         assertThatThrownBy(() -> service.handoff(id, HandoffReason.CUSTOMER_REQUEST, SenderType.CUSTOMER))
@@ -152,17 +251,18 @@ class ConversationServiceTests {
 
     @Test
     void messageOnResolvedConversationReopensIt() {
-        UUID id = service.startOrResume(TENANT, visitor).conversation().getId();
+        UUID id = start();
         service.handoff(id, HandoffReason.URGENT, SenderType.BOT);
         Conversation c = service.get(id);
         c.moveTo(StateMachine.next(c.getStatus(), Transition.RESOLVE), c.getUpdatedAt());
 
-        service.addCustomerMessage(id, "c-9", "one more question");
+        service.addCustomerMessage(id, "c-9", "price", null);
 
         Conversation reopened = service.get(id);
         assertThat(reopened.getStatus()).isEqualTo(Status.BOT);
         assertThat(reopened.getPriority()).isEqualTo(Priority.NORMAL);
         assertThat(reopened.getHandoffReason()).isNull();
+        assertThat(history(id).getLast().getBody()).isEqualTo("Pricing answer.");
         assertThat(service.events(id)).extracting(ConversationEvent::getType).endsWith(EventType.REOPENED);
     }
 
@@ -174,10 +274,9 @@ class ConversationServiceTests {
 
     @Test
     void databaseAllowsOnlyOneOpenConversationPerVisitor() {
-        service.startOrResume(TENANT, visitor);
+        start();
 
-        assertThatThrownBy(() -> {
-            conversations.saveAndFlush(Conversation.start(TENANT, visitor, Instant.now()));
-        }).isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> conversations.saveAndFlush(Conversation.start(TENANT, visitor, Instant.now())))
+            .isInstanceOf(DataIntegrityViolationException.class);
     }
 }

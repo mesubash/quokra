@@ -1,6 +1,8 @@
 package io.github.mesubash.quokra.conversation;
 
+import io.github.mesubash.quokra.bot.BotConfig.Option;
 import io.github.mesubash.quokra.conversation.Enums.SenderType;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -8,6 +10,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -37,10 +40,14 @@ public class Message {
     private String senderName;
     private String body;
     private String clientMessageId;
+
+    @Convert(converter = OptionsConverter.class)
+    private List<Option> options;
+
     private Instant createdAt;
 
     static Message create(UUID conversationId, SenderType senderType, String senderSub, String senderName,
-                          String body, String clientMessageId, Instant now) {
+                          String body, String clientMessageId, List<Option> options, Instant now) {
         Message m = new Message();
         m.conversationId = conversationId;
         m.senderType = senderType;
@@ -48,6 +55,7 @@ public class Message {
         m.senderName = senderName;
         m.body = body;
         m.clientMessageId = clientMessageId;
+        m.options = options;
         m.createdAt = now;
         return m;
     }

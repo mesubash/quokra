@@ -8,6 +8,11 @@ spring:
   flyway:
     locations: classpath:db/migration
 
+quokra:
+  bots:
+    # Folder with extra bot files; files here replace built-in ones with the same name.
+    dir: ${QUOKRA_BOTS_DIR:}
+
 management:
   endpoints:
     web:

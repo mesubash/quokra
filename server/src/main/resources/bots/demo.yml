@@ -1,0 +1,27 @@
+greeting: "Hi! How can we help? Pick a topic below or type your question."
+
+menu:
+  - id: pricing
+    title: "Pricing"
+    keywords: [price, prices, pricing, cost, plan, plans]
+    answer: "Our plans start at $10 a month. You can compare them on our pricing page."
+  - id: account
+    title: "Account help"
+    keywords: [password, login, sign in, account, email]
+    answer: "To reset your password, use 'Forgot password' on the sign-in page. We'll email you a link."
+  - id: hours
+    title: "Opening hours"
+    keywords: [hours, open, opening, available]
+    answer: "Our team is available Monday to Friday, 9:00 to 17:00."
+
+human:
+  title: "Talk to a person"
+  keywords: [agent, human, person, someone, representative]
+
+urgent:
+  keywords: [urgent, outage, down, payment failed]
+  message: "Sorry about this. We're connecting you to our team right away."
+
+fallback: "Sorry, I didn't get that. Pick a topic below or choose 'Talk to a person'."
+max_fallbacks: 2
+handoff_message: "Connecting you with our team. Someone will reply shortly."

@@ -114,7 +114,7 @@ Events are published **after commit**, so clients never see data that was rolled
 | `StateMachine` | Static table of allowed transitions; `transition(conversation, target, actor, reason)` validates, updates, appends an event, or throws `InvalidTransition` |
 | `ConversationService` | All writes to conversations and messages; the only caller of `StateMachine` |
 | `BotEngine` | Pure function `(BotConfig, Conversation, Message) → BotDecision`; no DB or network access, easy to unit test |
-| `BotConfigRegistry` | Loads and validates `bots/*.yaml` at startup; fails fast on invalid config |
+| `BotConfigRegistry` | Loads and validates bot files (`.yml`/`.yaml`) at startup: built-in `bots/` first, then `QUOKRA_BOTS_DIR`; fails fast on invalid config |
 | `SessionTokens` | Signs and verifies chat session tokens |
 | `IdentityTokens` | Verifies host-signed identity tokens with the tenant secret |
 | `EventPublisher` | Maps domain events to STOMP messages |
@@ -179,19 +179,40 @@ Any other combination throws `InvalidTransition` (HTTP 409). `ACCEPT` uses the `
 ## 6. Bot engine
 
 ```text
-decide(config, conversation, message):
-  if matches(config.urgent.keywords):       return Handoff(URGENT, priority URGENT, config.urgent.message)
-  if message.optionId == HUMAN_OPTION or matches(config.human_keywords): return Handoff(CUSTOMER_REQUEST)
-  if message.optionId in config.menu:       return Answer(option.answer, menu)
-  if keywordMatch(config.menu, message):    return Answer(best.answer, menu)
-  if conversation.isFirstCustomerMessage:   return Answer(config.greeting, menu)
-  if conversation.fallback_count + 1 >= config.max_fallbacks: return Handoff(FALLBACK_LIMIT)
-  return Fallback(config.fallback, menu)
+decide(config, text, optionId, fallbackCount):
+  if matches(config.urgent.keywords):        return Handoff(URGENT, config.urgent.message)
+  if optionId == "human" or matches(config.human.keywords): return Handoff(CUSTOMER_REQUEST, config.handoff_message)
+  if optionId is a menu id:                  return Answer(item.answer)
+  if keywordMatch(config.menu, text):        return Answer(best.answer)
+  if fallbackCount + 1 >= config.max_fallbacks: return Handoff(FALLBACK_LIMIT, config.handoff_message)
+  return Fallback(config.fallback)
+```
+
+The greeting is sent when the conversation starts. Answers and fallbacks come with the menu as buttons (`options`); an answer resets the miss count, a fallback adds one.
+
+Bot file (one per tenant, named by the tenant's `bot_config`):
+
+```yaml
+greeting: "Hi! How can we help? Pick a topic below or type your question."
+menu:
+  - id: pricing
+    title: "Pricing"
+    keywords: [price, pricing, cost]
+    answer: "Our plans start at $10 a month."
+human:
+  title: "Talk to a person"          # button with the reserved id "human"
+  keywords: [agent, human, person]
+urgent:
+  keywords: [urgent, outage, payment failed]
+  message: "Sorry about this. We're connecting you to our team right away."
+fallback: "Sorry, I didn't get that. Pick a topic below or choose 'Talk to a person'."
+max_fallbacks: 2
+handoff_message: "Connecting you with our team. Someone will reply shortly."
 ```
 
 - Urgent keywords are checked **first**, so they always win: the conversation gets priority `URGENT` and the tenant's urgent message, even if the text also matches a menu option or asks for a person. Each tenant chooses its own urgent keywords (e.g. "outage", "payment failed", or real emergencies).
-- Keyword matching: lowercase, accents stripped, whole-word match; the option with the most keyword hits wins; ties go to the first option in the file.
-- Any exception inside the engine is caught by `ConversationService` → `Handoff(BOT_ERROR)`.
+- Keyword matching: lowercase, accents and punctuation ignored, whole words or phrases (`payment failed`); the option with the most keyword hits wins; ties go to the first option in the file.
+- A missing bot file or any exception inside the engine is caught by `ConversationService` → `Handoff(BOT_ERROR)`.
 - v3 replaces "no match" with retrieval + LLM; the decision type stays the same.
 
 ---
@@ -335,7 +356,7 @@ create table tenants (
   console_origins    text[] not null default '{}',
   logo_url           text,
   primary_color      text,
-  bot_config         text not null,           -- file name in bots/
+  bot_config         text not null,           -- bot file name, without .yml
   created_at         timestamptz not null
 );
 
@@ -378,7 +399,7 @@ create table messages (
   sender_sub         text,
   sender_name        text,
   body               text not null,
-  options            jsonb,                   -- menu buttons [{ id, title }], added in step 4
+  options            text,                    -- menu buttons as JSON [{ id, title }]
   client_message_id  text,
   created_at         timestamptz not null,
   unique (conversation_id, client_message_id)
@@ -464,9 +485,10 @@ The Docker image is built in two stages: Node builds `web/` → output copied in
 
 | Setting | Where |
 |---|---|
-| `DATABASE_URL`, `DATABASE_USER`, `DATABASE_PASSWORD` | server env |
+| `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` | server env |
 | `OIDC_ISSUER_URI`, `OIDC_AUDIENCE` | server env |
-| `SESSION_SIGNING_KEY`, `TENANT_SECRET_ENCRYPTION_KEY` | server env (secrets) |
+| `QUOKRA_SESSION_SIGNING_KEY` (≥ 32 bytes), `TENANT_SECRET_ENCRYPTION_KEY` (step 9) | server env (secrets) |
+| `QUOKRA_BOTS_DIR` | server env (folder with bot files) |
 | `PUBLIC_BASE_URL` (e.g. `https://chat.<domain>`) | server env |
 
 Migrations run on server start (Flyway). Backups: PostgreSQL dumps with the existing backup routine.

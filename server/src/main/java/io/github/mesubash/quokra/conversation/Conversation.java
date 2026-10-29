@@ -97,6 +97,14 @@ public class Conversation {
         updatedAt = now;
     }
 
+    void countFallback() {
+        fallbackCount++;
+    }
+
+    void resetFallbacks() {
+        fallbackCount = 0;
+    }
+
     void touch(Instant now) {
         lastMessageAt = now;
         updatedAt = now;

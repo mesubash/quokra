@@ -1,5 +1,6 @@
 package io.github.mesubash.quokra.widget;
 
+import io.github.mesubash.quokra.bot.BotConfig.Option;
 import io.github.mesubash.quokra.common.ApiException;
 import io.github.mesubash.quokra.conversation.Conversation;
 import io.github.mesubash.quokra.conversation.ConversationService;
@@ -9,7 +10,6 @@ import io.github.mesubash.quokra.conversation.Message;
 import io.github.mesubash.quokra.conversation.Status;
 import io.github.mesubash.quokra.session.SessionTokens.Session;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
 import java.util.List;
@@ -46,9 +46,9 @@ public class WidgetConversationController {
     }
 
     public record MessageView(UUID id, SenderType senderType, String senderName, String body,
-                              String clientMessageId, Instant createdAt) {
+                              List<Option> options, String clientMessageId, Instant createdAt) {
         static MessageView of(Message m) {
-            return new MessageView(m.getId(), m.getSenderType(), m.getSenderName(), m.getBody(),
+            return new MessageView(m.getId(), m.getSenderType(), m.getSenderName(), m.getBody(), m.getOptions(),
                 m.getClientMessageId(), m.getCreatedAt());
         }
     }
@@ -59,7 +59,7 @@ public class WidgetConversationController {
 
     public record MessagePage(List<MessageView> items, UUID nextCursor) {}
 
-    public record SendRequest(@Size(max = 64) String clientMessageId, @NotBlank String body) {}
+    public record SendRequest(@Size(max = 64) String clientMessageId, String body, @Size(max = 64) String optionId) {}
 
     public record SendResponse(MessageView message, ConversationView conversation) {}
 
@@ -110,7 +110,7 @@ public class WidgetConversationController {
     @ResponseStatus(HttpStatus.CREATED)
     public SendResponse send(@AuthenticationPrincipal Session session, @Valid @RequestBody SendRequest request) {
         UUID id = openConversation(session).getId();
-        Message message = service.addCustomerMessage(id, request.clientMessageId(), request.body());
+        Message message = service.addCustomerMessage(id, request.clientMessageId(), request.body(), request.optionId());
         return new SendResponse(MessageView.of(message), ConversationView.of(service.get(id)));
     }
 

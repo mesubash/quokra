@@ -53,12 +53,12 @@ v1 validates agent tokens from an OIDC provider. For local work, the `dev` Sprin
 
 | Variable | Used by | Local default |
 |---|---|---|
-| `DATABASE_URL` | server | `jdbc:postgresql://localhost:5432/support` |
-| `DATABASE_USER` / `DATABASE_PASSWORD` | server | `support` / `support` |
-| `OIDC_ISSUER_URI`, `OIDC_AUDIENCE` | server | unset with the `dev` profile |
-| `SESSION_SIGNING_KEY` | server | dev value in `application-dev.yml` |
-| `TENANT_SECRET_ENCRYPTION_KEY` | server | dev value in `application-dev.yml` |
-| `PUBLIC_BASE_URL` | server | `http://localhost:8080` |
+| `SPRING_DATASOURCE_URL` / `_USERNAME` / `_PASSWORD` | server | not needed: Postgres starts from `compose.yaml` |
+| `QUOKRA_SESSION_SIGNING_KEY` | server | unset: a random key is used (sessions reset on restart) |
+| `QUOKRA_BOTS_DIR` | server | unset: only the built-in `demo` bot |
+| `OIDC_ISSUER_URI`, `OIDC_AUDIENCE` | server | step 7 |
+| `TENANT_SECRET_ENCRYPTION_KEY` | server | step 9 |
+| `PUBLIC_BASE_URL` | server | step 6 |
 
 Real secrets never go in the repo; use `.env` files (git-ignored) or the deployment's secret store.
 

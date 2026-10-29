@@ -1,0 +1,23 @@
+greeting: "Hello from the test bot."
+
+menu:
+  - id: pricing
+    title: "Pricing"
+    keywords: [price, cost]
+    answer: "Pricing answer."
+  - id: account
+    title: "Account help"
+    keywords: [password, sign in]
+    answer: "Account answer."
+
+human:
+  title: "Talk to a person"
+  keywords: [agent, human]
+
+urgent:
+  keywords: [urgent, payment failed]
+  message: "Urgent message."
+
+fallback: "Fallback message."
+max_fallbacks: 2
+handoff_message: "Handoff message."
