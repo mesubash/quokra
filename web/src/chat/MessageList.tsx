@@ -12,6 +12,9 @@ interface Props {
   typing?: boolean;
   pending?: PendingMessage[];
   onRetry?: (clientMessageId: string) => void;
+  // Whose messages go on the right: the customer in the chat panel, the agent in the console.
+  mine?: Message["senderType"];
+  customerName?: string;
 }
 
 interface Group {
@@ -53,11 +56,13 @@ export function MessageList({
   typing = false,
   pending = [],
   onRetry,
+  mine = "CUSTOMER",
+  customerName = "Customer",
 }: Props) {
   const end = useRef<HTMLDivElement>(null);
   const last = messages[messages.length - 1];
   // "Sent" stays under the customer's latest message until someone replies.
-  const sentId = pending.length === 0 && last?.senderType === "CUSTOMER" ? last.id : null;
+  const sentId = pending.length === 0 && last?.senderType === mine ? last.id : null;
 
   useEffect(() => {
     end.current?.scrollIntoView?.({ block: "end", behavior: "smooth" });
@@ -73,17 +78,21 @@ export function MessageList({
             </p>
           );
         }
-        const mine = group.sender === "CUSTOMER";
-        const name = group.sender === "AGENT" ? group.name : botName;
+        const isMine = group.sender === mine;
+        const name = group.sender === "BOT" ? botName : group.sender === "CUSTOMER" ? customerName : group.name;
         return (
-          <div key={group.key} className={`group ${mine ? "group-mine" : "group-theirs"}`}>
-            {!mine && (
+          <div key={group.key} className={`group ${isMine ? "group-mine" : "group-theirs"}`}>
+            {!isMine && (
               <div className="group-avatar">
-                {group.sender === "BOT" ? <RobotAvatar size={32} /> : <span className="avatar avatar-agent">{initials(group.name)}</span>}
+                {group.sender === "BOT" ? (
+                  <RobotAvatar size={32} />
+                ) : (
+                  <span className={`avatar avatar-${group.sender.toLowerCase()}`}>{initials(name)}</span>
+                )}
               </div>
             )}
             <div className="group-body">
-              {!mine && <span className="sender">{name}</span>}
+              {!isMine && <span className="sender">{name}</span>}
               {group.messages.map((m) => (
                 // Rendered as text, never as HTML.
                 <p key={m.id} className="bubble" title={time(m.createdAt)}>

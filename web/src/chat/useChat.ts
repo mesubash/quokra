@@ -54,7 +54,7 @@ export function useChat(token: string | null, onUnauthorized?: () => void) {
         stop = connectConversation(token, conversation.id, {
           onEvent: (event) => {
             if (event.type === "message.created") addMessages([event.data]);
-            else setState((s) => ({ ...s, conversation: event.data }));
+            else if (event.type === "conversation.updated") setState((s) => ({ ...s, conversation: event.data }));
           },
           onConnect: () => {
             setState((s) => ({ ...s, online: true }));

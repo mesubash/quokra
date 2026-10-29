@@ -48,9 +48,9 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init: RequestInit & { token?: string } = {}): Promise<T> {
-  const { token, headers, ...rest } = init;
-  const res = await fetch(`/api/v1${path}`, {
+async function request<T>(path: string, init: RequestInit & { token?: string; base?: string } = {}): Promise<T> {
+  const { token, headers, base = "/api/v1", ...rest } = init;
+  const res = await fetch(`${base}${path}`, {
     ...rest,
     headers: {
       "Content-Type": "application/json",
@@ -86,4 +86,89 @@ export const widgetApi = {
       token,
       body: JSON.stringify(message),
     }),
+};
+
+// ---- Agent console ----
+
+export type Priority = "NORMAL" | "HIGH" | "URGENT";
+export type HandoffReason = "CUSTOMER_REQUEST" | "FALLBACK_LIMIT" | "URGENT" | "BOT_ERROR";
+
+export interface Person {
+  sub: string;
+  name: string;
+}
+
+export interface ConversationSummary {
+  id: string;
+  tenantSlug: string;
+  status: Status;
+  priority: Priority;
+  handoffReason: HandoffReason | null;
+  customerName: string | null;
+  lastMessagePreview: string;
+  lastMessageAt: string;
+  waitingSince: string | null;
+  assignee: Person | null;
+}
+
+export interface AgentConversation {
+  id: string;
+  tenantSlug: string;
+  status: Status;
+  priority: Priority;
+  handoffReason: HandoffReason | null;
+  customer: { sub: string; name: string | null; email: string | null } | null;
+  assignee: Person | null;
+  createdAt: string;
+  lastMessageAt: string;
+  waitingSince: string | null;
+  resolvedAt: string | null;
+}
+
+export interface ConversationEvent {
+  id: string;
+  type: string;
+  actorType: SenderType;
+  actorName: string | null;
+  reason: string | null;
+  createdAt: string;
+}
+
+export interface Me {
+  sub: string;
+  name: string;
+  tenants: string[];
+}
+
+export interface TenantItem {
+  id: string;
+  slug: string;
+  displayName: string;
+}
+
+export function agentApi(token: string) {
+  const get = <T,>(path: string) => request<T>(`/agent${path}`, { token });
+  const post = <T,>(path: string, body?: unknown) =>
+    request<T>(`/agent${path}`, { method: "POST", token, body: body === undefined ? undefined : JSON.stringify(body) });
+  return {
+    me: () => get<Me>("/me"),
+    tenants: () => get<{ items: TenantItem[] }>("/tenants"),
+    list: (status: "WAITING" | "HUMAN" | "RESOLVED", mine = false) =>
+      get<{ items: ConversationSummary[] }>(`/conversations?status=${status}${mine ? "&assignee=me" : ""}`),
+    detail: (id: string) =>
+      get<{ conversation: AgentConversation; messages: Message[]; events: ConversationEvent[] }>(`/conversations/${id}`),
+    accept: (id: string) => post<{ conversation: AgentConversation }>(`/conversations/${id}/accept`),
+    reply: (id: string, clientMessageId: string, body: string) =>
+      post<{ message: Message }>(`/conversations/${id}/messages`, { clientMessageId, body }),
+    resolve: (id: string) => post<{ conversation: AgentConversation }>(`/conversations/${id}/resolve`),
+    returnToBot: (id: string) => post<{ conversation: AgentConversation }>(`/conversations/${id}/return-to-bot`),
+  };
+}
+
+export type AgentApi = ReturnType<typeof agentApi>;
+
+// Local development only: the server signs agent tokens itself (dev profile).
+export const devApi = {
+  agentToken: (sub: string, name: string) =>
+    request<{ accessToken: string }>("/dev/agent-token", { method: "POST", base: "", body: JSON.stringify({ sub, name }) }),
 };
