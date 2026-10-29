@@ -11,6 +11,7 @@ import io.github.mesubash.quokra.conversation.Enums.EventType;
 import io.github.mesubash.quokra.conversation.Enums.HandoffReason;
 import io.github.mesubash.quokra.conversation.Enums.Priority;
 import io.github.mesubash.quokra.conversation.Enums.SenderType;
+import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -41,6 +42,9 @@ class ConversationServiceTests {
     @Autowired
     JdbcTemplate jdbc;
 
+    @Autowired
+    EntityManager entityManager;
+
     UUID visitor = UUID.randomUUID();
 
     @BeforeEach
@@ -52,7 +56,14 @@ class ConversationServiceTests {
             """, TENANT, NO_BOT_TENANT);
     }
 
+    // A guest who already left their details, so handoffs go straight to the queue.
     UUID start() {
+        UUID id = startAsGuest();
+        service.addContact(id, "Pat", "pat@example.test");
+        return id;
+    }
+
+    UUID startAsGuest() {
         return service.startOrResume(TENANT, visitor).conversation().getId();
     }
 
@@ -208,6 +219,7 @@ class ConversationServiceTests {
     @Test
     void missingBotConfigHandsOffInsteadOfFailing() {
         UUID id = service.startOrResume(NO_BOT_TENANT, visitor).conversation().getId();
+        service.addContact(id, "Pat", "pat@example.test");
 
         service.addCustomerMessage(id, "c-1", "hello", null);
 
@@ -237,7 +249,7 @@ class ConversationServiceTests {
         assertThat(c.getPriority()).isEqualTo(Priority.NORMAL);
         assertThat(history(id).getLast().getBody()).isEqualTo("Handoff message.");
         assertThat(service.events(id)).extracting(ConversationEvent::getType)
-            .containsExactly(EventType.CREATED, EventType.HANDOFF);
+            .containsExactly(EventType.CREATED, EventType.CONTACT_ADDED, EventType.HANDOFF);
     }
 
     @Test
@@ -278,5 +290,83 @@ class ConversationServiceTests {
 
         assertThatThrownBy(() -> conversations.saveAndFlush(Conversation.start(TENANT, visitor, Instant.now())))
             .isInstanceOf(DataIntegrityViolationException.class);
+    }
+    @Test
+    void guestLeavesTheirDetailsBeforeJoiningTheQueue() {
+        UUID id = startAsGuest();
+
+        service.addCustomerMessage(id, "c-1", null, BotConfig.HUMAN_OPTION);
+
+        Conversation c = service.get(id);
+        assertThat(c.getStatus()).isEqualTo(Status.BOT);
+        assertThat(c.getPendingHandoff()).isEqualTo(HandoffReason.CUSTOMER_REQUEST);
+        assertThat(history(id).getLast().getBody()).isEqualTo(ConversationService.ASK_EMAIL);
+
+        service.addContact(id, " Pat Doe ", "Pat@Example.test");
+
+        c = service.get(id);
+        assertThat(c.getStatus()).isEqualTo(Status.WAITING);
+        assertThat(c.getHandoffReason()).isEqualTo(HandoffReason.CUSTOMER_REQUEST);
+        assertThat(c.getPendingHandoff()).isNull();
+        assertThat(c.getCustomerName()).isEqualTo("Pat Doe");
+        assertThat(c.getCustomerEmail()).isEqualTo("Pat@Example.test");
+    }
+
+    @Test
+    void botAsksAgainForAnEmailInsteadOfAnsweringQuestions() {
+        UUID id = startAsGuest();
+        service.handoff(id, HandoffReason.CUSTOMER_REQUEST, SenderType.CUSTOMER);
+
+        service.addCustomerMessage(id, "c-1", "price", null);
+        service.handoff(id, HandoffReason.CUSTOMER_REQUEST, SenderType.CUSTOMER);
+
+        assertThat(history(id).getLast().getBody()).isEqualTo(ConversationService.BAD_EMAIL);
+        assertThat(service.get(id).getStatus()).isEqualTo(Status.BOT);
+    }
+
+    @Test
+    void guestGivesEmailThenNameInTheChat() {
+        UUID id = startAsGuest();
+        service.handoff(id, HandoffReason.CUSTOMER_REQUEST, SenderType.CUSTOMER);
+
+        service.addCustomerMessage(id, "c-1", "pat@example.test", null);
+        assertThat(history(id).getLast().getBody()).isEqualTo(ConversationService.ASK_NAME);
+        assertThat(history(id).getLast().getOptions()).extracting(BotConfig.Option::id).containsExactly("skip");
+
+        service.addCustomerMessage(id, "c-2", "Pat", null);
+
+        Conversation c = service.get(id);
+        assertThat(c.getStatus()).isEqualTo(Status.WAITING);
+        assertThat(c.getCustomerName()).isEqualTo("Pat");
+        assertThat(c.getCustomerEmail()).isEqualTo("pat@example.test");
+        assertThat(c.getContactId()).isNotNull();
+    }
+
+    @Test
+    void sameEmailMeansTheSameContact() {
+        UUID first = startAsGuest();
+        service.addContact(first, "Pat", "pat@example.test");
+        visitor = UUID.randomUUID();
+        UUID second = startAsGuest();
+
+        service.addContact(second, "Patricia", "PAT@example.test");
+
+        assertThat(service.get(second).getContactId()).isEqualTo(service.get(first).getContactId());
+        assertThat(service.get(second).getCustomerName()).isEqualTo("Patricia");
+    }
+
+    @Test
+    void blockedContactCantChat() {
+        UUID id = start();
+        entityManager.flush();
+        jdbc.update("update contacts set blocked_at = now()");
+        entityManager.clear();
+
+        assertThatThrownBy(() -> service.addCustomerMessage(id, "c-1", "hello", null))
+            .isInstanceOfSatisfying(ApiException.class, e -> assertThat(e.code()).isEqualTo("CONTACT_BLOCKED"));
+        visitor = UUID.randomUUID();
+        UUID fresh = startAsGuest();
+        assertThatThrownBy(() -> service.addContact(fresh, "Pat", "pat@example.test"))
+            .isInstanceOfSatisfying(ApiException.class, e -> assertThat(e.code()).isEqualTo("CONTACT_BLOCKED"));
     }
 }

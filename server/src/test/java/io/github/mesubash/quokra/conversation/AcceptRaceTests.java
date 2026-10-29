@@ -36,6 +36,7 @@ class AcceptRaceTests {
             values (?, ?, 'Race', ?, 'test')
             """, tenant, "race-" + tenant, "pk_race_" + tenant);
         UUID id = service.startOrResume(tenant, UUID.randomUUID()).conversation().getId();
+        service.addContact(id, "Pat", "pat@example.test");
         service.handoff(id, HandoffReason.CUSTOMER_REQUEST, SenderType.CUSTOMER);
 
         assertThatThrownBy(() -> transactions.executeWithoutResult(tx -> {

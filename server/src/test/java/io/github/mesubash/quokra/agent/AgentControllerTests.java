@@ -65,6 +65,7 @@ class AgentControllerTests {
 
     UUID waiting(UUID tenantId, HandoffReason reason) {
         UUID id = service.startOrResume(tenantId, UUID.randomUUID()).conversation().getId();
+        service.addContact(id, "Pat", "pat-" + id + "@example.test");
         service.handoff(id, reason, SenderType.CUSTOMER);
         return id;
     }
@@ -224,8 +225,8 @@ class AgentControllerTests {
         assertThat(result).hasStatusOk();
         assertThat(result).bodyJson().extractingPath("$.conversation.handoffReason").isEqualTo("URGENT");
         assertThat(result).bodyJson().extractingPath("$.events[*].type")
-            .isEqualTo(List.of("CREATED", "HANDOFF", "ACCEPTED"));
-        assertThat(result).bodyJson().extractingPath("$.events[2].actorName").isEqualTo("Alice");
+            .isEqualTo(List.of("CREATED", "CONTACT_ADDED", "HANDOFF", "ACCEPTED"));
+        assertThat(result).bodyJson().extractingPath("$.events[3].actorName").isEqualTo("Alice");
     }
 
     @Test

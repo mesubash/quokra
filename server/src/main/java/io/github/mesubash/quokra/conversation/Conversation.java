@@ -38,6 +38,12 @@ public class Conversation {
     private String customerName;
     private String customerEmail;
 
+    private UUID contactId;
+
+    // The customer asked for a person; we're waiting for their contact details first.
+    @Enumerated(EnumType.STRING)
+    private HandoffReason pendingHandoff;
+
     private String channel;
 
     private String assigneeSub;
@@ -79,6 +85,7 @@ public class Conversation {
 
     void moveTo(Status next, Instant now) {
         status = next;
+        pendingHandoff = null;
         updatedAt = now;
         resolvedAt = next == Status.RESOLVED ? now : null;
         waitingSince = next == Status.WAITING ? now : null;
@@ -113,6 +120,29 @@ public class Conversation {
         fallbackCount = 0;
         assigneeSub = null;
         assigneeName = null;
+        updatedAt = now;
+    }
+
+    // Guests leave their details before talking to a person; identified customers already have them.
+    boolean needsContact() {
+        return contactId == null && customerSub == null;
+    }
+
+    void awaitContact(HandoffReason reason, Instant now) {
+        pendingHandoff = reason;
+        updatedAt = now;
+    }
+
+    // Kept until the customer has also answered the name question.
+    void rememberEmail(String email, Instant now) {
+        customerEmail = email;
+        updatedAt = now;
+    }
+
+    void linkContact(UUID contact, String name, String email, Instant now) {
+        contactId = contact;
+        customerName = name;
+        customerEmail = email;
         updatedAt = now;
     }
 

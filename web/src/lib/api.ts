@@ -33,6 +33,8 @@ export interface Conversation {
   id: string;
   status: Status;
   assignee: { name: string } | null;
+  // The bot is asking for the customer's email or name before connecting them to the team.
+  asking: "EMAIL" | "NAME" | null;
   createdAt: string;
   lastMessageAt: string;
   resolvedAt: string | null;
@@ -117,7 +119,7 @@ export interface AgentConversation {
   status: Status;
   priority: Priority;
   handoffReason: HandoffReason | null;
-  customer: { sub: string; name: string | null; email: string | null } | null;
+  customer: { sub: string | null; contactId: string | null; name: string | null; email: string | null } | null;
   assignee: Person | null;
   createdAt: string;
   lastMessageAt: string;

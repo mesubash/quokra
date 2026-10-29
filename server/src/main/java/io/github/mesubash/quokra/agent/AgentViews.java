@@ -18,7 +18,7 @@ final class AgentViews {
 
     record Person(String sub, String name) {}
 
-    record Customer(String sub, String name, String email) {}
+    record Customer(String sub, UUID contactId, String name, String email) {}
 
     record ConversationView(UUID id, String tenantSlug, Status status, Priority priority, HandoffReason handoffReason,
                             Customer customer, Person assignee, Instant createdAt, Instant lastMessageAt,
@@ -54,7 +54,10 @@ final class AgentViews {
     }
 
     private static Customer customerOf(Conversation c) {
-        return c.getCustomerSub() == null ? null : new Customer(c.getCustomerSub(), c.getCustomerName(), c.getCustomerEmail());
+        if (c.getCustomerSub() == null && c.getContactId() == null) {
+            return null;
+        }
+        return new Customer(c.getCustomerSub(), c.getContactId(), c.getCustomerName(), c.getCustomerEmail());
     }
 
     private static Person assigneeOf(Conversation c) {

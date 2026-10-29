@@ -11,9 +11,11 @@ interface Props {
   placeholder?: string;
   // Focus the input whenever this becomes true (e.g. the panel was just opened).
   focus?: boolean;
+  // What the bot just asked for, so phones show the right keyboard and browsers can autofill.
+  asking?: "EMAIL" | "NAME" | null;
 }
 
-export function Composer({ onSend, disabled, placeholder = "Type your message…", focus = false }: Props) {
+export function Composer({ onSend, disabled, placeholder = "Type your message…", focus = false, asking = null }: Props) {
   const input = useRef<HTMLTextAreaElement>(null);
   const [text, setText] = useState("");
 
@@ -62,7 +64,9 @@ export function Composer({ onSend, disabled, placeholder = "Type your message…
           onChange={(e) => setText(e.target.value)}
           onKeyDown={onKeyDown}
           placeholder={placeholder}
-          aria-label="Message"
+          aria-label={asking === "EMAIL" ? "Your email" : asking === "NAME" ? "Your name" : "Message"}
+          inputMode={asking === "EMAIL" ? "email" : undefined}
+          autoComplete={asking === "EMAIL" ? "email" : asking === "NAME" ? "name" : "off"}
           maxLength={MAX_LENGTH}
           disabled={disabled}
         />

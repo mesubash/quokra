@@ -134,6 +134,10 @@ No request body.
 
 Safe to call again: if the conversation is already `WAITING` or `HUMAN`, it is returned unchanged.
 
+A guest who hasn't left their details yet isn't queued straight away. The conversation stays `BOT`, and the bot asks in the chat: first for an email (it asks again if the reply doesn't look like one), then for a name, with a **Skip** option (`optionId: "skip"`). `conversation.asking` is `"EMAIL"` or `"NAME"` meanwhile, so the widget can adjust the input. The answers are normal messages (`3.7`). Once both are in, the conversation is linked to the tenant's contact with that email (matched without case, created the first time) and joins the queue. The same happens when the bot hands off by itself (urgent keyword, too many misses). Logged-in customers (identify) skip this.
+
+The email isn't verified, so it only groups conversations for agents: a customer never sees other conversations through it. A blocked contact gets `403 CONTACT_BLOCKED`.
+
 ---
 
 ## 4. Agent endpoints
@@ -249,7 +253,8 @@ interface Conversation {
   priority: Priority;          // agent view only
   handoffReason: HandoffReason | null;  // agent view only
   assignee: { name: string } | null;
-  customer: { sub: string | null; name: string | null; email: string | null } | null; // agent view only
+  asking: "EMAIL" | "NAME" | null; // customer view only: what the bot is asking for
+  customer: { sub: string | null; contactId: string | null; name: string | null; email: string | null } | null; // agent view only
   createdAt: string;
   lastMessageAt: string;
   resolvedAt: string | null;
@@ -382,6 +387,7 @@ Envelope:
 | 401 | `UNAUTHORIZED` | Missing, invalid or expired token |
 | 401 | `IDENTITY_TOKEN_INVALID` / `IDENTITY_TOKEN_EXPIRED` | Identify failed |
 | 403 | `FORBIDDEN` | Valid token, but no access (role, tenant membership, other customer's conversation) |
+| 403 | `CONTACT_BLOCKED` | The customer's contact was blocked by an agent |
 | 403 | `NOT_ASSIGNEE` | Agent action on a conversation assigned to someone else |
 | 403 | `ORIGIN_NOT_ALLOWED` | Request origin not allowed for the tenant |
 | 404 | `TENANT_NOT_FOUND` / `CONVERSATION_NOT_FOUND` | Unknown id or key |

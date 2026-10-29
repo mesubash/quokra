@@ -202,7 +202,13 @@ class RealtimeTests {
     private String startConversation(String token) {
         String body = http.post().uri("/conversation").header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
             .retrieve().body(String.class);
-        return JsonPath.read(body, "$.conversation.id");
+        String id = JsonPath.read(body, "$.conversation.id");
+        // A known contact, so handoffs go straight to the queue.
+        UUID contact = UUID.randomUUID();
+        jdbc.update("insert into contacts (id, tenant_id, email, created_at, updated_at) values (?, ?, ?, now(), now())",
+            contact, tenantId, contact + "@example.test");
+        jdbc.update("update conversations set contact_id = ? where id = ?::uuid", contact, id);
+        return id;
     }
 
     private void send(String token, String text) {

@@ -4,6 +4,8 @@ import io.github.mesubash.quokra.bot.BotConfig;
 import io.github.mesubash.quokra.bot.BotConfigRegistry;
 import io.github.mesubash.quokra.bot.BotEngine;
 import io.github.mesubash.quokra.common.ApiException;
+import io.github.mesubash.quokra.contact.Contact;
+import io.github.mesubash.quokra.contact.ContactRepository;
 import io.github.mesubash.quokra.conversation.Enums.EventType;
 import io.github.mesubash.quokra.conversation.Enums.HandoffReason;
 import io.github.mesubash.quokra.conversation.Enums.SenderType;
@@ -16,6 +18,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Limit;
@@ -33,6 +36,16 @@ public class ConversationService {
     static final String HANDOFF_MESSAGE = "Connecting you with our team. Someone will reply shortly.";
     static final String RESOLVED_MESSAGE = "This conversation is closed. Write again any time.";
     static final String BACK_TO_BOT_MESSAGE = "Anything else I can help with?";
+    // Before a guest reaches the team, the bot asks for their email, then their name (which they can skip).
+    static final String ASK_EMAIL = "Before I connect you, what's your email? Our team will use it to follow up "
+        + "if you step away.";
+    static final String BAD_EMAIL = "That doesn't look like an email address. Could you check it?";
+    static final String ASK_NAME = "Thanks! And what's your name?";
+    static final String SKIP_OPTION = "skip";
+    static final List<BotConfig.Option> SKIP = List.of(new BotConfig.Option(SKIP_OPTION, "Skip"));
+    static final int MAX_NAME_LENGTH = 100;
+    static final int MAX_EMAIL_LENGTH = 254;
+    private static final Pattern EMAIL = Pattern.compile("[^\\s@]+@[^\\s@]+\\.[^\\s@]+");
 
     public record Started(Conversation conversation, boolean created) {}
 
@@ -40,17 +53,20 @@ public class ConversationService {
     private final MessageRepository messages;
     private final ConversationEventRepository events;
     private final TenantRepository tenants;
+    private final ContactRepository contacts;
     private final BotConfigRegistry bots;
     private final ApplicationEventPublisher publisher;
     private final Clock clock;
 
     public ConversationService(ConversationRepository conversations, MessageRepository messages,
                                ConversationEventRepository events, TenantRepository tenants,
-                               BotConfigRegistry bots, ApplicationEventPublisher publisher, Clock clock) {
+                               ContactRepository contacts, BotConfigRegistry bots,
+                               ApplicationEventPublisher publisher, Clock clock) {
         this.conversations = conversations;
         this.messages = messages;
         this.events = events;
         this.tenants = tenants;
+        this.contacts = contacts;
         this.bots = bots;
         this.publisher = publisher;
         this.clock = clock;
@@ -85,7 +101,10 @@ public class ConversationService {
             }
         }
 
-        String text = optionId != null ? optionTitle(conversation.getTenantId(), optionId) : checkBody(body);
+        requireNotBlocked(conversation);
+        boolean collecting = conversation.getPendingHandoff() != null;
+        String text = collecting && SKIP_OPTION.equals(optionId) ? SKIP.getFirst().title()
+            : optionId != null ? optionTitle(conversation.getTenantId(), optionId) : checkBody(body);
 
         Instant now = clock.instant();
         if (conversation.getStatus() == Status.RESOLVED) {
@@ -98,7 +117,9 @@ public class ConversationService {
         Message message = save(
             Message.create(conversationId, SenderType.CUSTOMER, null, null, text, clientMessageId, null, now));
 
-        if (conversation.getStatus() == Status.BOT) {
+        if (collecting) {
+            collectContact(conversation, text, optionId, now);
+        } else if (conversation.getStatus() == Status.BOT) {
             botReply(conversation, text, optionId, now);
         }
         return message;
@@ -107,9 +128,65 @@ public class ConversationService {
     @Transactional
     public Conversation handoff(UUID conversationId, HandoffReason reason, SenderType actor) {
         Conversation conversation = get(conversationId);
-        String text = botFor(conversation.getTenantId()).map(BotConfig::handoffMessage).orElse(HANDOFF_MESSAGE);
-        handOff(conversation, reason, actor, text, clock.instant());
+        requireNotBlocked(conversation);
+        handOff(conversation, reason, actor, handoffText(conversation), clock.instant());
         return conversation;
+    }
+
+    // The customer's name and email. Links the conversation to the contact with that email (creating it
+    // the first time), then carries on with a handoff that was waiting for these details.
+    // ponytail: the email isn't verified, so it only links conversations for agents; customers never see
+    // another conversation through it.
+    @Transactional
+    public Conversation addContact(UUID conversationId, String name, String email) {
+        Conversation conversation = get(conversationId);
+        requireNotBlocked(conversation);
+        linkContact(conversation, name, email, clock.instant());
+        return conversation;
+    }
+
+    private void linkContact(Conversation conversation, String name, String email, Instant now) {
+        String cleanName = name == null || name.isBlank() ? null : name.strip();
+        String cleanEmail = email.strip();
+        Contact contact = contacts.findByEmail(conversation.getTenantId(), cleanEmail)
+            .orElseGet(() -> contacts.save(Contact.create(conversation.getTenantId(), cleanName, cleanEmail, now)));
+        if (contact.isBlocked()) {
+            throw blocked();
+        }
+        contact.rename(cleanName, now);
+        conversation.linkContact(contact.getId(), contact.getName(), contact.getEmail(), now);
+        events.save(ConversationEvent.of(conversation.getId(), EventType.CONTACT_ADDED, SenderType.CUSTOMER, null, null,
+            now));
+
+        HandoffReason pending = conversation.getPendingHandoff();
+        if (pending != null) {
+            handOff(conversation, pending, SenderType.CUSTOMER, handoffText(conversation), now);
+        } else {
+            publishUpdate(conversation);
+        }
+    }
+
+    // The customer's reply while the bot is asking for their details: first the email, then the name.
+    private void collectContact(Conversation conversation, String text, String optionId, Instant now) {
+        if (conversation.getCustomerEmail() == null) {
+            String email = text.strip();
+            if (email.length() > MAX_EMAIL_LENGTH || !EMAIL.matcher(email).matches()) {
+                botMessage(conversation, BAD_EMAIL, null, now);
+                return;
+            }
+            if (contacts.findByEmail(conversation.getTenantId(), email).map(Contact::isBlocked).orElse(false)) {
+                throw blocked();
+            }
+            conversation.rememberEmail(email, now);
+            botMessage(conversation, ASK_NAME, SKIP, now);
+            publishUpdate(conversation);
+            return;
+        }
+        String name = SKIP_OPTION.equals(optionId) ? null : text.strip();
+        if (name != null && name.length() > MAX_NAME_LENGTH) {
+            name = name.substring(0, MAX_NAME_LENGTH);
+        }
+        linkContact(conversation, name, conversation.getCustomerEmail(), now);
     }
 
     // Takes a waiting conversation. If two agents try at once, the second gets a conflict when committing.
@@ -267,6 +344,15 @@ public class ConversationService {
     }
 
     private void handOff(Conversation conversation, HandoffReason reason, SenderType actor, String text, Instant now) {
+        if (conversation.needsContact()) {
+            if (conversation.getPendingHandoff() == null) {
+                conversation.awaitContact(reason, now);
+                conversation.touch(now);
+                botMessage(conversation, ASK_EMAIL, null, now);
+                publishUpdate(conversation);
+            }
+            return;
+        }
         conversation.moveTo(StateMachine.next(conversation.getStatus(), Transition.HANDOFF), now);
         conversation.handOff(reason, now);
         conversation.touch(now);
@@ -284,6 +370,21 @@ public class ConversationService {
     private void publishUpdate(Conversation conversation) {
         publisher.publishEvent(new ConversationUpdated(conversation.getId(), conversation.getTenantId(),
             CustomerConversationView.of(conversation), ConversationSnapshot.of(conversation)));
+    }
+
+    private String handoffText(Conversation conversation) {
+        return botFor(conversation.getTenantId()).map(BotConfig::handoffMessage).orElse(HANDOFF_MESSAGE);
+    }
+
+    private void requireNotBlocked(Conversation conversation) {
+        if (conversation.getContactId() != null
+                && contacts.findById(conversation.getContactId()).map(Contact::isBlocked).orElse(false)) {
+            throw blocked();
+        }
+    }
+
+    private static ApiException blocked() {
+        return new ApiException(HttpStatus.FORBIDDEN, "CONTACT_BLOCKED", "This chat isn't available");
     }
 
     private static void requireAssignee(Conversation conversation, AgentRef agent) {

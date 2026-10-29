@@ -137,6 +137,9 @@ class WidgetConversationControllerTests {
     @Test
     void handoffMovesToWaitingAndHidesInternalFields() {
         post(BASE, null);
+        post(BASE + "/handoff", null);
+        post(BASE + "/messages", "{\"body\":\"pat@example.test\"}");
+        post(BASE + "/messages", "{\"optionId\":\"skip\"}");
 
         MvcTestResult result = post(BASE + "/handoff", null);
 
@@ -175,5 +178,36 @@ class WidgetConversationControllerTests {
         } catch (Exception e) {
             throw new IllegalStateException(e);
         }
+    }
+    @Test
+    void botAsksAGuestForEmailThenNameBeforeConnecting() {
+        post(BASE, null);
+
+        MvcTestResult asked = post(BASE + "/handoff", null);
+        assertThat(asked).bodyJson().extractingPath("$.conversation.status").isEqualTo("BOT");
+        assertThat(asked).bodyJson().extractingPath("$.conversation.asking").isEqualTo("EMAIL");
+
+        MvcTestResult wrong = post(BASE + "/messages", "{\"body\":\"not an email\"}");
+        assertThat(wrong).bodyJson().extractingPath("$.conversation.asking").isEqualTo("EMAIL");
+
+        MvcTestResult email = post(BASE + "/messages", "{\"body\":\" pat@example.test \"}");
+        assertThat(email).bodyJson().extractingPath("$.conversation.asking").isEqualTo("NAME");
+
+        MvcTestResult name = post(BASE + "/messages", "{\"body\":\"Pat\"}");
+        assertThat(name).bodyJson().extractingPath("$.conversation.status").isEqualTo("WAITING");
+        assertThat(name).bodyJson().extractingPath("$.conversation.asking").isNull();
+        assertThat(get(BASE + "/messages")).bodyJson().extractingPath("$.items[*].senderType")
+            .isEqualTo(List.of("BOT", "BOT", "CUSTOMER", "BOT", "CUSTOMER", "BOT", "CUSTOMER", "SYSTEM"));
+    }
+
+    @Test
+    void nameCanBeSkipped() {
+        post(BASE, null);
+        post(BASE + "/handoff", null);
+        post(BASE + "/messages", "{\"body\":\"pat@example.test\"}");
+
+        MvcTestResult skipped = post(BASE + "/messages", "{\"optionId\":\"skip\"}");
+
+        assertThat(skipped).bodyJson().extractingPath("$.conversation.status").isEqualTo("WAITING");
     }
 }

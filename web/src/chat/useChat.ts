@@ -19,6 +19,8 @@ export interface ChatState {
   error: string | null;
 }
 
+const BLOCKED = "This chat isn't available.";
+
 // onUnauthorized: the server rejected the session token; the caller should get a new session.
 export function useChat(token: string | null, onUnauthorized?: () => void) {
   const [state, setState] = useState<ChatState>({
@@ -99,7 +101,11 @@ export function useChat(token: string | null, onUnauthorized?: () => void) {
           pending: s.pending.filter((p) => p.clientMessageId !== item.clientMessageId),
         }));
         return true;
-      } catch {
+      } catch (e) {
+        if (e instanceof ApiError && e.code === "CONTACT_BLOCKED") {
+          setState((s) => ({ ...s, error: BLOCKED }));
+          return false;
+        }
         setState((s) => ({
           ...s,
           pending: s.pending.map((p) => (p.clientMessageId === item.clientMessageId ? { ...p, status: "failed" } : p)),

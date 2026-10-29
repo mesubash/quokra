@@ -23,6 +23,7 @@ export function ChatPanel({ slug }: { slug: string }) {
   const pk = new URLSearchParams(window.location.search).get("pk");
   const [setup, setSetup] = useState<Setup>({ status: "loading" });
   const [visible, setVisible] = useState(!startsHidden);
+  const [attempt, setAttempt] = useState(0);
   const renewed = useRef(false);
 
   // Listen before telling the host we're ready, so its "open" reply isn't missed.
@@ -60,7 +61,7 @@ export function ChatPanel({ slug }: { slug: string }) {
     return () => {
       cancelled = true;
     };
-  }, [pk, slug]);
+  }, [pk, slug, attempt]);
 
   // A stored session can stop working (expired, or the server's key changed): start a new one, once.
   const renewSession = useCallback(() => {
@@ -75,8 +76,15 @@ export function ChatPanel({ slug }: { slug: string }) {
       .catch(() => setSetup({ status: "error", message: "Chat is unavailable right now." }));
   }, [pk]);
 
-  if (setup.status === "loading") return <p className="panel muted">Loading…</p>;
-  if (setup.status === "error") return <p className="panel muted">{setup.message}</p>;
+  if (setup.status === "loading") return <PanelState title="Chat" message="Loading…" />;
+  if (setup.status === "error") {
+    const retry = () => {
+      renewed.current = false;
+      setSetup({ status: "loading" });
+      setAttempt((n) => n + 1);
+    };
+    return <PanelState title="Chat" message={setup.message} onRetry={pk ? retry : undefined} />;
+  }
   return (
     <Chat key={setup.token} tenant={setup.tenant} token={setup.token} visible={visible} onUnauthorized={renewSession} />
   );
@@ -134,14 +142,10 @@ function Chat({ tenant, token, visible, onUnauthorized }: ChatProps) {
           <h1>{tenant.displayName}</h1>
           <HeaderStatus conversation={chat.conversation} online={chat.online} />
         </div>
-        {startsHidden && (
-          <button type="button" className="icon-button" aria-label="Close chat" onClick={() => postToHost({ type: "chat.close" })}>
-            <CloseIcon size={20} />
-          </button>
-        )}
+        <CloseButton />
       </header>
       {chat.error ? (
-        <p className="panel muted">{chat.error}</p>
+        <StateBody message={chat.error} />
       ) : (
         <>
           <MessageList
@@ -158,11 +162,60 @@ function Chat({ tenant, token, visible, onUnauthorized }: ChatProps) {
             onSend={(body) => void send({ body })}
             disabled={!chat.conversation}
             focus={visible}
-            placeholder={status === "HUMAN" && chat.conversation?.assignee ? `Reply to ${chat.conversation.assignee.name}…` : `Reply to ${tenant.displayName}…`}
+            asking={chat.conversation?.asking ?? null}
+            placeholder={placeholder(chat.conversation, tenant)}
           />
         </>
       )}
     </main>
+  );
+}
+
+function placeholder(conversation: Conversation | null, tenant: Tenant) {
+  if (conversation?.asking === "EMAIL") return "Your email address…";
+  if (conversation?.asking === "NAME") return "Your name…";
+  if (conversation?.status === "HUMAN" && conversation.assignee) return `Reply to ${conversation.assignee.name}…`;
+  return `Reply to ${tenant.displayName}…`;
+}
+
+function CloseButton() {
+  if (!startsHidden) return null;
+  return (
+    <button type="button" className="icon-button" aria-label="Close chat" onClick={() => postToHost({ type: "chat.close" })}>
+      <CloseIcon size={20} />
+    </button>
+  );
+}
+
+// Loading and error screens keep the header, so the panel can always be closed.
+function PanelState({ title, message, onRetry }: { title: string; message: string; onRetry?: () => void }) {
+  return (
+    <main className="chat">
+      <header className="panel-header">
+        <span className="header-avatar">
+          <RobotAvatar size={34} />
+        </span>
+        <div className="header-text">
+          <h1>{title}</h1>
+        </div>
+        <CloseButton />
+      </header>
+      <StateBody message={message} onRetry={onRetry} />
+    </main>
+  );
+}
+
+function StateBody({ message, onRetry }: { message: string; onRetry?: () => void }) {
+  return (
+    <div className="panel-state" role="status">
+      <RobotAvatar size={64} />
+      <p>{message}</p>
+      {onRetry && (
+        <button type="button" className="button button-quiet" onClick={onRetry}>
+          Try again
+        </button>
+      )}
+    </div>
   );
 }
 
