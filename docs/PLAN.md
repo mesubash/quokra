@@ -4,7 +4,7 @@ Quokra is an embeddable customer support platform. A FAQ bot answers first; when
 
 | | |
 |---|---|
-| **Status** | Plan v5 |
+| **Status** | Plan v6 |
 | **Last updated** | 2026-10-29 |
 | **Current target** | v1: FAQ bot + human handoff on the web |
 | **Stack** | Spring Boot 4.1 (Java 21) + PostgreSQL · React + TypeScript (Vite), served by the server · one repository, one deployable |
@@ -32,7 +32,7 @@ Customer on any website / app                 Agent in any dashboard
 
 1. A customer opens the chat bubble on a website.
 2. The **bot** greets them with a menu of common questions and answers from a config file.
-3. If the customer asks for a person, the bot fails to understand them twice, it sees an urgent keyword, or it hits an error, the conversation goes to the **queue**.
+3. If the customer asks for a person, the bot fails to understand them twice, it sees an urgent keyword, or it hits an error, the bot asks a guest for their email (and name, optional) in the chat, then the conversation goes to the **queue**.
 4. An **agent** (console embedded in their dashboard) accepts it, sees the full history, and replies live.
 5. The agent resolves the conversation, or returns it to the bot.
 
@@ -60,7 +60,7 @@ AI answers · WhatsApp / Instagram / email · reports · automations · file att
 | Version | Theme | Contents | Rough size |
 |---|---|---|---|
 | **v1** | **FAQ bot + handoff** | Chat panel + console (full-page or bubble), both embeddable via `sdk.js`; FAQ bot; handoff; realtime; tenants by publishable key; guests + identified customers; agents via OIDC | 3–4 weeks |
-| v2 | Daily operations | Standalone console login (OIDC in the browser), internal notes, canned replies, transfer to teammate, business hours + offline message, browser notifications, attachments, FAQ editing in the console, more languages, retention job | 2–3 weeks |
+| v2 | Daily operations | Standalone console login (OIDC in the browser), canned replies, business hours + offline message, browser notifications, attachments, FAQ editing in the console, more languages, retention job | 2–3 weeks |
 | v3 | AI answers | Knowledge documents, search with sources, grounded LLM answers, evaluation set, AI summary on handoff | 3–4 weeks |
 | v4 | Channels + lookups | WhatsApp Cloud API, email; identity-verified lookups through backend-validated tools | 3–4 weeks |
 | v5 | Platform | Tenant self-service, per-tenant identity providers, analytics, CSAT, public release | later |
@@ -77,8 +77,8 @@ A version starts only when the previous one is in real use and there's a clear n
 |---|---|
 | Customer chat | Bubble, inline and popup modes; menu buttons; free text; agent name shown; unread badge; reconnect without losing messages |
 | Bot | Per-tenant YAML: greeting, menu, keywords, urgent rule, fallback, handoff after N misses, any error → handoff |
-| Handoff | States `BOT → WAITING → HUMAN → RESOLVED`, return to bot, reopen on new message |
-| Agent console | Full-page or bubble mode; queue, my chats, resolved list, conversation view with timeline, accept / reply / resolve / return to bot, new-chat sound |
+| Handoff | States `BOT → WAITING → HUMAN → RESOLVED`, return to bot, reopen on new message; guests leave an email (and optional name) in the chat before joining the queue, linked to a per-tenant contact |
+| Agent console | Full-page or bubble mode; paged queue, my chats, resolved list; conversation view with details and activity; accept / reply (replying accepts) / resolve / return to bot / reopen / transfer / block contact; private notes; new-chat sound |
 | Tenants | Slug + publishable key + secret key, allowed origins (widget and console), branding, bot file, agent membership |
 | Identity | Guests; customers identified by a host-signed token; agents by OIDC access token with role `SUPPORT_AGENT` |
 | Realtime | WebSocket (STOMP), authenticated and authorised, catch-up after reconnect |
@@ -86,7 +86,7 @@ A version starts only when the previous one is in real use and there's a clear n
 
 ### Out (later versions)
 
-Standalone console login, notes, canned replies, transfers, business hours, notifications, attachments, AI, other channels, reports.
+Standalone console login, canned replies, business hours, notifications, attachments, AI, other channels, reports.
 
 ---
 
@@ -102,6 +102,7 @@ Standalone console login, notes, canned replies, transfers, business hours, noti
 | 6 | **Chat panel + sdk.js (customer):** bubble, inline, popup, postMessage protocol, branding, unread badge, CSP `frame-ancestors` | Works embedded on the test-host page from another origin |
 | 7 | **Agent API:** OIDC validation, role + tenant membership, lists, accept (optimistic lock), reply, resolve, return to bot | Concurrent-accept test: exactly one winner |
 | 8 | **Console + sdk.js (agent):** `Quokra.console.mount` (full page) and bubble mode, token hand-over via postMessage, queue, chat view, actions | Full flow by hand: FAQ answer → handoff → accept → reply → resolve → return to bot |
+| 8b | **Contacts + agent tools:** email and name asked in the chat before handoff, contacts, block / unblock, reopen, transfer, private notes, paged lists, counts, console redesign, new-chat sound | Done by hand in the browser; tests for each endpoint |
 | 9 | **Identify:** host-signed identity token, guest → identified merge | Tests: valid, expired, wrong tenant, tampered |
 | 10 | **Hardening + docs:** rate limits, CORS, error format, embed guide checked against reality | [Security checklist](ARCHITECTURE.md#13-security) passes |
 
