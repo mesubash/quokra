@@ -1,3 +1,8 @@
 spring:
   flyway:
     locations: classpath:db/migration,classpath:db/dev
+
+quokra:
+  ws:
+    # Includes the Vite dev server.
+    allowed-origins: http://localhost:8080,http://localhost:5173

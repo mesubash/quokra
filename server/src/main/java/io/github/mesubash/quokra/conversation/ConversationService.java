@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Limit;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -37,16 +38,18 @@ public class ConversationService {
     private final ConversationEventRepository events;
     private final TenantRepository tenants;
     private final BotConfigRegistry bots;
+    private final ApplicationEventPublisher publisher;
     private final Clock clock;
 
     public ConversationService(ConversationRepository conversations, MessageRepository messages,
                                ConversationEventRepository events, TenantRepository tenants,
-                               BotConfigRegistry bots, Clock clock) {
+                               BotConfigRegistry bots, ApplicationEventPublisher publisher, Clock clock) {
         this.conversations = conversations;
         this.messages = messages;
         this.events = events;
         this.tenants = tenants;
         this.bots = bots;
+        this.publisher = publisher;
         this.clock = clock;
     }
 
@@ -61,7 +64,7 @@ public class ConversationService {
         events.save(ConversationEvent.of(conversation.getId(), EventType.CREATED, SenderType.CUSTOMER, null, null, now));
 
         Optional<BotConfig> bot = botFor(tenantId);
-        messages.save(Message.create(conversation.getId(), SenderType.BOT, null, null,
+        save(Message.create(conversation.getId(), SenderType.BOT, null, null,
             bot.map(BotConfig::greeting).orElse(GREETING), null, bot.map(BotConfig::options).orElse(null), now));
         return new Started(conversation, true);
     }
@@ -86,9 +89,10 @@ public class ConversationService {
             conversation.moveTo(StateMachine.next(conversation.getStatus(), Transition.REOPEN), now);
             conversation.reopen(now);
             events.save(ConversationEvent.of(conversationId, EventType.REOPENED, SenderType.CUSTOMER, null, null, now));
+            publishUpdate(conversation);
         }
         conversation.touch(now);
-        Message message = messages.save(
+        Message message = save(
             Message.create(conversationId, SenderType.CUSTOMER, null, null, text, clientMessageId, null, now));
 
         if (conversation.getStatus() == Status.BOT) {
@@ -162,7 +166,7 @@ public class ConversationService {
     }
 
     private void botMessage(Conversation conversation, String text, List<BotConfig.Option> options, Instant now) {
-        messages.save(Message.create(conversation.getId(), SenderType.BOT, null, null, text, null, options, now));
+        save(Message.create(conversation.getId(), SenderType.BOT, null, null, text, null, options, now));
     }
 
     private void handOff(Conversation conversation, HandoffReason reason, SenderType actor, String text, Instant now) {
@@ -170,7 +174,18 @@ public class ConversationService {
         conversation.handOff(reason, now);
         conversation.touch(now);
         events.save(ConversationEvent.of(conversation.getId(), EventType.HANDOFF, actor, null, reason.name(), now));
-        messages.save(Message.create(conversation.getId(), SenderType.SYSTEM, null, null, text, null, null, now));
+        save(Message.create(conversation.getId(), SenderType.SYSTEM, null, null, text, null, null, now));
+        publishUpdate(conversation);
+    }
+
+    private Message save(Message message) {
+        Message saved = messages.save(message);
+        publisher.publishEvent(new MessageCreated(saved.getConversationId(), MessageView.of(saved)));
+        return saved;
+    }
+
+    private void publishUpdate(Conversation conversation) {
+        publisher.publishEvent(new ConversationUpdated(conversation.getId(), CustomerConversationView.of(conversation)));
     }
 
     private Optional<BotConfig> botFor(UUID tenantId) {

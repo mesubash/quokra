@@ -1,17 +1,17 @@
 package io.github.mesubash.quokra.widget;
 
-import io.github.mesubash.quokra.bot.BotConfig.Option;
 import io.github.mesubash.quokra.common.ApiException;
 import io.github.mesubash.quokra.conversation.Conversation;
 import io.github.mesubash.quokra.conversation.ConversationService;
+import io.github.mesubash.quokra.conversation.CustomerConversationView;
 import io.github.mesubash.quokra.conversation.Enums.HandoffReason;
 import io.github.mesubash.quokra.conversation.Enums.SenderType;
 import io.github.mesubash.quokra.conversation.Message;
+import io.github.mesubash.quokra.conversation.MessageView;
 import io.github.mesubash.quokra.conversation.Status;
 import io.github.mesubash.quokra.session.SessionTokens.Session;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
-import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -34,34 +34,15 @@ public class WidgetConversationController {
     static final int DEFAULT_LIMIT = 50;
     static final int MAX_LIMIT = 200;
 
-    public record ConversationView(UUID id, Status status, Assignee assignee, Instant createdAt,
-                                   Instant lastMessageAt, Instant resolvedAt) {
-        public record Assignee(String name) {}
+    public record CurrentResponse(CustomerConversationView conversation) {}
 
-        static ConversationView of(Conversation c) {
-            Assignee assignee = c.getAssigneeName() == null ? null : new Assignee(c.getAssigneeName());
-            return new ConversationView(c.getId(), c.getStatus(), assignee, c.getCreatedAt(), c.getLastMessageAt(),
-                c.getResolvedAt());
-        }
-    }
-
-    public record MessageView(UUID id, SenderType senderType, String senderName, String body,
-                              List<Option> options, String clientMessageId, Instant createdAt) {
-        static MessageView of(Message m) {
-            return new MessageView(m.getId(), m.getSenderType(), m.getSenderName(), m.getBody(), m.getOptions(),
-                m.getClientMessageId(), m.getCreatedAt());
-        }
-    }
-
-    public record CurrentResponse(ConversationView conversation) {}
-
-    public record StartResponse(ConversationView conversation, List<MessageView> messages) {}
+    public record StartResponse(CustomerConversationView conversation, List<MessageView> messages) {}
 
     public record MessagePage(List<MessageView> items, UUID nextCursor) {}
 
     public record SendRequest(@Size(max = 64) String clientMessageId, String body, @Size(max = 64) String optionId) {}
 
-    public record SendResponse(MessageView message, ConversationView conversation) {}
+    public record SendResponse(MessageView message, CustomerConversationView conversation) {}
 
     private final ConversationService service;
 
@@ -72,7 +53,7 @@ public class WidgetConversationController {
     @GetMapping
     public CurrentResponse current(@AuthenticationPrincipal Session session) {
         return new CurrentResponse(service.current(session.tenantId(), session.visitorId())
-            .map(ConversationView::of)
+            .map(CustomerConversationView::of)
             .orElse(null));
     }
 
@@ -92,7 +73,7 @@ public class WidgetConversationController {
         List<MessageView> messages = service.messages(conversation.getId(), null, DEFAULT_LIMIT).stream()
             .map(MessageView::of).toList();
         return ResponseEntity.status(created ? HttpStatus.CREATED : HttpStatus.OK)
-            .body(new StartResponse(ConversationView.of(conversation), messages));
+            .body(new StartResponse(CustomerConversationView.of(conversation), messages));
     }
 
     @GetMapping("/messages")
@@ -111,7 +92,7 @@ public class WidgetConversationController {
     public SendResponse send(@AuthenticationPrincipal Session session, @Valid @RequestBody SendRequest request) {
         UUID id = openConversation(session).getId();
         Message message = service.addCustomerMessage(id, request.clientMessageId(), request.body(), request.optionId());
-        return new SendResponse(MessageView.of(message), ConversationView.of(service.get(id)));
+        return new SendResponse(MessageView.of(message), CustomerConversationView.of(service.get(id)));
     }
 
     @PostMapping("/handoff")
@@ -119,9 +100,9 @@ public class WidgetConversationController {
         Conversation conversation = openConversation(session);
         // Already with the team: nothing to do, so a retry is harmless.
         if (conversation.getStatus() == Status.WAITING || conversation.getStatus() == Status.HUMAN) {
-            return new CurrentResponse(ConversationView.of(conversation));
+            return new CurrentResponse(CustomerConversationView.of(conversation));
         }
-        return new CurrentResponse(ConversationView.of(
+        return new CurrentResponse(CustomerConversationView.of(
             service.handoff(conversation.getId(), HandoffReason.CUSTOMER_REQUEST, SenderType.CUSTOMER)));
     }
 

@@ -31,6 +31,8 @@ public class SecurityConfig {
                     writeError(response, HttpServletResponse.SC_FORBIDDEN, "FORBIDDEN", "Not allowed")))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/actuator/health/**").permitAll()
+                // The socket checks its own token on CONNECT.
+                .requestMatchers("/ws", "/ws/**").permitAll()
                 .requestMatchers("/", "/index.html", "/sdk.js", "/assets/**", "/w/**", "/console", "/console/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/widget/tenants/*").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/widget/sessions").permitAll()

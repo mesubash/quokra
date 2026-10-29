@@ -223,7 +223,13 @@ Every event has this envelope:
 | `conversation.waiting` | queue | `ConversationSummary` (new item in the queue) |
 | `typing` | conversation | `{ "senderType": "AGENT" \| "CUSTOMER", "on": true }` |
 
-Typing is sent by clients to `/app/conversations/{id}/typing` with `{ "on": true }`; the server relays it. It is never stored.
+Typing is sent by clients to `/app/conversations/{id}/typing` with `{ "on": true }`; the server relays it. It is never stored. *(Not built yet: until then the server rejects any client `SEND` over the socket.)*
+
+Rules enforced today:
+
+- `CONNECT` needs `Authorization: Bearer <chat session token>`; otherwise the server answers with an `ERROR` frame and closes.
+- A customer session may only subscribe to its own conversation's topic.
+- Events are sent only after the change is committed. Heartbeats every 10 s both ways.
 
 ---
 

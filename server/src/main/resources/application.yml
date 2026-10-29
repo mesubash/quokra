@@ -12,6 +12,9 @@ quokra:
   bots:
     # Folder with extra bot files; files here replace built-in ones with the same name.
     dir: ${QUOKRA_BOTS_DIR:}
+  ws:
+    # Origins allowed to open the WebSocket: where the chat panel and console are served.
+    allowed-origins: ${PUBLIC_BASE_URL:http://localhost:8080}
 
 management:
   endpoints:
