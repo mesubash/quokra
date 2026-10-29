@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { agentApi, ApiError, type ConversationSummary, type Me, type TenantItem } from "../lib/api";
+import { postToHost } from "../lib/bridge";
+import { CloseIcon } from "../lib/icons";
 import { openSocket, type Socket } from "../lib/realtime";
 import { ConversationView } from "./ConversationView";
 import { ago, priorityLabel, reasonLabel } from "./format";
@@ -12,8 +14,16 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "resolved", label: "Resolved" },
 ];
 
-export function ConsoleApp({ token, onSignedOut }: { token: string; onSignedOut: () => void }) {
-  const api = useMemo(() => agentApi(token), [token]);
+interface Props {
+  getToken: () => string;
+  // The token was rejected: sign out (standalone) or ask the dashboard for a new one (embedded).
+  onUnauthorized: () => void;
+  onSignOut?: () => void;
+  onClose?: () => void;
+}
+
+export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose }: Props) {
+  const api = useMemo(() => agentApi(getToken), [getToken]);
   const [me, setMe] = useState<Me | null>(null);
   const [tenants, setTenants] = useState<TenantItem[]>([]);
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -25,10 +35,10 @@ export function ConsoleApp({ token, onSignedOut }: { token: string; onSignedOut:
 
   const failed = useCallback(
     (e: unknown) => {
-      if (e instanceof ApiError && e.status === 401) onSignedOut();
+      if (e instanceof ApiError && e.status === 401) onUnauthorized();
       else setError("Something went wrong. Try again.");
     },
-    [onSignedOut],
+    [onUnauthorized],
   );
 
   const reload = useCallback(() => {
@@ -54,10 +64,10 @@ export function ConsoleApp({ token, onSignedOut }: { token: string; onSignedOut:
 
   // One socket for the whole console: tenant queues here, the open chat in ConversationView.
   useEffect(() => {
-    const s = openSocket(token, { onConnect: () => reloadRef.current(), onDisconnect: () => {} });
+    const s = openSocket(getToken, { onConnect: () => reloadRef.current(), onDisconnect: () => {} });
     setSocket(s);
     return () => s.close();
-  }, [token]);
+  }, [getToken]);
 
   useEffect(() => {
     if (!socket) return;
@@ -67,6 +77,7 @@ export function ConsoleApp({ token, onSignedOut }: { token: string; onSignedOut:
 
   useEffect(() => {
     document.title = waiting > 0 ? `(${waiting}) Quokra console` : "Quokra console";
+    postToHost({ type: "console.unread", count: waiting });
   }, [waiting]);
 
   return (
@@ -74,9 +85,16 @@ export function ConsoleApp({ token, onSignedOut }: { token: string; onSignedOut:
       <aside className="console-sidebar">
         <header className="console-me">
           <strong>{me?.name ?? "…"}</strong>
-          <button type="button" className="link-button" onClick={onSignedOut}>
-            Sign out
-          </button>
+          {onSignOut && (
+            <button type="button" className="link-button" onClick={onSignOut}>
+              Sign out
+            </button>
+          )}
+          {onClose && (
+            <button type="button" className="icon-button console-close" aria-label="Close console" onClick={onClose}>
+              <CloseIcon size={18} />
+            </button>
+          )}
         </header>
         <nav className="console-tabs" role="tablist">
           {TABS.map((t) => (

@@ -2,7 +2,7 @@
 
 const SOURCE = "quokra";
 
-export type HostMessage = { type: "chat.open" } | { type: "chat.close" };
+export type HostMessage = { type: "chat.open" } | { type: "chat.close" } | { type: "auth.token"; token: string };
 
 export const embedded = window.parent !== window;
 
@@ -15,7 +15,10 @@ export function postToHost(message: { type: string; [key: string]: unknown }) {
 export function onHostMessage(handler: (message: HostMessage) => void): () => void {
   const listener = (event: MessageEvent) => {
     if (event.source !== window.parent || event.data?.source !== SOURCE) return;
-    if (event.data.type === "chat.open" || event.data.type === "chat.close") handler(event.data as HostMessage);
+    const { type } = event.data;
+    if (type === "chat.open" || type === "chat.close") handler(event.data as HostMessage);
+    // Only our parent can send a token, and frame-ancestors already limits who the parent can be.
+    else if (type === "auth.token" && typeof event.data.token === "string") handler(event.data as HostMessage);
   };
   window.addEventListener("message", listener);
   return () => window.removeEventListener("message", listener);

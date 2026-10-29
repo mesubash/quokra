@@ -24,6 +24,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -73,6 +74,8 @@ public class DevAgentTokens {
         return decoder;
     }
 
+    // A local dashboard on another port (like the test host) can sign in too.
+    @CrossOrigin(originPatterns = {"http://localhost:[*]", "http://127.0.0.1:[*]"})
     @PostMapping("/dev/agent-token")
     public TokenResponse token(@Valid @RequestBody TokenRequest request) throws JOSEException {
         return new TokenResponse(sign(request.sub(), request.name() == null ? request.sub() : request.name(), roles));

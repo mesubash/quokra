@@ -146,10 +146,15 @@ export interface TenantItem {
   displayName: string;
 }
 
-export function agentApi(token: string) {
-  const get = <T,>(path: string) => request<T>(`/agent${path}`, { token });
+// getToken returns the agent's current token, so a refreshed token is used without rebuilding anything.
+export function agentApi(getToken: () => string) {
+  const get = <T,>(path: string) => request<T>(`/agent${path}`, { token: getToken() });
   const post = <T,>(path: string, body?: unknown) =>
-    request<T>(`/agent${path}`, { method: "POST", token, body: body === undefined ? undefined : JSON.stringify(body) });
+    request<T>(`/agent${path}`, {
+      method: "POST",
+      token: getToken(),
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
   return {
     me: () => get<Me>("/me"),
     tenants: () => get<{ items: TenantItem[] }>("/tenants"),

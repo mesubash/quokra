@@ -17,18 +17,22 @@ export interface Socket {
   close(): void;
 }
 
-// One STOMP connection; subscriptions survive reconnects.
-export function openSocket(token: string, handlers: SocketHandlers): Socket {
+// One STOMP connection; subscriptions survive reconnects. A token getter is read on every
+// (re)connect, so a refreshed token is picked up without reopening anything.
+export function openSocket(token: string | (() => string), handlers: SocketHandlers): Socket {
+  const currentToken = typeof token === "function" ? token : () => token;
   const wanted = new Map<string, (event: RealtimeEvent) => void>();
   const active = new Map<string, StompSubscription>();
   const protocol = window.location.protocol === "https:" ? "wss" : "ws";
 
   const client = new Client({
     brokerURL: `${protocol}://${window.location.host}/ws`,
-    connectHeaders: { Authorization: `Bearer ${token}` },
     reconnectDelay: 3000,
     heartbeatIncoming: 10000,
     heartbeatOutgoing: 10000,
+    beforeConnect: () => {
+      client.connectHeaders = { Authorization: `Bearer ${currentToken()}` };
+    },
     onConnect: () => {
       active.clear();
       wanted.forEach((onEvent, destination) => listen(destination, onEvent));

@@ -1,8 +1,71 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { devApi } from "../lib/api";
+import { embedded, onHostMessage, postToHost } from "../lib/bridge";
 import { ConsoleApp } from "./ConsoleApp";
 
 const TOKEN_KEY = "quokra.agentToken";
+const REFRESH_BEFORE_MS = 60_000;
+
+// The agent console. Embedded in a dashboard (via sdk.js), the dashboard provides the agent's
+// token; opened on its own, local development can sign in as a dev agent.
+export function Console() {
+  return embedded ? <EmbeddedConsole /> : <StandaloneConsole />;
+}
+
+// Milliseconds until the token expires, or null if it can't be read.
+export function expiresIn(token: string): number | null {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+    return typeof payload.exp === "number" ? payload.exp * 1000 - Date.now() : null;
+  } catch {
+    return null;
+  }
+}
+
+function EmbeddedConsole() {
+  const [token, setToken] = useState<string | null>(null);
+  const tokenRef = useRef<string | null>(null);
+  const getToken = useCallback(() => tokenRef.current ?? "", []);
+  const closable = new URLSearchParams(window.location.search).get("mode") === "bubble";
+
+  useEffect(
+    () =>
+      onHostMessage((m) => {
+        if (m.type !== "auth.token") return;
+        tokenRef.current = m.token;
+        setToken(m.token);
+      }),
+    [],
+  );
+
+  useEffect(() => {
+    postToHost({ type: "console.ready" });
+    postToHost({ type: "auth.request", reason: "initial" });
+  }, []);
+
+  // Ask for a fresh token shortly before this one expires.
+  useEffect(() => {
+    if (!token) return;
+    const left = expiresIn(token);
+    if (left === null) return;
+    const timer = setTimeout(
+      () => postToHost({ type: "auth.request", reason: "expired" }),
+      Math.max(left - REFRESH_BEFORE_MS, 5_000),
+    );
+    return () => clearTimeout(timer);
+  }, [token]);
+
+  const unauthorized = useCallback(() => postToHost({ type: "auth.request", reason: "unauthorized" }), []);
+
+  if (!token) return <p className="console-placeholder muted console-waiting">Waiting for sign-in from your dashboard…</p>;
+  return (
+    <ConsoleApp
+      getToken={getToken}
+      onUnauthorized={unauthorized}
+      onClose={closable ? () => postToHost({ type: "console.close" }) : undefined}
+    />
+  );
+}
 
 function storedToken() {
   try {
@@ -21,10 +84,9 @@ function storeToken(token: string | null) {
   }
 }
 
-// The agent console. In a host dashboard the token comes from the host (see sdk.js);
-// on its own, local development can sign in as a dev agent.
-export function Console() {
+function StandaloneConsole() {
   const [token, setToken] = useState<string | null>(storedToken);
+  const getToken = useCallback(() => token ?? "", [token]);
 
   const signOut = useCallback(() => {
     storeToken(null);
@@ -41,7 +103,7 @@ export function Console() {
       />
     );
   }
-  return <ConsoleApp key={token} token={token} onSignedOut={signOut} />;
+  return <ConsoleApp key={token} getToken={getToken} onUnauthorized={signOut} onSignOut={signOut} />;
 }
 
 function SignIn({ onToken }: { onToken: (token: string) => void }) {
@@ -63,7 +125,7 @@ function SignIn({ onToken }: { onToken: (token: string) => void }) {
   return (
     <main className="console-signin">
       <h1>Agent console</h1>
-      <p className="muted">Waiting for sign-in from your dashboard…</p>
+      <p className="muted">Open this console from your dashboard to sign in.</p>
       <button type="button" className="button" onClick={devSignIn} disabled={busy}>
         Sign in as dev agent
       </button>

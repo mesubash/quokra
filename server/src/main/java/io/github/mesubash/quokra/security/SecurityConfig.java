@@ -70,6 +70,8 @@ public class SecurityConfig {
     private static HttpSecurity common(HttpSecurity http) throws Exception {
         return http
             .csrf(csrf -> csrf.disable())
+            // Uses the @CrossOrigin settings on controllers; nothing allows other origins unless it says so.
+            .cors(cors -> {})
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             // The chat panel and console live in iframes on other sites; frame-ancestors is set per page.
             .headers(headers -> headers.frameOptions(frame -> frame.disable()))

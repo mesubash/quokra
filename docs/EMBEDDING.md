@@ -157,6 +157,8 @@ The console runs in an iframe and uses **your dashboard's login**. Your dashboar
 </script>
 ```
 
+`tenant` is required: the console checks it against the tenant's console origins before it lets your page frame it.
+
 React:
 
 ```tsx
@@ -191,7 +193,7 @@ For staff who answer chats now and then, show a floating button with the number 
 </script>
 ```
 
-Put it in your dashboard's main layout so it appears on every page. Full-page and bubble modes can be used together (e.g. bubble everywhere, full page on `/support`).
+Put it in your dashboard's main layout so it appears on every page. A page holds one console, so you can use bubble mode everywhere and full-page mode on `/support`, but not both on the same page.
 
 ---
 

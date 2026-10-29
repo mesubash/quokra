@@ -316,9 +316,9 @@ The host side (`sdk.js`) only accepts messages from the Quokra origin. The panel
 | console → host | `auth.request` | `reason` (`initial`, `expired`, `unauthorized`) | Please send a fresh agent token |
 | host → console | `auth.token` | `token` | Agent access token |
 | console → host | `console.unread` | `count` | Waiting conversations (for a nav badge) |
-| console → host | `console.resize` | `height` | Optional, if the host doesn't give a fixed height |
+| console → host | `console.close` | | The agent closed the drawer (bubble mode) |
 
-The console accepts `auth.token` only from origins in the tenant's `console_origins`. `sdk.js` sends tokens only to the Quokra origin.
+`/console?tenant=slug` can only be framed by that tenant's `console_origins` (`frame-ancestors`), and the console only accepts `auth.token` from its parent window. `sdk.js` sends tokens only to the Quokra origin, and only to its own frame.
 
 ---
 
@@ -350,10 +350,10 @@ Declarative alternatives, no JavaScript needed:
 
 | Call | Purpose |
 |---|---|
-| `Quokra.console.mount(target, { tenant?, getToken, height? })` | **Full-page mode:** mount the console in `target`. `getToken`: function returning a Promise of a fresh agent access token. `tenant`: slug to focus on (optional) |
-| `Quokra.console.init({ mode: "bubble", tenant?, getToken, position? })` | **Bubble mode:** floating button with the waiting-chats badge; opens the console in a side drawer |
+| `Quokra.console.mount(target, { tenant, getToken, height? })` | **Full-page mode:** mount the console in `target`. `getToken`: function returning a fresh agent access token (or a Promise of one). `tenant`: slug, used to check which sites may frame the console |
+| `Quokra.console.init({ mode: "bubble", tenant, getToken, position? })` | **Bubble mode:** floating button with the waiting-chats badge; opens the console in a side drawer |
 | `Quokra.console.open()` / `Quokra.console.close()` | Open or close the drawer (bubble mode) |
-| `Quokra.console.on(event, handler)` | Events: `ready`, `unread` (waiting count) |
+| `Quokra.console.on(event, handler)` | Events: `ready`, `unread` (waiting count), `open`, `close` |
 | `Quokra.console.unmount()` | Remove it |
 
 ---

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Test host: agent console</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 24px; }
+      #console { height: 640px; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; }
+    </style>
+  </head>
+  <body>
+    <h1>Dashboard with the agent console</h1>
+    <p>
+      <a href="console.html">Full page</a> · <a href="console.html?mode=bubble">Bubble</a> ·
+      <a href="index.html">Back</a>
+    </p>
+    <p id="waiting"></p>
+    <div id="console"></div>
+
+    <script src="http://localhost:8080/sdk.js"></script>
+    <script>
+      // A real dashboard returns its own login's access token here. The test host borrows a dev one.
+      async function getToken() {
+        const response = await fetch("http://localhost:8080/dev/agent-token", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sub: "dev-agent", name: "Sam" }),
+        });
+        return (await response.json()).accessToken;
+      }
+
+      const bubble = new URLSearchParams(location.search).get("mode") === "bubble";
+      if (bubble) {
+        document.getElementById("console").remove();
+        Quokra.console.init({ mode: "bubble", tenant: "demo", getToken });
+      } else {
+        Quokra.console.mount("#console", { tenant: "demo", getToken, height: "100%" });
+      }
+      Quokra.console.on("unread", (n) => {
+        document.getElementById("waiting").textContent = n ? `Waiting: ${n}` : "";
+      });
+    </script>
+  </body>
+</html>

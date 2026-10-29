@@ -238,4 +238,29 @@ class AgentControllerTests {
         assertThat(get(alice, "/conversations?status=HUMAN&assignee=me")).hasStatusOk()
             .bodyJson().extractingPath("$.items[*].id").isEqualTo(List.of(mine.toString()));
     }
+    @Test
+    void localDashboardsCanFetchDevTokens() {
+        assertThat(mvc.options().uri("/dev/agent-token")
+                .header(HttpHeaders.ORIGIN, "http://localhost:5500")
+                .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "POST")
+                .header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS, "content-type"))
+            .hasStatusOk()
+            .hasHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "http://localhost:5500");
+    }
+
+    @Test
+    void otherSitesCantFetchDevTokens() {
+        assertThat(mvc.options().uri("/dev/agent-token")
+                .header(HttpHeaders.ORIGIN, "https://evil.test")
+                .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "POST"))
+            .hasStatus(HttpStatus.FORBIDDEN);
+    }
+
+    @Test
+    void agentApiDoesNotAllowOtherOrigins() {
+        assertThat(mvc.options().uri(BASE + "/conversations")
+                .header(HttpHeaders.ORIGIN, "http://localhost:5500")
+                .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "GET"))
+            .doesNotContainHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN);
+    }
 }

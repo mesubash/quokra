@@ -30,10 +30,11 @@ class SpaControllerTests {
     @BeforeEach
     void addTenant() {
         jdbc.update("""
-            insert into tenants (id, slug, display_name, publishable_key, widget_origins, bot_config)
-            values (?, 'acme', 'Acme Inc', 'pk_test_acme', ?, 'test')
+            insert into tenants (id, slug, display_name, publishable_key, widget_origins, console_origins, bot_config)
+            values (?, 'acme', 'Acme Inc', 'pk_test_acme', ?, ?, 'test')
             """, UUID.randomUUID(),
-            new String[] {"https://www.acme.test", "http://localhost:5500", "https://evil.test; script-src *"});
+            new String[] {"https://www.acme.test", "http://localhost:5500", "https://evil.test; script-src *"},
+            new String[] {"https://admin.acme.test"});
     }
 
     @Test
@@ -55,6 +56,17 @@ class SpaControllerTests {
     @Test
     void consoleLoadsTheUi() {
         assertThat(mvc.get().uri("/console")).hasStatusOk().hasForwardedUrl("/index.html");
+    }
+
+    @Test
+    void consoleCanOnlyBeEmbeddedByTheTenantsDashboards() {
+        assertThat(mvc.get().uri("/console?tenant=acme")).hasHeader("Content-Security-Policy",
+            "frame-ancestors 'self' https://admin.acme.test");
+    }
+
+    @Test
+    void consoleWithoutTenantCanOnlyBeFramedByItself() {
+        assertThat(mvc.get().uri("/console")).hasHeader("Content-Security-Policy", "frame-ancestors 'self'");
     }
 
     @Test

@@ -7,6 +7,7 @@ import java.util.regex.Pattern;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 
 // Client-side routes of the web UI all load index.html. Each one says which sites may embed it.
 @Controller
@@ -29,9 +30,10 @@ public class SpaController {
     }
 
     @GetMapping("/console")
-    public String console(HttpServletResponse response) {
-        // Per-tenant console origins come with the console (step 8).
-        response.setHeader("Content-Security-Policy", frameAncestors(List.of()));
+    public String console(@RequestParam(required = false) String tenant, HttpServletResponse response) {
+        List<String> origins = tenant == null ? List.of()
+            : tenants.findBySlug(tenant).map(t -> t.getConsoleOrigins()).orElse(List.of());
+        response.setHeader("Content-Security-Policy", frameAncestors(origins));
         return "forward:/index.html";
     }
 

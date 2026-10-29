@@ -674,6 +674,22 @@ button {
   margin: auto;
 }
 
+.console-waiting {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  padding: 24px;
+  text-align: center;
+}
+
+.console-close {
+  margin-left: 8px;
+}
+
+.console-close:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
 .conversation {
   display: flex;
   flex-direction: column;

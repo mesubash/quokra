@@ -13,6 +13,11 @@
  * JavaScript: Quokra.chat.init({ slug, pk, mode, container, position, teaserDelay }), open(), close(),
  *             on(event, fn), destroy()
  *
+ * Agent console (in your dashboard; getToken returns the agent's access token or a Promise of it):
+ *   Quokra.console.mount("#console", { tenant: "slug", getToken })
+ *   Quokra.console.init({ mode: "bubble", tenant: "slug", getToken, position }), open(), close(),
+ *   on(event, fn), unmount()
+ *
  * Icons: Lucide (ISC). Robot: "Hello Chat Bot" by Chandalal Kumawat, LottieFiles (Lottie Simple License), recoloured.
  * See THIRD_PARTY_NOTICES.md.
  */
@@ -385,6 +390,193 @@
   };
 
   window.Quokra.chat = chat;
+
+  // ---- Agent console, embedded in a dashboard ----
+  //
+  // Quokra.console.mount(target, { tenant, getToken })            full page inside `target`
+  // Quokra.console.init({ mode: "bubble", tenant, getToken })      floating button + side drawer
+  // getToken() returns the agent's current access token (or a Promise of it). It's called whenever
+  // the console asks, and the token is only ever posted to the Quokra origin.
+
+  var CONSOLE_STYLE_ID = "quokra-console-style";
+  var ICON_HEADSET =
+    "<svg " + SVG_ATTRS + '><path d="M3 11h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5Zm0 0a9 9 0 1 1 18 0m0 0v5a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3Z"/>' +
+    '<path d="M21 16v2a4 4 0 0 1-4 4h-5"/></svg>';
+
+  var consoleState = null;
+  var consoleListeners = {};
+
+  function consoleEmit(event, value) {
+    (consoleListeners[event] || []).forEach(function (fn) {
+      try {
+        fn(value);
+      } catch (e) {
+        // A broken listener on the host page shouldn't stop the console.
+      }
+    });
+  }
+
+  function addConsoleStyles() {
+    if (document.getElementById(CONSOLE_STYLE_ID)) return;
+    var css =
+      ".quokra-console{display:block;width:100%;height:100%;min-height:480px;border:0}" +
+      ".quokra-console-button{position:fixed;bottom:20px;width:56px;height:56px;padding:0;border:0;border-radius:50%;" +
+      "background:" + DEFAULT_COLOR + ";color:#fff;cursor:pointer;z-index:2147483646;display:flex;align-items:center;" +
+      "justify-content:center;box-shadow:0 6px 20px rgba(0,0,0,.2);transition:transform .2s ease}" +
+      ".quokra-console-button:hover{transform:translateY(-2px)}" +
+      ".quokra-console-button:focus-visible{outline:3px solid " + DEFAULT_COLOR + ";outline-offset:3px}" +
+      ".quokra-console-button.right{right:20px}.quokra-console-button.left{left:20px}" +
+      ".quokra-console-button svg{width:26px;height:26px}" +
+      ".quokra-console-drawer{position:fixed;top:0;bottom:0;width:440px;max-width:100vw;height:100%;border:0;" +
+      "background:#fff;box-shadow:0 0 40px rgba(0,0,0,.2);z-index:2147483647;visibility:hidden;" +
+      "transition:transform .25s ease,visibility 0s linear .25s}" +
+      ".quokra-console-drawer.right{right:0;transform:translateX(100%)}.quokra-console-drawer.left{left:0;transform:translateX(-100%)}" +
+      ".quokra-console-drawer.open{visibility:visible;transform:none;transition:transform .25s ease}" +
+      "@media (prefers-reduced-motion:reduce){.quokra-console-drawer,.quokra-console-drawer.open,.quokra-console-button{transition:none}}";
+    var style = document.createElement("style");
+    style.id = CONSOLE_STYLE_ID;
+    style.textContent = css;
+    document.head.appendChild(style);
+  }
+
+  function consoleUrl(tenant, mode) {
+    return ORIGIN + "/console?tenant=" + encodeURIComponent(tenant || "") + "&mode=" + mode;
+  }
+
+  function postToConsole(message) {
+    if (consoleState && consoleState.frame.contentWindow) {
+      message.source = SOURCE;
+      consoleState.frame.contentWindow.postMessage(message, ORIGIN);
+    }
+  }
+
+  function sendToken() {
+    if (!consoleState) return;
+    Promise.resolve()
+      .then(consoleState.getToken)
+      .then(function (token) {
+        if (typeof token === "string" && token) postToConsole({ type: "auth.token", token: token });
+      })
+      .catch(function () {
+        // The host couldn't provide a token; the console keeps showing "waiting for sign-in".
+      });
+  }
+
+  function setConsoleBadge(count) {
+    if (!consoleState || !consoleState.button) return;
+    var badge = consoleState.button.querySelector(".quokra-badge");
+    if (count > 0) {
+      if (!badge) {
+        badge = document.createElement("span");
+        badge.className = "quokra-badge";
+        consoleState.button.appendChild(badge);
+      }
+      badge.textContent = count > 99 ? "99+" : String(count);
+      consoleState.button.setAttribute("aria-label", "Support console, " + count + " waiting");
+    } else {
+      if (badge) badge.remove();
+      consoleState.button.setAttribute("aria-label", "Support console");
+    }
+  }
+
+  function onConsoleMessage(event) {
+    if (!consoleState) return;
+    // Only trust our own frame, from our own origin, speaking our protocol.
+    if (event.origin !== ORIGIN || event.source !== consoleState.frame.contentWindow) return;
+    var data = event.data;
+    if (!data || data.source !== SOURCE) return;
+
+    if (data.type === "console.ready") consoleEmit("ready");
+    else if (data.type === "auth.request") sendToken();
+    else if (data.type === "console.unread" && typeof data.count === "number") {
+      setConsoleBadge(data.count);
+      consoleEmit("unread", data.count);
+    } else if (data.type === "console.close") {
+      agentConsole.close();
+      if (consoleState && consoleState.button) consoleState.button.focus();
+    }
+  }
+
+  function createConsole(options, mode) {
+    if (consoleState) return null;
+    options = options || {};
+    if (typeof options.getToken !== "function") throw new Error("Quokra: getToken is required");
+    addStyles(); // badge styles
+    addConsoleStyles();
+    var frame = document.createElement("iframe");
+    frame.id = "quokra-console-frame";
+    frame.title = "Support console";
+    frame.src = consoleUrl(options.tenant, mode);
+    consoleState = { frame: frame, button: null, mode: mode, open: mode === "full", getToken: options.getToken };
+    window.addEventListener("message", onConsoleMessage);
+    return frame;
+  }
+
+  var agentConsole = {
+    mount: function (target, options) {
+      var container = typeof target === "string" ? document.querySelector(target) : target;
+      if (!container) throw new Error("Quokra: console container not found");
+      var frame = createConsole(options, "full");
+      if (!frame) return;
+      frame.className = "quokra-console";
+      if (options && options.height) frame.style.height = options.height;
+      container.appendChild(frame);
+    },
+
+    init: function (options) {
+      options = options || {};
+      if (options.mode && options.mode !== "bubble") throw new Error("Quokra: use mount() for a full-page console");
+      var frame = createConsole(options, "bubble");
+      if (!frame) return;
+      var position = options.position === "left" ? "left" : "right";
+      frame.className = "quokra-console-drawer " + position;
+      document.body.appendChild(frame);
+
+      var button = document.createElement("button");
+      button.type = "button";
+      button.className = "quokra-console-button " + position;
+      button.setAttribute("aria-label", "Support console");
+      button.setAttribute("aria-expanded", "false");
+      button.setAttribute("aria-controls", frame.id);
+      button.innerHTML = ICON_HEADSET;
+      button.addEventListener("click", function () {
+        consoleState.open ? agentConsole.close() : agentConsole.open();
+      });
+      document.body.appendChild(button);
+      consoleState.button = button;
+    },
+
+    open: function () {
+      if (!consoleState || consoleState.mode !== "bubble") return;
+      consoleState.open = true;
+      consoleState.frame.classList.add("open");
+      consoleState.button.setAttribute("aria-expanded", "true");
+      consoleState.frame.focus();
+      consoleEmit("open");
+    },
+
+    close: function () {
+      if (!consoleState || consoleState.mode !== "bubble") return;
+      consoleState.open = false;
+      consoleState.frame.classList.remove("open");
+      consoleState.button.setAttribute("aria-expanded", "false");
+      consoleEmit("close");
+    },
+
+    on: function (event, fn) {
+      (consoleListeners[event] = consoleListeners[event] || []).push(fn);
+    },
+
+    unmount: function () {
+      if (!consoleState) return;
+      window.removeEventListener("message", onConsoleMessage);
+      consoleState.frame.remove();
+      if (consoleState.button) consoleState.button.remove();
+      consoleState = null;
+    },
+  };
+
+  window.Quokra.console = agentConsole;
 
   function autoInit() {
     if (script && script.dataset.quokraChat) {
