@@ -296,8 +296,7 @@ Every message: `{ "source": "quokra", "type": "...", ...fields }`. Receivers che
 
 | Direction | Type | Fields | Meaning |
 |---|---|---|---|
-| panel → host | `chat.ready` | | Panel loaded |
-| panel → host | `chat.resize` | `height` | Inline mode content height |
+| panel → host | `chat.ready` | `color` | Panel loaded; `color` is the tenant's primary colour for the bubble (used only if it's a plain `#rrggbb`) |
 | panel → host | `chat.close` | | User closed the panel |
 | panel → host | `chat.unread` | `count` | Unread messages while closed |
 | host → panel | `chat.open` / `chat.close` | | Open or close from the host |

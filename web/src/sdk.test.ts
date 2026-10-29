@@ -1,0 +1,106 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+// sdk.js runs on host pages as a plain script, so load it the same way.
+import code from "../public/sdk.js?raw";
+
+type Chat = {
+  init: (o: Record<string, unknown>) => void;
+  open: () => void;
+  close: () => void;
+  on: (e: string, fn: (v?: unknown) => void) => void;
+  destroy: () => void;
+};
+
+function chat(): Chat {
+  return (window as unknown as { Quokra: { chat: Chat } }).Quokra.chat;
+}
+
+function frame() {
+  return document.querySelector<HTMLIFrameElement>("iframe")!;
+}
+
+function fromFrame(data: unknown, origin = window.location.origin, source: Window | null = frame().contentWindow) {
+  window.dispatchEvent(new MessageEvent("message", { data, origin, source }));
+}
+
+beforeEach(() => {
+  new Function(code)();
+  chat().init({ slug: "demo", pk: "pk_test_demo" });
+});
+
+afterEach(() => {
+  chat().destroy();
+  delete (window as unknown as { Quokra?: unknown }).Quokra;
+  document.body.innerHTML = "";
+});
+
+describe("sdk.js", () => {
+  it("adds a bubble and a hidden panel pointing at the chat", () => {
+    expect(frame().src).toBe(`${window.location.origin}/w/demo?pk=pk_test_demo&mode=bubble`);
+    expect(frame().classList.contains("open")).toBe(false);
+    expect(document.querySelector(".quokra-button")).not.toBeNull();
+  });
+
+  it("opens and closes the panel from the bubble", () => {
+    const button = document.querySelector<HTMLButtonElement>(".quokra-button")!;
+
+    button.click();
+    expect(frame().classList.contains("open")).toBe(true);
+    button.click();
+    expect(frame().classList.contains("open")).toBe(false);
+  });
+
+  it("shows the unread count sent by its own frame", () => {
+    const onUnread = vi.fn();
+    chat().on("unread", onUnread);
+
+    fromFrame({ source: "quokra", type: "chat.unread", count: 2 });
+
+    expect(onUnread).toHaveBeenCalledWith(2);
+    expect(document.querySelector(".quokra-badge")?.textContent).toBe("2");
+  });
+
+  it("ignores messages from another origin", () => {
+    const onUnread = vi.fn();
+    chat().on("unread", onUnread);
+
+    fromFrame({ source: "quokra", type: "chat.unread", count: 2 }, "https://evil.test");
+
+    expect(onUnread).not.toHaveBeenCalled();
+  });
+
+  it("ignores messages from another window", () => {
+    const onUnread = vi.fn();
+    chat().on("unread", onUnread);
+
+    fromFrame({ source: "quokra", type: "chat.unread", count: 2 }, window.location.origin, window);
+
+    expect(onUnread).not.toHaveBeenCalled();
+  });
+
+  it("ignores messages that aren't ours", () => {
+    const onUnread = vi.fn();
+    chat().on("unread", onUnread);
+
+    fromFrame({ type: "chat.unread", count: 2 });
+
+    expect(onUnread).not.toHaveBeenCalled();
+  });
+
+  it("closes when the panel asks", () => {
+    chat().open();
+
+    fromFrame({ source: "quokra", type: "chat.close" });
+
+    expect(frame().classList.contains("open")).toBe(false);
+  });
+
+  it("only uses a plain colour from the panel", () => {
+    const button = document.querySelector<HTMLButtonElement>(".quokra-button")!;
+
+    fromFrame({ source: "quokra", type: "chat.ready", color: "red;background:url(x)" });
+    expect(button.style.background).toBe("");
+
+    fromFrame({ source: "quokra", type: "chat.ready", color: "#0A7C66" });
+    expect(button.style.background).not.toBe("");
+  });
+});

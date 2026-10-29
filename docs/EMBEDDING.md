@@ -45,7 +45,7 @@ A chat bubble appears in the bottom-right corner. Branding (logo, colour, name) 
 <script src="https://chat.example.com/sdk.js" async></script>
 ```
 
-The frame resizes to fit its content.
+The frame is 520 px tall by default; set a `height` on the container's iframe via CSS (`.quokra-inline`) to change it. The panel scrolls inside.
 
 ### 3.2 Popup from your own button
 

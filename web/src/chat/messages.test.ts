@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Message } from "../lib/api";
-import { activeOptions, mergeMessages } from "./messages";
+import { activeOptions, countUnread, mergeMessages } from "./messages";
 
 function message(id: string, senderType: Message["senderType"] = "BOT", options: Message["options"] = null): Message {
   return { id, senderType, senderName: null, body: id, options, clientMessageId: null, createdAt: "" };
@@ -31,5 +31,21 @@ describe("activeOptions", () => {
 
   it("offers nothing for an empty chat", () => {
     expect(activeOptions([])).toEqual([]);
+  });
+});
+
+describe("countUnread", () => {
+  const history = [message("01", "BOT"), message("02", "CUSTOMER"), message("03", "BOT"), message("04", "SYSTEM")];
+
+  it("counts replies after the last seen message", () => {
+    expect(countUnread(history, "02")).toBe(2);
+  });
+
+  it("ignores the customer's own messages", () => {
+    expect(countUnread([...history, message("05", "CUSTOMER")], "04")).toBe(0);
+  });
+
+  it("is zero before anything has been seen", () => {
+    expect(countUnread(history, null)).toBe(0);
   });
 });

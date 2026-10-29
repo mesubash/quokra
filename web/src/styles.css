@@ -57,6 +57,16 @@ p {
   border-bottom: 3px solid var(--primary);
 }
 
+.close {
+  margin-left: auto;
+  border: 0;
+  background: none;
+  font-size: 1.4rem;
+  line-height: 1;
+  color: var(--muted);
+  cursor: pointer;
+}
+
 .status {
   padding: 6px 16px;
   font-size: 0.85rem;

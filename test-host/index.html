@@ -2,15 +2,20 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Test host</title>
-    <style>
-      body { font-family: system-ui, sans-serif; margin: 24px; }
-      iframe { width: 380px; height: 520px; border: 1px solid #d0d7de; border-radius: 8px; }
-    </style>
+    <title>Test host: bubble</title>
+    <style>body { font-family: system-ui, sans-serif; margin: 24px; max-width: 640px; }</style>
   </head>
   <body>
     <h1>Test host (different origin)</h1>
-    <p>The frame below is served by the Quokra server on port 8080.</p>
-    <iframe src="http://localhost:8080/w/demo?pk=pk_test_demo" title="Quokra chat"></iframe>
+    <p>Bubble mode: the chat button is in the bottom-right corner.</p>
+    <p>Other modes: <a href="inline.html">inline</a> · <a href="popup.html">popup</a></p>
+    <p id="unread"></p>
+
+    <script src="http://localhost:8080/sdk.js" data-quokra-chat="demo" data-quokra-pk="pk_test_demo"></script>
+    <script>
+      Quokra.chat.on("unread", (n) => {
+        document.getElementById("unread").textContent = n ? `Unread: ${n}` : "";
+      });
+    </script>
   </body>
 </html>

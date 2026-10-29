@@ -62,7 +62,7 @@ Two deployable things: the **quokra server** (one Docker image that also serves 
 |---|---|---|
 | **quokra server** | Truth: tenants, conversations, messages, state changes, bot replies, auth, realtime events. Also serves the built web UI and `sdk.js`, and sets CSP `frame-ancestors` per tenant | — |
 | **web UI** (`web/`, React SPA) | Customer chat panel (`/w/<slug>`) and agent console (`/console`); calls the API | Business rules (it only calls the API) |
-| **sdk.js** | Runs in the host page: creates bubble/iframes, passes tokens and open/close commands via postMessage, resizes inline frames | Talking to the server directly |
+| **sdk.js** | Runs in the host page: creates bubble/iframes, passes tokens and open/close commands via postMessage, shows the unread badge | Talking to the server directly |
 | **PostgreSQL** | Persistent data | — |
 | **OIDC provider** | Issues agent access tokens; server validates them via JWKS | — |
 | **Host backend** (optional) | Signs short-lived identity tokens for logged-in customers with the tenant secret | — |

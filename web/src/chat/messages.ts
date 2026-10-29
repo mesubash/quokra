@@ -13,3 +13,9 @@ export function activeOptions(messages: Message[]) {
   const last = messages[messages.length - 1];
   return last?.senderType === "BOT" ? (last.options ?? []) : [];
 }
+
+// Messages from the bot, agents or the system that arrived after `seenUpTo`.
+export function countUnread(messages: Message[], seenUpTo: string | null) {
+  if (seenUpTo === null) return 0;
+  return messages.filter((m) => m.senderType !== "CUSTOMER" && m.id > seenUpTo).length;
+}
