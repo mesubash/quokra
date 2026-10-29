@@ -128,7 +128,7 @@ function Chat({ tenant, token, visible, onUnauthorized }: ChatProps) {
     <main className="chat">
       <header className="panel-header">
         <span className="header-avatar">
-          {tenant.branding.logoUrl ? <img src={tenant.branding.logoUrl} alt="" /> : <RobotAvatar size={40} wave={visible} />}
+          {tenant.branding.logoUrl ? <img src={tenant.branding.logoUrl} alt="" /> : <RobotAvatar size={34} wave={visible} />}
         </span>
         <div className="header-text">
           <h1>{tenant.displayName}</h1>
@@ -136,7 +136,7 @@ function Chat({ tenant, token, visible, onUnauthorized }: ChatProps) {
         </div>
         {startsHidden && (
           <button type="button" className="icon-button" aria-label="Close chat" onClick={() => postToHost({ type: "chat.close" })}>
-            <CloseIcon size={22} />
+            <CloseIcon size={20} />
           </button>
         )}
       </header>

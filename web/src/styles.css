@@ -64,16 +64,17 @@ button {
 .panel-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 12px 14px 16px;
-  background: var(--primary);
+  gap: 10px;
+  padding: 10px 8px 10px 14px;
+  /* A soft diagonal tint instead of a flat block; the light end keeps white text above 4.5:1. */
+  background: linear-gradient(135deg, var(--primary), color-mix(in srgb, var(--primary) 88%, #fff));
   color: var(--on-primary);
 }
 
 .header-avatar {
   flex: none;
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background: #fff;
   display: grid;
@@ -94,8 +95,9 @@ button {
 }
 
 .header-text h1 {
-  font-size: 1.05rem;
+  font-size: 0.98rem;
   font-weight: 600;
+  line-height: 1.25;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -105,13 +107,14 @@ button {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 0.8rem;
-  opacity: 0.9;
+  font-size: 0.75rem;
+  line-height: 1.3;
+  opacity: 0.92;
 }
 
 .dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: #3fb950;
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.6);
@@ -125,8 +128,8 @@ button {
   flex: none;
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border: 0;
   border-radius: 50%;
   background: transparent;
