@@ -13,7 +13,7 @@
  * JavaScript: Quokra.chat.init({ slug, pk, mode, container, position, teaserDelay }), open(), close(),
  *             on(event, fn), destroy()
  *
- * Icons: Lucide (ISC). Animation: "Hello Chat Bot" by Chandalal Kumawat, LottieFiles (Lottie Simple License).
+ * Icons: Lucide (ISC). Robot: still frame of "Hello Chat Bot" by Chandalal Kumawat, LottieFiles (Lottie Simple License).
  * See THIRD_PARTY_NOTICES.md.
  */
 (function () {
@@ -29,8 +29,7 @@
   var FRAME_ID = "quokra-chat-frame";
   var DEFAULT_COLOR = "#4f46e5";
   var DEFAULT_TEASER_DELAY = 5000;
-  var LOTTIE_URL = ORIGIN + "/vendor/lottie_light-5.13.0.min.js";
-  var ANIMATION_URL = ORIGIN + "/animations/hello-bot.js";
+  var ROBOT_URL = ORIGIN + "/robot.svg";
 
   var SVG_ATTRS =
     'xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
@@ -41,7 +40,6 @@
     '<path d="M9 11v2"/></svg>';
   var ICON_CLOSE = "<svg " + SVG_ATTRS + '><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
 
-  var reducedMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   var state = null;
   var listeners = {};
@@ -68,28 +66,28 @@
   function addStyles() {
     if (document.getElementById(STYLE_ID)) return;
     var css =
-      ".quokra-button{position:fixed;bottom:20px;width:60px;height:60px;padding:0;border:2px solid var(--quokra-color," + DEFAULT_COLOR + ");" +
-      "border-radius:50%;background:#fff;color:var(--quokra-color," + DEFAULT_COLOR + ");cursor:pointer;z-index:2147483646;" +
-      "box-shadow:0 6px 20px rgba(0,0,0,.18);display:flex;align-items:center;justify-content:center;" +
-      "transition:transform .2s ease,box-shadow .2s ease}" +
-      ".quokra-button:hover{transform:translateY(-2px) scale(1.04);box-shadow:0 10px 26px rgba(0,0,0,.22)}" +
-      ".quokra-button:focus-visible{outline:3px solid var(--quokra-color," + DEFAULT_COLOR + ");outline-offset:3px}" +
-      ".quokra-button.right{right:20px}.quokra-button.left{left:20px}" +
-      ".quokra-button svg{width:26px;height:26px}" +
-      ".quokra-anim{display:none}.quokra-button.animated .quokra-icon-chat{display:none}" +
-      // Once the animation is ready, the robot itself is the button.
-      ".quokra-button.animated{width:104px;height:102px;border:0;border-radius:24px;background:none;" +
-      "box-shadow:none;filter:drop-shadow(0 6px 12px rgba(0,0,0,.18))}" +
-      ".quokra-button.animated .quokra-anim{display:block;width:104px;height:102px}" +
-      ".quokra-button.animated:hover{transform:translateY(-3px);box-shadow:none}" +
+      // The robot itself is the button. It floats gently and waves on hover or when the greeting shows.
+      ".quokra-button{position:fixed;bottom:16px;width:68px;height:88px;padding:0;border:0;background:none;" +
+      "cursor:pointer;z-index:2147483646;filter:drop-shadow(0 6px 10px rgba(0,0,0,.18))}" +
+      ".quokra-button.right{right:18px}.quokra-button.left{left:18px}" +
+      ".quokra-button img{display:block;width:100%;height:100%;transform-origin:50% 85%;" +
+      "animation:quokra-float 3.2s ease-in-out infinite}" +
+      ".quokra-button:hover img,.quokra-button.wave img{animation:quokra-wave .9s ease-in-out}" +
+      ".quokra-button:focus-visible{outline:3px solid var(--quokra-color," + DEFAULT_COLOR + ");outline-offset:2px;border-radius:16px}" +
+      // If the image can't load: a plain round chat button.
+      ".quokra-button.fallback{width:60px;height:60px;border:2px solid var(--quokra-color," + DEFAULT_COLOR + ");" +
+      "border-radius:50%;background:#fff;color:var(--quokra-color," + DEFAULT_COLOR + ");display:flex;" +
+      "align-items:center;justify-content:center;filter:none;box-shadow:0 6px 20px rgba(0,0,0,.18)}" +
+      ".quokra-button.fallback svg{width:26px;height:26px}.quokra-button.fallback img{display:none}" +
+      ".quokra-icon-chat{display:none}.quokra-button.fallback .quokra-icon-chat{display:block}" +
       // While the chat is open the panel's own close button is used, so the launcher steps aside.
       ".quokra-button.open{display:none}" +
       ".quokra-badge{position:absolute;top:-4px;right:-4px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;" +
       "background:#cf222e;color:#fff;font:600 12px/20px system-ui,sans-serif;text-align:center;animation:quokra-pop .3s ease}" +
-      ".quokra-teaser{position:fixed;bottom:92px;max-width:260px;display:flex;align-items:flex-start;gap:4px;" +
+      ".quokra-teaser{position:fixed;bottom:112px;max-width:260px;display:flex;align-items:flex-start;gap:4px;" +
       "background:#fff;color:#1f2328;border-radius:14px;box-shadow:0 8px 28px rgba(0,0,0,.18);z-index:2147483646;" +
       "font:14px/1.4 system-ui,sans-serif;animation:quokra-rise .35s ease}" +
-      ".quokra-teaser.right{right:20px}.quokra-teaser.left{left:20px}.quokra-teaser.above-mascot{bottom:128px}" +
+      ".quokra-teaser.right{right:20px}.quokra-teaser.left{left:20px}.quokra-button.fallback~.quokra-teaser{bottom:92px}" +
       ".quokra-teaser-text{flex:1;border:0;background:none;padding:12px 4px 12px 14px;text-align:left;font:inherit;" +
       "color:inherit;cursor:pointer}" +
       ".quokra-teaser-close{border:0;background:none;padding:8px;color:#6e7781;cursor:pointer;line-height:0}" +
@@ -108,8 +106,11 @@
       ".quokra-inline{display:block;width:100%;height:520px;border:1px solid #d0d7de;border-radius:12px}" +
       "@keyframes quokra-pop{0%{transform:scale(.4)}70%{transform:scale(1.15)}100%{transform:scale(1)}}" +
       "@keyframes quokra-rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}" +
-      "@media (prefers-reduced-motion:reduce){.quokra-button,.quokra-panel,.quokra-panel.open{transition:none}" +
-      ".quokra-button:hover{transform:none}.quokra-badge,.quokra-teaser{animation:none}}";
+      "@keyframes quokra-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}" +
+      "@keyframes quokra-wave{0%,100%{transform:rotate(0)}20%{transform:rotate(-10deg)}40%{transform:rotate(8deg)}" +
+      "60%{transform:rotate(-6deg)}80%{transform:rotate(3deg)}}" +
+      "@media (prefers-reduced-motion:reduce){.quokra-panel,.quokra-panel.open{transition:none}" +
+      ".quokra-button img,.quokra-badge,.quokra-teaser{animation:none!important}}";
     var style = document.createElement("style");
     style.id = STYLE_ID;
     style.textContent = css;
@@ -143,45 +144,11 @@
     }
   }
 
-  // ---- Animated button (loaded after the page, never blocks it) ----
-
-  function loadScript(src, done) {
-    var el = document.createElement("script");
-    el.src = src;
-    el.async = true;
-    el.onload = done;
-    document.head.appendChild(el);
-  }
-
-  function startAnimation() {
-    if (!state || !state.button || state.animation) return;
-    var withPlayer = function () {
-      if (!state || !window.lottie || !window.QuokraAnimations || !window.QuokraAnimations.helloBot) return;
-      var holder = state.button.querySelector(".quokra-anim");
-      state.animation = window.lottie.loadAnimation({
-        container: holder,
-        renderer: "svg",
-        loop: false,
-        autoplay: !reducedMotion,
-        animationData: window.QuokraAnimations.helloBot,
-        // Crop to the robot and its "Hello!" bubble (the canvas has empty space around them).
-        rendererSettings: { viewBoxSize: "10 30 345 340" },
-      });
-      // A still robot for people who prefer less motion: the frame where it's waving.
-      if (reducedMotion) state.animation.goToAndStop(Math.floor(state.animation.totalFrames / 2), true);
-      state.button.classList.add("animated");
-    };
-    var withAnimation = function () {
-      // Reuse a Lottie player the page already has.
-      if (window.lottie) withPlayer();
-      else loadScript(LOTTIE_URL, withPlayer);
-    };
-    if (window.QuokraAnimations && window.QuokraAnimations.helloBot) withAnimation();
-    else loadScript(ANIMATION_URL, withAnimation);
-  }
-
-  function replayAnimation() {
-    if (state && state.animation && !reducedMotion) state.animation.goToAndPlay(0, true);
+  function wave() {
+    if (!state || !state.button) return;
+    state.button.classList.remove("wave");
+    void state.button.offsetWidth; // restart the animation if it's already running
+    state.button.classList.add("wave");
   }
 
   // ---- Greeting card next to the button ----
@@ -200,8 +167,7 @@
   function showTeaser() {
     if (!state || state.open || state.teaser || storage(teaserKey())) return;
     var teaser = document.createElement("div");
-    teaser.className = "quokra-teaser " + state.position +
-      (state.button && state.button.classList.contains("animated") ? " above-mascot" : "");
+    teaser.className = "quokra-teaser " + state.position;
     var text = document.createElement("button");
     text.type = "button";
     text.className = "quokra-teaser-text";
@@ -221,7 +187,7 @@
     teaser.appendChild(close);
     document.body.appendChild(teaser);
     state.teaser = teaser;
-    replayAnimation();
+    wave();
     emit("teaser");
   }
 
@@ -281,7 +247,6 @@
         frame: frame,
         button: null,
         teaser: null,
-        animation: null,
         mode: mode,
         position: position,
         pk: options.pk,
@@ -306,17 +271,23 @@
           button.setAttribute("aria-label", "Open chat");
           button.setAttribute("aria-expanded", "false");
           button.setAttribute("aria-controls", FRAME_ID);
-          button.innerHTML =
-            '<span class="quokra-anim"></span>' + ICON_CHAT.replace("<svg ", '<svg class="quokra-icon-chat" ');
+          var robot = document.createElement("img");
+          robot.src = ROBOT_URL;
+          robot.alt = "";
+          robot.addEventListener("error", function () {
+            button.classList.add("fallback");
+          });
+          button.appendChild(robot);
+          button.insertAdjacentHTML("beforeend", ICON_CHAT.replace("<svg ", '<svg class="quokra-icon-chat" '));
+          button.addEventListener("animationend", function () {
+            button.classList.remove("wave");
+          });
           button.addEventListener("click", function () {
             state.open ? chat.close() : chat.open();
           });
-          button.addEventListener("mouseenter", replayAnimation);
           document.body.appendChild(button);
           state.button = button;
 
-          if (document.readyState === "complete") setTimeout(startAnimation, 300);
-          else window.addEventListener("load", function () { setTimeout(startAnimation, 300); }, { once: true });
         }
       }
       window.addEventListener("message", onMessage);
@@ -359,7 +330,6 @@
       if (!state) return;
       window.removeEventListener("message", onMessage);
       hideTeaser(false);
-      if (state.animation) state.animation.destroy();
       state.frame.remove();
       if (state.button) state.button.remove();
       state = null;

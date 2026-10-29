@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import type { Message, Option } from "../lib/api";
 import { RobotAvatar } from "./RobotAvatar";
+import type { PendingMessage } from "./useChat";
 
 interface Props {
   messages: Message[];
@@ -9,6 +10,8 @@ interface Props {
   disabled: boolean;
   botName: string;
   typing?: boolean;
+  pending?: PendingMessage[];
+  onRetry?: (clientMessageId: string) => void;
 }
 
 interface Group {
@@ -41,12 +44,24 @@ function initials(name: string | null) {
   return (name ?? "?").split(/\s+/).map((p) => p[0]).join("").slice(0, 2).toUpperCase();
 }
 
-export function MessageList({ messages, options, onOption, disabled, botName, typing = false }: Props) {
+export function MessageList({
+  messages,
+  options,
+  onOption,
+  disabled,
+  botName,
+  typing = false,
+  pending = [],
+  onRetry,
+}: Props) {
   const end = useRef<HTMLDivElement>(null);
+  const last = messages[messages.length - 1];
+  // "Sent" stays under the customer's latest message until someone replies.
+  const sentId = pending.length === 0 && last?.senderType === "CUSTOMER" ? last.id : null;
 
   useEffect(() => {
     end.current?.scrollIntoView?.({ block: "end", behavior: "smooth" });
-  }, [messages.length, typing, options.length]);
+  }, [messages.length, typing, options.length, pending.length]);
 
   return (
     <div className="messages" role="log" aria-live="polite">
@@ -75,10 +90,35 @@ export function MessageList({ messages, options, onOption, disabled, botName, ty
                   {m.body}
                 </p>
               ))}
+              {sentId && group.messages.some((m) => m.id === sentId) && (
+                <span className="delivery">Sent · {time(group.messages[group.messages.length - 1].createdAt)}</span>
+              )}
             </div>
           </div>
         );
       })}
+
+      {pending.length > 0 && (
+        <div className="group group-mine">
+          <div className="group-body">
+            {pending.map((p) => (
+              <div key={p.clientMessageId} className={`pending pending-${p.status}`}>
+                <p className="bubble">{p.body}</p>
+                {p.status === "sending" ? (
+                  <span className="delivery">Sending…</span>
+                ) : (
+                  <span className="delivery delivery-failed">
+                    Not sent ·{" "}
+                    <button type="button" onClick={() => onRetry?.(p.clientMessageId)}>
+                      Retry
+                    </button>
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {typing && (
         <div className="group group-theirs">

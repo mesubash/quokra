@@ -114,21 +114,21 @@ function Chat({ tenant, token, visible, onUnauthorized }: ChatProps) {
     return () => clearTimeout(timer);
   }, [awaitingBot, lastId]);
 
-  async function send(message: { body?: string; optionId?: string }) {
+  async function send(message: { body: string; optionId?: string }) {
     setAwaitingBot(true);
-    try {
-      await chat.send(message);
-    } catch (e) {
-      setAwaitingBot(false);
-      throw e;
-    }
+    if (!(await chat.send(message))) setAwaitingBot(false);
+  }
+
+  async function retry(clientMessageId: string) {
+    setAwaitingBot(true);
+    if (!(await chat.retry(clientMessageId))) setAwaitingBot(false);
   }
 
   return (
     <main className="chat">
       <header className="panel-header">
         <span className="header-avatar">
-          {tenant.branding.logoUrl ? <img src={tenant.branding.logoUrl} alt="" /> : <RobotAvatar size={34} wave={visible} />}
+          {tenant.branding.logoUrl ? <img src={tenant.branding.logoUrl} alt="" /> : <RobotAvatar size={34} />}
         </span>
         <div className="header-text">
           <h1>{tenant.displayName}</h1>
@@ -147,13 +147,15 @@ function Chat({ tenant, token, visible, onUnauthorized }: ChatProps) {
           <MessageList
             messages={chat.messages}
             options={options}
-            onOption={(o) => void send({ optionId: o.id }).catch(() => {})}
+            onOption={(o) => void send({ body: o.title, optionId: o.id })}
             disabled={!chat.conversation}
             botName={tenant.displayName}
             typing={typing}
+            pending={chat.pending}
+            onRetry={(id) => void retry(id)}
           />
           <Composer
-            onSend={(body) => send({ body })}
+            onSend={(body) => void send({ body })}
             disabled={!chat.conversation}
             focus={visible}
             placeholder={status === "HUMAN" && chat.conversation?.assignee ? `Reply to ${chat.conversation.assignee.name}…` : `Reply to ${tenant.displayName}…`}

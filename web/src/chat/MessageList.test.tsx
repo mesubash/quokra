@@ -61,6 +61,34 @@ describe("MessageList", () => {
     expect(onOption).toHaveBeenCalledWith(option);
   });
 
+  it("shows Sent under the customer's latest message until someone replies", () => {
+    renderList({ messages: [message("01", "BOT", "Hi!"), message("02", "CUSTOMER", "Hello")] });
+
+    expect(screen.getByText(/^Sent/)).toBeTruthy();
+  });
+
+  it("doesn't show Sent once there is a reply", () => {
+    renderList();
+
+    expect(screen.queryByText(/^Sent/)).toBeNull();
+  });
+
+  it("shows messages that are still sending", () => {
+    renderList({ pending: [{ clientMessageId: "c-1", body: "On its way", status: "sending" }] });
+
+    expect(screen.getByText("On its way")).toBeTruthy();
+    expect(screen.getByText("Sending…")).toBeTruthy();
+  });
+
+  it("offers a retry when sending failed", () => {
+    const onRetry = vi.fn();
+    renderList({ pending: [{ clientMessageId: "c-1", body: "Oops", status: "failed" }], onRetry });
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+
+    expect(onRetry).toHaveBeenCalledWith("c-1");
+  });
+
   it("shows the typing dots instead of options while the bot is answering", () => {
     renderList({ options: [{ id: "pricing", title: "Pricing" }], typing: true });
 

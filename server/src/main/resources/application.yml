@@ -25,9 +25,9 @@ quokra:
 
 server:
   compression:
-    # sdk.js, the Lottie player and the animation compress well.
+    # sdk.js, the web UI and the robot image compress well.
     enabled: true
-    mime-types: text/html,text/css,text/javascript,application/javascript,application/json
+    mime-types: text/html,text/css,text/javascript,application/javascript,application/json,image/svg+xml
     min-response-size: 1KB
 
 management:

@@ -5,7 +5,8 @@ const MAX_LENGTH = 2000;
 const MAX_HEIGHT = 120;
 
 interface Props {
-  onSend: (text: string) => Promise<void>;
+  // The message shows in the chat straight away, so the input clears at once.
+  onSend: (text: string) => void;
   disabled: boolean;
   placeholder?: string;
   // Focus the input whenever this becomes true (e.g. the panel was just opened).
@@ -15,8 +16,6 @@ interface Props {
 export function Composer({ onSend, disabled, placeholder = "Type your message…", focus = false }: Props) {
   const input = useRef<HTMLTextAreaElement>(null);
   const [text, setText] = useState("");
-  const [sending, setSending] = useState(false);
-  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     if (focus && !disabled) input.current?.focus();
@@ -30,40 +29,31 @@ export function Composer({ onSend, disabled, placeholder = "Type your message…
     el.style.height = `${Math.min(el.scrollHeight, MAX_HEIGHT)}px`;
   }, [text]);
 
-  async function send() {
+  function send() {
     const body = text.trim();
-    if (!body || sending) return;
-    setSending(true);
-    setFailed(false);
-    try {
-      await onSend(body);
-      setText("");
-    } catch {
-      setFailed(true);
-    } finally {
-      setSending(false);
-      input.current?.focus();
-    }
+    if (!body || disabled) return;
+    onSend(body);
+    setText("");
+    input.current?.focus();
   }
 
   function submit(e: FormEvent) {
     e.preventDefault();
-    void send();
+    send();
   }
 
   // Enter sends; Shift+Enter adds a new line.
   function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
-      void send();
+      send();
     }
   }
 
-  const canSend = !disabled && !sending && text.trim().length > 0;
+  const canSend = !disabled && text.trim().length > 0;
 
   return (
     <form className="composer" onSubmit={submit}>
-      {failed && <p className="composer-error">Couldn't send. Try again.</p>}
       <div className="composer-row">
         <textarea
           ref={input}
