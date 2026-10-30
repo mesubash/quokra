@@ -190,15 +190,12 @@ class RealtimeTests {
 
         http.post().uri("/conversation/typing").header(HttpHeaders.AUTHORIZATION, "Bearer " + customer)
             .retrieve().toBodilessEntity();
-        Object customerTyping = agentSees.poll(5, TimeUnit.SECONDS);
-        assertThat(JsonPath.<String>read(customerTyping, "$.type")).isEqualTo("typing");
-        assertThat(JsonPath.<String>read(customerTyping, "$.data.senderType")).isEqualTo("CUSTOMER");
+        assertThat(typingFrom(agentSees, "CUSTOMER")).isNotNull();
 
-        customerSees.clear();
         agentHttp.post().uri("/conversations/" + conversationId + "/typing")
             .header(HttpHeaders.AUTHORIZATION, "Bearer " + agentToken(agentSub)).retrieve().toBodilessEntity();
-        Object agentTyping = customerSees.poll(5, TimeUnit.SECONDS);
-        assertThat(JsonPath.<String>read(agentTyping, "$.data.senderType")).isEqualTo("AGENT");
+        // Both sides get every typing event (each ignores its own), so look for the agent's.
+        assertThat(typingFrom(customerSees, "AGENT")).isNotNull();
         assertThat(jdbc.queryForObject("select count(*) from messages where conversation_id = ?::uuid", Integer.class,
             conversationId)).isEqualTo(1);
     }
@@ -287,6 +284,19 @@ class RealtimeTests {
 
     private static String queueTopic(UUID tenant) {
         return "/topic/tenants/" + tenant + "/queue";
+    }
+
+    // The next "typing" event from this sender within a few seconds, or null.
+    private static Object typingFrom(BlockingQueue<Object> events, String senderType) throws InterruptedException {
+        long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+        for (long left; (left = until - System.nanoTime()) > 0; ) {
+            Object event = events.poll(left, TimeUnit.NANOSECONDS);
+            if (event != null && "typing".equals(JsonPath.read(event, "$.type"))
+                    && senderType.equals(JsonPath.read(event, "$.data.senderType"))) {
+                return event;
+            }
+        }
+        return null;
     }
 
     private String startConversation(String token) {
