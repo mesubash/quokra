@@ -225,6 +225,7 @@ texts:
   offline_handoff: "We're away right now and back {opens}. Leave your message here and we'll reply then."
 ```
 
+- **Images:** a message can carry one image (`messages.attachment_*`), stored in a `FileStore`: a folder (`DiskFileStore`) or an S3-compatible bucket (`S3FileStore`, AWS SDK), chosen by `quokra.attachments.store`. Files are checked by their first bytes (PNG, JPEG, GIF, WebP; 5 MB), served only through the conversation's own endpoints, and offered only when the tenant has `attachments_enabled` and `StorageCheck` (a write-and-read probe, also in `/actuator/health`) passes.
 - **Opening hours:** optional per tenant (Settings; a time zone and a range per weekday, stored as JSON in `tenants.opening_hours`; none = always open). Outside them the bot answers as usual and handoffs still go to the queue, but the customer sees `offline_handoff` instead of the handoff or urgent message, with `{opens}` like "tomorrow at 09:00 (Europe/Berlin)", and the header shows `offline`.
 
 - **Auto-resolve:** every 5 minutes (`quokra.auto-resolve.every`), quiet conversations close by themselves after the tenant's `auto_resolve_minutes` (default 24 hours, 0 = never, set in Settings): chats **with the bot** where the customer wrote something and then left, and chats **with an agent** where the agent wrote last. Waiting chats and chats where the customer wrote last stay open. The customer sees `auto_closed`; the activity shows "Closed automatically" (event `RESOLVED`, reason `AUTO`); writing again reopens the chat as usual.

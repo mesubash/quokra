@@ -49,6 +49,11 @@ All through environment variables. Generate random secrets with `openssl rand -b
 | `QUOKRA_AGENT_ROLES_CLAIM` | | Default `roles`; e.g. `realm_access.roles` |
 | `QUOKRA_AGENT_ROLE` / `QUOKRA_ADMIN_ROLE` | | Defaults `SUPPORT_AGENT` / `QUOKRA_ADMIN` |
 | `QUOKRA_BOTS_DIR` | | A folder with your bot files (`*.yml`), mounted into the container |
+| `QUOKRA_ATTACHMENTS_STORE` | | Where images sent in chats go: `disk` (default) or `s3` |
+| `QUOKRA_ATTACHMENTS_DIR` | | For `disk`: the folder; the image uses `/data/attachments`, so mount a volume at `/data` |
+| `QUOKRA_ATTACHMENTS_S3_BUCKET` / `_REGION` | for `s3` | The bucket and its region |
+| `QUOKRA_ATTACHMENTS_S3_ENDPOINT` | | Only for S3-compatible stores (Cloudflare R2, Garage, MinIO), e.g. `https://<account>.r2.cloudflarestorage.com` |
+| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | for `s3` | The bucket's key (or the server's own role on AWS) |
 | `FORWARD_HEADERS_STRATEGY` | | Default `native` (trusts `X-Forwarded-For` from proxies on private networks); `none` if Quokra faces the internet directly |
 | `LOGGING_STRUCTURED_FORMAT_CONSOLE` | | The image logs JSON lines (`ecs`); set to empty for plain text |
 | `APP_ENV` | | Set `production`: the server then refuses to start if dev agent tokens are turned on |
@@ -75,7 +80,8 @@ docker run -d --name quokra -p 8080:8080 \
 - **Proxy:** pass WebSocket upgrades through for `/ws`, and keep `X-Forwarded-For` / `X-Forwarded-Proto`.
 - **One instance for now:** rate limits and the WebSocket broker are in memory. Running several instances
   needs a shared broker and limiter (later).
-- **Backups:** back up the PostgreSQL database. Keep `TENANT_SECRET_ENCRYPTION_KEY` safe alongside it.
+- **Images:** off for each company until an admin allows them (Settings → General). `/actuator/health` includes `storage`, which is down when the store can't be written or read; the image button then stays hidden.
+- **Backups:** back up the PostgreSQL database, and the images (the `/data` volume or the bucket). Keep `TENANT_SECRET_ENCRYPTION_KEY` safe alongside it.
 
 ---
 

@@ -13,6 +13,8 @@ agents. Admins set them up in the console's **Settings** (the gear icon).
    - **Bot file:** which FAQ the bot starts from. You can edit the questions afterwards in the **Bot** section
      (see [Write the bot](07-write-the-bot.md)).
    - **Close quiet chats:** when chats without replies close by themselves (default after 24 hours).
+   - **Images** (optional): let customers and agents send images (PNG, JPEG, GIF, WebP up to 5 MB).
+     It also shows whether the server's storage for them works.
    - **Opening hours** (optional): a time zone and hours per day. Outside them the bot still answers,
      and "Talk to a person" still reaches the queue, but the customer is told the team is away and when
      it's back. Off means always open.

@@ -18,6 +18,7 @@
 - A FAQ bot with a menu and keywords, answering common questions straight away. Edit it in Settings, or keep it in a file.
 - "Talk to a person" (or an urgent keyword, or the bot not understanding twice) hands the chat to your team. Guests are asked for their email and name in the chat first, so the team can follow up.
 - Logged-in customers can be identified by your backend, and keep one conversation across devices.
+- Images (screenshots, photos) from customers and agents, stored on disk or in S3-compatible storage.
 - "Start a new chat" from the chat's menu; the team keeps the old one in its history.
 
 **For agents**

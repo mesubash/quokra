@@ -23,8 +23,9 @@ notifications, so `sdk.js` shows them for the console. You can also listen with
 **For agents:**
 1. The first time, the console shows **Get notified of new chats · Turn on**. Click **Turn on** and
    allow notifications in the browser's prompt.
-2. The **bell** in the console header chooses what notifies you (the four events above) and how
-   (sound, desktop notifications). These settings are kept in your browser.
+2. The **bell** in the console header, or **Settings → Notifications** (the gear icon), chooses what
+   notifies you (the four events above) and how (sound, desktop notifications). If you closed the
+   banner, turn them on there later. These settings are kept in your browser.
 3. If you blocked notifications earlier, allow them again in the browser's site settings.
 
 Sounds need one click on the page first (a browser rule); after that they play.

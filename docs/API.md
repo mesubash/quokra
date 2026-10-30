@@ -64,11 +64,12 @@ WebSocket: send the same bearer token in the STOMP `CONNECT` frame header `Autho
     "placeholder": "Reply to {name}…",
     "offline": "Away now · we'll reply when we're back"
   },
-  "open": true
+  "open": true,
+  "attachments": false
 }
 ```
 
-`open` is false outside the tenant's opening hours (always true without any); the chat then shows `texts.offline` in its header. `teaser` and `texts` come from the tenant's bot file (see ARCHITECTURE.md §6); `texts` always has every field, with defaults for any the file leaves out. `404 TENANT_NOT_FOUND` for unknown keys.
+`attachments` is true when the company allows images and the server's storage works; the chat shows its image button only then. `open` is false outside the tenant's opening hours (always true without any); the chat then shows `texts.offline` in its header. `teaser` and `texts` come from the tenant's bot file (see ARCHITECTURE.md §6); `texts` always has every field, with defaults for any the file leaves out. `404 TENANT_NOT_FOUND` for unknown keys.
 
 ### 3.2 `POST /widget/sessions`: start a guest session
 
@@ -163,6 +164,19 @@ A guest who hasn't left their details yet isn't queued straight away. The conver
 
 The email isn't verified, so it only groups conversations for agents: a customer never sees other conversations through it. A blocked contact gets `403 CONTACT_BLOCKED`.
 
+### 3.10 Images
+
+`POST /widget/conversation/attachments` (multipart: `file`, optional `clientMessageId`) sends an image, like a message:
+
+```json
+// 201
+{ "message": Message, "conversation": Conversation }   // message.attachment: { name, contentType, size }
+```
+
+PNG, JPEG, GIF or WebP up to 5 MB, recognised by the file's first bytes (not its name or declared type; SVG is refused). Errors: `403 ATTACHMENTS_OFF` (the company hasn't allowed images), `415 UNSUPPORTED_FILE`, `413 FILE_TOO_LARGE`, `503 STORAGE_UNAVAILABLE`, `429 RATE_LIMITED` (shares the message limit). The bot doesn't answer images.
+
+`GET /widget/conversation/messages/{messageId}/attachment` returns the image itself, only for the current conversation. It needs the session token, so pages fetch it and show it from a blob. Served inline with `nosniff` and a `sandbox` Content-Security-Policy.
+
 ### 3.9 `POST /widget/conversation/new`: "Start a new chat"
 
 No request body. Closes the current conversation, whoever has it (event `RESOLVED`, reason `CUSTOMER`, so agents see "Customer started a new chat"), and starts a new one with the greeting. Nothing is deleted: the old one stays in the team's history. A guest's email and name carry over, so they aren't asked again.
@@ -183,7 +197,8 @@ All require an agent token. The agent only sees tenants they're a member of (`te
 ### 4.1 `GET /agent/tenants`
 
 ```json
-200 { "items": [{ "id": "…", "slug": "demo", "displayName": "Demo Company" }] }
+200 { "items": [{ "id": "…", "slug": "demo", "displayName": "Demo Company", "attachments": true }] }
+// attachments: agents can send images in this company's chats
 ```
 
 ### 4.2 `GET /agent/conversations`
@@ -312,6 +327,10 @@ Saved replies of the conversation's tenant, by title. The console fills in `{nam
 200 { "items": [{ "id": "…", "title": "Refunds", "body": "Hi {name}, refunds take 5 days." }], "nextCursor": null }
 ```
 
+### 4.19 Images
+
+`POST /agent/conversations/{id}/attachments` (multipart: `file`, optional `clientMessageId`) → `201 { "message": Message }`. Same rules as a reply (the assignee of an accepted chat) and the same checks as 3.10. `GET /agent/conversations/{id}/messages/{messageId}/attachment` returns the image to any agent of the tenant.
+
 ---
 
 ## 4b. Admin endpoints
@@ -326,6 +345,7 @@ interface Tenant {
   consoleOrigins: string[];              // dashboards that may show the console
   logoUrl: string | null; primaryColor: string | null; botConfig: string;
   autoResolveMinutes: number;            // close quiet chats after this long; 0 = never (default 1440)
+  attachmentsEnabled: boolean;           // customers and agents may send images (default false)
   openingHours: { timezone: string; days: { [day: string]: string } } | null;
                                          // e.g. { "timezone": "Europe/Berlin", "days": { "MON": "09:00-17:00" } };
                                          // days MON..SUN, left out = closed; null = always open
@@ -336,6 +356,7 @@ interface Tenant {
 
 | Endpoint | What it does |
 |---|---|
+| `GET /admin/storage` | Whether image storage works: `{ "ok": true, "store": "disk", "problem": null }`. Checked by writing and reading a small file, at most every 5 minutes |
 | `GET /admin/bots` | Bot files the server has: `{ "items": ["demo", …] }` |
 | `GET /admin/tenants` | All tenants: `{ "items": [Tenant, …] }` |
 | `POST /admin/tenants` | Create one: `{ slug, displayName, widgetOrigins, consoleOrigins, logoUrl?, primaryColor?, botConfig, autoResolveMinutes?, openingHours? }` → `201 Tenant` with a new publishable key. `409 SLUG_TAKEN` |
@@ -444,6 +465,7 @@ interface Message {
   options: { id: string; title: string }[] | null;   // menu buttons
   clientMessageId: string | null;
   createdAt: string;
+  attachment: { name: string; contentType: string; size: number } | null;   // an image; body is "Sent an image"
 }
 
 interface ConversationEvent {
@@ -575,5 +597,10 @@ Envelope:
 | 409 | `ALREADY_ACCEPTED` | Another agent accepted first |
 | 409 | `NO_OPEN_CONVERSATION` | Sending without an open conversation |
 | 422 | `MESSAGE_TOO_LONG` | Body over 2,000 characters |
+| 403 | `ATTACHMENTS_OFF` | Images aren't allowed for this company |
+| 404 | `ATTACHMENT_NOT_FOUND` | No image for that message in this conversation |
+| 413 | `FILE_TOO_LARGE` | Image over 5 MB |
+| 415 | `UNSUPPORTED_FILE` | Not a PNG, JPEG, GIF or WebP |
+| 503 | `STORAGE_UNAVAILABLE` | Image storage isn't working |
 | 429 | `RATE_LIMITED` | Too many requests (`Retry-After` header set): 5 new chat sessions a minute per IP address, 20 customer messages a minute per session |
 | 500 | `INTERNAL_ERROR` | Unexpected; logged with the request id |
