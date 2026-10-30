@@ -17,6 +17,9 @@ Add this before `</body>` on every page that should have the chat:
 A chat button appears in the bottom-right corner once the chat has loaded. If Quokra can't be reached,
 nothing is shown.
 
+Customers come back to the same conversation on their next visit. The **⋯** menu in the chat header has
+**Start a new chat** for a fresh start; the old chat stays in your team's history.
+
 ## Other placements
 
 - **Inline**, inside your page: `<div data-quokra-chat-inline="your-slug" data-quokra-pk="pk_live_…"></div>`

@@ -171,6 +171,7 @@ web/
 | `HUMAN` | RESOLVE | `RESOLVED` | agent | resolved message |
 | `HUMAN` | RETURN_TO_BOT | `BOT` | agent | `assignee_sub` cleared; menu sent |
 | `RESOLVED` | REOPEN | `BOT` | customer | `fallback_count` reset; bot handles the new message |
+| `BOT` / `WAITING` / `HUMAN` | CUSTOMER_END | `RESOLVED` | customer | "Start a new chat": event `RESOLVED` with reason `CUSTOMER`; a new `BOT` conversation starts with the same contact |
 
 Any other combination throws `InvalidTransition` (HTTP 409). `ACCEPT` uses the `version` column for optimistic locking; a lost race returns `409 ALREADY_ACCEPTED`.
 

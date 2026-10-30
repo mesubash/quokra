@@ -163,6 +163,17 @@ A guest who hasn't left their details yet isn't queued straight away. The conver
 
 The email isn't verified, so it only groups conversations for agents: a customer never sees other conversations through it. A blocked contact gets `403 CONTACT_BLOCKED`.
 
+### 3.9 `POST /widget/conversation/new`: "Start a new chat"
+
+No request body. Closes the current conversation, whoever has it (event `RESOLVED`, reason `CUSTOMER`, so agents see "Customer started a new chat"), and starts a new one with the greeting. Nothing is deleted: the old one stays in the team's history. A guest's email and name carry over, so they aren't asked again.
+
+```json
+// 201
+{ "conversation": Conversation, "messages": [Message] }   // just the greeting
+```
+
+Subscribe to the new conversation's topic from here on. `403 CONTACT_BLOCKED` for a blocked contact; `429 RATE_LIMITED` shares the message limit.
+
 ---
 
 ## 4. Agent endpoints
