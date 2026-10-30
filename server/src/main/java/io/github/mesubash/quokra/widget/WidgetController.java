@@ -7,7 +7,15 @@ import io.github.mesubash.quokra.session.SessionTokens;
 import io.github.mesubash.quokra.tenant.Tenant;
 import io.github.mesubash.quokra.tenant.TenantRepository;
 import jakarta.validation.Valid;
+import io.github.mesubash.quokra.conversation.ConversationService;
+import io.github.mesubash.quokra.conversation.CustomerIdentity;
+import io.github.mesubash.quokra.session.IdentityTokens;
+import io.github.mesubash.quokra.session.SessionTokens.Session;
+import io.github.mesubash.quokra.tenant.TenantSecrets;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import java.time.Instant;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -31,14 +39,25 @@ public class WidgetController {
 
     public record SessionResponse(String sessionToken, UUID visitorId, Instant expiresAt) {}
 
+    public record IdentifyRequest(@NotBlank @Size(max = 4096) String identityToken) {}
+
+    public record IdentifyResponse(String sessionToken, CustomerIdentity customer, Instant expiresAt) {}
+
     private final TenantRepository tenants;
     private final SessionTokens sessionTokens;
     private final BotConfigRegistry bots;
+    private final TenantSecrets secrets;
+    private final IdentityTokens identityTokens;
+    private final ConversationService conversations;
 
-    public WidgetController(TenantRepository tenants, SessionTokens sessionTokens, BotConfigRegistry bots) {
+    public WidgetController(TenantRepository tenants, SessionTokens sessionTokens, BotConfigRegistry bots,
+                            TenantSecrets secrets, IdentityTokens identityTokens, ConversationService conversations) {
         this.tenants = tenants;
         this.sessionTokens = sessionTokens;
         this.bots = bots;
+        this.secrets = secrets;
+        this.identityTokens = identityTokens;
+        this.conversations = conversations;
     }
 
     @GetMapping("/tenants/{publishableKey}")
@@ -55,6 +74,25 @@ public class WidgetController {
         Tenant tenant = findTenant(request.publishableKey());
         SessionTokens.Issued issued = sessionTokens.issue(tenant.getId());
         return new SessionResponse(issued.token(), issued.session().visitorId(), issued.session().expiresAt());
+    }
+
+    // The host's backend vouches for a logged-in customer. The token must be signed with this session's tenant
+    // secret, so a token for one tenant can't be used on another.
+    @PostMapping("/sessions/identify")
+    public IdentifyResponse identify(@AuthenticationPrincipal Session session, @Valid @RequestBody IdentifyRequest request) {
+        String secret = secrets.secretFor(session.tenantId())
+            .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "IDENTITY_TOKEN_INVALID",
+                "Identifying customers isn't set up for this site"));
+        CustomerIdentity customer = identityTokens.verify(request.identityToken(), secret);
+        UUID visitorId;
+        try {
+            visitorId = conversations.identify(session.tenantId(), session.visitorId(), customer);
+        } catch (DataIntegrityViolationException e) {
+            // Identified twice at the same moment; the other request did the merge.
+            visitorId = session.visitorId();
+        }
+        SessionTokens.Issued issued = sessionTokens.issue(session.tenantId(), visitorId, customer);
+        return new IdentifyResponse(issued.token(), customer, issued.session().expiresAt());
     }
 
     private Tenant findTenant(String publishableKey) {

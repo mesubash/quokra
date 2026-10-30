@@ -6,6 +6,9 @@ quokra:
   session:
     # Fixed dev-only key so chat sessions survive restarts locally. Never use this value elsewhere.
     signing-key: dev-only-session-signing-key-change-me-0123456789
+  tenant-secrets:
+    # Fixed dev-only key, so the demo tenant's secret (db/dev V8_1) can be read. Never use it elsewhere.
+    encryption-key: ZGV2LW9ubHktdGVuYW50LXNlY3JldC1rZXktMzJieXQ=
   dev:
     # Local agent login: POST /dev/agent-token. Never in production.
     agent-tokens: true

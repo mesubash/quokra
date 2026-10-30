@@ -13,6 +13,8 @@ interface ConversationRepository extends JpaRepository<Conversation, UUID> {
 
     Optional<Conversation> findFirstByTenantIdAndVisitorIdOrderByCreatedAtDesc(UUID tenantId, UUID visitorId);
 
+    Optional<Conversation> findFirstByTenantIdAndCustomerSubOrderByCreatedAtDesc(UUID tenantId, String customerSub);
+
     // Urgent first, then whoever has waited longest.
     @Query("""
         select c from Conversation c

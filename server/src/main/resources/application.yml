@@ -19,6 +19,9 @@ quokra:
     # Where the roles are in the token, e.g. "roles" or "realm_access.roles".
     roles-claim: ${QUOKRA_AGENT_ROLES_CLAIM:roles}
     role: ${QUOKRA_AGENT_ROLE:SUPPORT_AGENT}
+  tenant-secrets:
+    # 32 random bytes, base64. Encrypts tenant secret keys in the database. Empty: identify is off.
+    encryption-key: ${TENANT_SECRET_ENCRYPTION_KEY:}
   ws:
     # Origins allowed to open the WebSocket: where the chat panel and console are served.
     allowed-origins: ${PUBLIC_BASE_URL:http://localhost:8080}

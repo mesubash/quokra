@@ -116,7 +116,7 @@ class StompAuthInterceptor implements ChannelInterceptor {
     // Customers may only follow their own conversation.
     private void checkCustomer(Session session, String destination) {
         UUID id = idAfter(destination, CONVERSATION_TOPIC, "");
-        Optional<Conversation> own = conversations.current(session.tenantId(), session.visitorId());
+        Optional<Conversation> own = conversations.current(session.tenantId(), session.visitorId(), session.customerSub());
         if (own.isEmpty() || !own.get().getId().equals(id)) {
             throw new AccessDeniedException("Not your conversation");
         }

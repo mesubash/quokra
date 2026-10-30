@@ -144,6 +144,26 @@ public class Conversation {
         updatedAt = now;
     }
 
+    void identify(CustomerIdentity customer, Instant now) {
+        customerSub = customer.sub();
+        if (customer.name() != null) {
+            customerName = customer.name();
+        }
+        if (customer.email() != null) {
+            customerEmail = customer.email();
+        }
+        updatedAt = now;
+    }
+
+    // Its messages were moved into the customer's other open conversation.
+    void closeAsMerged(Instant now) {
+        status = Status.RESOLVED;
+        pendingHandoff = null;
+        resolvedAt = now;
+        waitingSince = null;
+        updatedAt = now;
+    }
+
     // Kept until the customer has also answered the name question.
     void rememberEmail(String email, Instant now) {
         customerEmail = email;

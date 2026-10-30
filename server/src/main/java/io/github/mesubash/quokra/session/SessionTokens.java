@@ -7,6 +7,7 @@ import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jose.crypto.MACVerifier;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import io.github.mesubash.quokra.conversation.CustomerIdentity;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.text.ParseException;
@@ -25,7 +26,13 @@ import org.springframework.stereotype.Component;
 @Component
 public class SessionTokens {
 
-    public record Session(UUID visitorId, UUID tenantId, Instant expiresAt) {}
+    // customer: set once the host has identified a logged-in customer; null for guests.
+    public record Session(UUID visitorId, UUID tenantId, CustomerIdentity customer, Instant expiresAt) {
+
+        public String customerSub() {
+            return customer == null ? null : customer.sub();
+        }
+    }
 
     public record Issued(String token, Session session) {}
 
@@ -41,14 +48,21 @@ public class SessionTokens {
     }
 
     public Issued issue(UUID tenantId) {
+        return issue(tenantId, UUID.randomUUID(), null);
+    }
+
+    public Issued issue(UUID tenantId, UUID visitorId, CustomerIdentity customer) {
         Instant now = clock.instant();
-        Session session = new Session(UUID.randomUUID(), tenantId, now.plus(TTL));
-        JWTClaimsSet claims = new JWTClaimsSet.Builder()
-            .subject(session.visitorId().toString())
+        Session session = new Session(visitorId, tenantId, customer, now.plus(TTL));
+        JWTClaimsSet.Builder builder = new JWTClaimsSet.Builder()
+            .subject(visitorId.toString())
             .claim("tid", tenantId.toString())
             .issueTime(Date.from(now))
-            .expirationTime(Date.from(session.expiresAt()))
-            .build();
+            .expirationTime(Date.from(session.expiresAt()));
+        if (customer != null) {
+            builder.claim("cus", customer.sub()).claim("cnm", customer.name()).claim("cem", customer.email());
+        }
+        JWTClaimsSet claims = builder.build();
         SignedJWT jwt = new SignedJWT(new JWSHeader(JWSAlgorithm.HS256), claims);
         try {
             jwt.sign(new MACSigner(key));
@@ -69,9 +83,13 @@ public class SessionTokens {
             if (!expiresAt.isAfter(clock.instant())) {
                 return Optional.empty();
             }
+            String customerSub = claims.getStringClaim("cus");
+            CustomerIdentity customer = customerSub == null ? null
+                : new CustomerIdentity(customerSub, claims.getStringClaim("cnm"), claims.getStringClaim("cem"));
             return Optional.of(new Session(
                 UUID.fromString(claims.getSubject()),
                 UUID.fromString(claims.getStringClaim("tid")),
+                customer,
                 expiresAt));
         } catch (ParseException | JOSEException | RuntimeException e) {
             return Optional.empty();

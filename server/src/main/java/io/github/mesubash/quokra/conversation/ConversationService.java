@@ -76,12 +76,22 @@ public class ConversationService {
 
     @Transactional
     public Started startOrResume(UUID tenantId, UUID visitorId) {
-        var latest = conversations.findFirstByTenantIdAndVisitorIdOrderByCreatedAtDesc(tenantId, visitorId);
+        return startOrResume(tenantId, visitorId, null);
+    }
+
+    // A logged-in customer gets their latest conversation from any device; a guest, this visitor's.
+    @Transactional
+    public Started startOrResume(UUID tenantId, UUID visitorId, CustomerIdentity customer) {
+        var latest = current(tenantId, visitorId, customer == null ? null : customer.sub());
         if (latest.isPresent()) {
             return new Started(latest.get(), false);
         }
         Instant now = clock.instant();
-        Conversation conversation = conversations.save(Conversation.start(tenantId, visitorId, now));
+        Conversation started = Conversation.start(tenantId, visitorId, now);
+        if (customer != null) {
+            started.identify(customer, now);
+        }
+        Conversation conversation = conversations.save(started);
         events.save(ConversationEvent.of(conversation.getId(), EventType.CREATED, SenderType.CUSTOMER, null, null, now));
 
         Optional<BotConfig> bot = botFor(tenantId);
@@ -384,7 +394,71 @@ public class ConversationService {
     // The visitor's latest conversation, open or resolved.
     @Transactional(readOnly = true)
     public Optional<Conversation> current(UUID tenantId, UUID visitorId) {
-        return conversations.findFirstByTenantIdAndVisitorIdOrderByCreatedAtDesc(tenantId, visitorId);
+        return current(tenantId, visitorId, null);
+    }
+
+    // For a logged-in customer, their latest conversation on any device.
+    @Transactional(readOnly = true)
+    public Optional<Conversation> current(UUID tenantId, UUID visitorId, String customerSub) {
+        return customerSub != null
+            ? conversations.findFirstByTenantIdAndCustomerSubOrderByCreatedAtDesc(tenantId, customerSub)
+            : conversations.findFirstByTenantIdAndVisitorIdOrderByCreatedAtDesc(tenantId, visitorId);
+    }
+
+    // The visitor logged in on the host site. Their open guest conversation becomes the customer's, or, if the
+    // customer already has an open one (e.g. on another device), its messages move there.
+    // Returns the visitor id the new session should use.
+    @Transactional
+    public UUID identify(UUID tenantId, UUID visitorId, CustomerIdentity customer) {
+        Instant now = clock.instant();
+        Optional<Conversation> visitors = conversations.findFirstByTenantIdAndVisitorIdOrderByCreatedAtDesc(tenantId, visitorId)
+            .filter(Conversation::isOpen);
+        Optional<Conversation> customers = conversations.findFirstByTenantIdAndCustomerSubOrderByCreatedAtDesc(tenantId, customer.sub())
+            .filter(Conversation::isOpen);
+
+        // This browser's open chat belongs to someone else who logged in here before: start fresh.
+        if (visitors.isPresent() && visitors.get().getCustomerSub() != null
+                && !visitors.get().getCustomerSub().equals(customer.sub())) {
+            customers.ifPresent(c -> refreshIdentity(c, customer, now));
+            return UUID.randomUUID();
+        }
+        Optional<Conversation> guest = visitors.filter(c -> c.getCustomerSub() == null);
+        if (guest.isEmpty()) {
+            customers.ifPresent(c -> refreshIdentity(c, customer, now));
+            return visitorId;
+        }
+
+        Conversation g = guest.get();
+        if (customers.isEmpty()) {
+            g.identify(customer, now);
+            events.save(ConversationEvent.of(g.getId(), EventType.IDENTIFIED, SenderType.CUSTOMER, null, null, now));
+            if (g.getPendingHandoff() != null) {
+                // They were being asked for their email; now we know who they are.
+                handOff(g, g.getPendingHandoff(), SenderType.CUSTOMER, handoffText(g), now);
+            } else {
+                publishUpdate(g);
+            }
+            return visitorId;
+        }
+
+        Conversation target = customers.get();
+        messages.flush();
+        messages.moveAll(g.getId(), target.getId());
+        g.closeAsMerged(now);
+        events.save(ConversationEvent.of(g.getId(), EventType.MERGED, SenderType.CUSTOMER, null, target.getId().toString(), now));
+        events.save(ConversationEvent.of(target.getId(), EventType.IDENTIFIED, SenderType.CUSTOMER, null, null, now));
+        target.identify(customer, now);
+        target.touch(now);
+        save(Message.create(target.getId(), SenderType.SYSTEM, null, null,
+            "Messages from another device were added to this chat.", null, null, now));
+        publishUpdate(g);
+        publishUpdate(target);
+        return visitorId;
+    }
+
+    private void refreshIdentity(Conversation conversation, CustomerIdentity customer, Instant now) {
+        conversation.identify(customer, now);
+        publishUpdate(conversation);
     }
 
     @Transactional(readOnly = true)

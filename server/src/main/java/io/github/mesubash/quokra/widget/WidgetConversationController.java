@@ -52,7 +52,7 @@ public class WidgetConversationController {
 
     @GetMapping
     public CurrentResponse current(@AuthenticationPrincipal Session session) {
-        return new CurrentResponse(service.current(session.tenantId(), session.visitorId())
+        return new CurrentResponse(service.current(session.tenantId(), session.visitorId(), session.customerSub())
             .map(CustomerConversationView::of)
             .orElse(null));
     }
@@ -62,7 +62,7 @@ public class WidgetConversationController {
         Conversation conversation;
         boolean created;
         try {
-            var started = service.startOrResume(session.tenantId(), session.visitorId());
+            var started = service.startOrResume(session.tenantId(), session.visitorId(), session.customer());
             conversation = started.conversation();
             created = started.created();
         } catch (DataIntegrityViolationException e) {
@@ -107,7 +107,7 @@ public class WidgetConversationController {
     }
 
     private Conversation openConversation(Session session) {
-        return service.current(session.tenantId(), session.visitorId())
+        return service.current(session.tenantId(), session.visitorId(), session.customerSub())
             .orElseThrow(() -> new ApiException(HttpStatus.CONFLICT, "NO_OPEN_CONVERSATION", "Start a conversation first"));
     }
 }

@@ -63,6 +63,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/v1/widget/tenants/*").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/widget/sessions").permitAll()
                 .requestMatchers(SessionAuthFilter.PATH, SessionAuthFilter.PATH + "/**").hasRole(SessionAuthFilter.ROLE)
+                .requestMatchers(HttpMethod.POST, SessionAuthFilter.IDENTIFY_PATH).hasRole(SessionAuthFilter.ROLE)
                 // Only exists when dev agent tokens are on.
                 .requestMatchers(HttpMethod.POST, "/dev/agent-token").permitAll()
                 .anyRequest().denyAll());

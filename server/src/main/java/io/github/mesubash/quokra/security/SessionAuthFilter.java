@@ -13,10 +13,11 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.preauth.PreAuthenticatedAuthenticationToken;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-// Reads the chat session token on widget conversation endpoints.
+// Reads the chat session token on widget conversation endpoints and identify.
 class SessionAuthFilter extends OncePerRequestFilter {
 
     static final String PATH = "/api/v1/widget/conversation";
+    static final String IDENTIFY_PATH = "/api/v1/widget/sessions/identify";
     static final String ROLE = "VISITOR";
 
     private final SessionTokens sessionTokens;
@@ -28,7 +29,7 @@ class SessionAuthFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
-        return !(path.equals(PATH) || path.startsWith(PATH + "/"));
+        return !(path.equals(PATH) || path.startsWith(PATH + "/") || path.equals(IDENTIFY_PATH));
     }
 
     @Override
