@@ -282,6 +282,8 @@ export interface AdminTenant {
   // null means always open.
   openingHours: OpeningHours | null;
   attachmentsEnabled: boolean;
+  // Resolved chats are deleted after this many months (0 = kept forever).
+  retentionMonths: number;
   hasSecret: boolean;
   agentCount: number;
   inviteCount: number;
@@ -300,6 +302,13 @@ export interface TenantForm {
   autoResolveMinutes: number;
   openingHours: OpeningHours | null;
   attachmentsEnabled: boolean;
+  retentionMonths?: number;
+}
+
+// What the server lets companies choose for keeping chats; maxMonths 0 means "forever" is allowed.
+export interface RetentionLimits {
+  minMonths: number;
+  maxMonths: number;
 }
 
 // Whether image storage works (GET /admin/storage).
@@ -353,6 +362,7 @@ export function adminApi(getToken: () => string, refresh?: FreshToken) {
   return {
     bots: () => call<{ items: string[] }>("GET", "/bots"),
     storage: () => call<StorageStatus>("GET", "/storage"),
+    retention: () => call<RetentionLimits>("GET", "/retention"),
     tenants: () => call<{ items: AdminTenant[] }>("GET", "/tenants"),
     create: (form: TenantForm) => call<AdminTenant>("POST", "/tenants", form),
     update: (s: string, form: TenantForm) => call<AdminTenant>("PUT", `/tenants/${slug(s)}`, form),

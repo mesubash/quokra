@@ -5,6 +5,7 @@ import {
   type AdminApi,
   type AdminTenant,
   type OpeningHours,
+  type RetentionLimits,
   type SavedReply,
   type StorageStatus,
   type TenantForm,
@@ -557,6 +558,7 @@ function TenantFormView({
   const [autoResolve, setAutoResolve] = useState(tenant?.autoResolveMinutes ?? 1440);
   const [hours, setHours] = useState<OpeningHours | null>(tenant?.openingHours ?? null);
   const [images, setImages] = useState(tenant?.attachmentsEnabled ?? false);
+  const [retention, setRetention] = useState<number | undefined>(tenant?.retentionMonths);
   const [widget, setWidget] = useState<string[]>(tenant?.widgetOrigins ?? []);
   const [consoleSites, setConsoleSites] = useState<string[]>(tenant?.consoleOrigins ?? []);
   const [error, setError] = useState<string | null>(null);
@@ -580,6 +582,7 @@ function TenantFormView({
       autoResolveMinutes: autoResolve,
       openingHours: hours,
       attachmentsEnabled: images,
+      retentionMonths: retention,
       widgetOrigins: widget,
       consoleOrigins: consoleSites,
     };
@@ -679,6 +682,7 @@ function TenantFormView({
         </Row>
         <HoursField value={hours} onChange={setHours} />
         <ImagesField api={api} value={images} onChange={setImages} />
+        <RetentionField api={api} value={retention} onChange={setRetention} />
       </section>
 
       <section className="settings-group">
@@ -771,6 +775,58 @@ function SitesField({
         </button>
       </div>
     </div>
+  );
+}
+
+const RETENTION_CHOICES = [1, 3, 6, 12, 24, 36, 60];
+
+export function retentionChoices(limits: RetentionLimits, current?: number) {
+  const allowed = (m: number) => m >= limits.minMonths && (limits.maxMonths === 0 || m <= limits.maxMonths);
+  const months = RETENTION_CHOICES.filter(allowed);
+  // A value set by hand (e.g. 18 months) stays selectable while it's within the limits.
+  if (current !== undefined && current > 0 && allowed(current) && !months.includes(current)) months.push(current);
+  months.sort((a, b) => a - b);
+  return limits.maxMonths === 0 ? [...months, 0] : months;
+}
+
+const monthsLabel = (m: number) =>
+  m === 0 ? "Forever" : m % 12 === 0 ? `${m / 12} year${m === 12 ? "" : "s"}` : `${m} month${m === 1 ? "" : "s"}`;
+
+// How long resolved chats are kept, within what the server allows.
+function RetentionField({
+  api,
+  value,
+  onChange,
+}: {
+  api: AdminApi;
+  value: number | undefined;
+  onChange: (months: number) => void;
+}) {
+  const [limits, setLimits] = useState<RetentionLimits | null>(null);
+
+  useEffect(() => {
+    api
+      .retention()
+      .then(setLimits)
+      .catch(() => setLimits(null));
+  }, [api]);
+
+  if (!limits) return null;
+  const choices = retentionChoices(limits, value);
+  const current = value ?? (choices.includes(12) ? 12 : choices[choices.length - 1]);
+  return (
+    <Row
+      label="Keep chats for"
+      help="Resolved chats older than this are deleted at night, with their messages and images. Open chats are kept."
+    >
+      <select value={current} onChange={(e) => onChange(Number(e.target.value))} aria-label="Keep chats for">
+        {choices.map((m) => (
+          <option key={m} value={m}>
+            {monthsLabel(m)}
+          </option>
+        ))}
+      </select>
+    </Row>
   );
 }
 
