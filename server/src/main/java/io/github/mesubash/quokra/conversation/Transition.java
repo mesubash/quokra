@@ -6,6 +6,7 @@ public enum Transition {
     RESOLVE,
     RETURN_TO_BOT,
     REOPEN,
+    AUTO_RESOLVE,
     AGENT_REOPEN,
     TRANSFER_TO_QUEUE
 }

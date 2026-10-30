@@ -359,6 +359,18 @@ function AgentsCard({ api, tenant, onChanged }: { api: AdminApi; tenant: AdminTe
   );
 }
 
+// Choices for closing quiet chats, in minutes (0 = never).
+const AUTO_RESOLVE = [
+  { minutes: 0, label: "Never" },
+  { minutes: 60, label: "After 1 hour" },
+  { minutes: 240, label: "After 4 hours" },
+  { minutes: 480, label: "After 8 hours" },
+  { minutes: 1440, label: "After 24 hours" },
+  { minutes: 2880, label: "After 2 days" },
+  { minutes: 4320, label: "After 3 days" },
+  { minutes: 10080, label: "After 7 days" },
+];
+
 const lines = (text: string) =>
   text
     .split(/[\n,]+/)
@@ -381,6 +393,7 @@ function TenantFormView({
   const [color, setColor] = useState(tenant?.primaryColor ?? "");
   const [logo, setLogo] = useState(tenant?.logoUrl ?? "");
   const [bot, setBot] = useState(tenant?.botConfig ?? "");
+  const [autoResolve, setAutoResolve] = useState(tenant?.autoResolveMinutes ?? 1440);
   const [widget, setWidget] = useState((tenant?.widgetOrigins ?? []).join("\n"));
   const [consoleSites, setConsoleSites] = useState((tenant?.consoleOrigins ?? []).join("\n"));
   const [error, setError] = useState<string | null>(null);
@@ -401,6 +414,7 @@ function TenantFormView({
       primaryColor: color || null,
       logoUrl: logo || null,
       botConfig: bot,
+      autoResolveMinutes: autoResolve,
       widgetOrigins: lines(widget),
       consoleOrigins: lines(consoleSites),
     };
@@ -461,6 +475,23 @@ function TenantFormView({
           </select>
         </label>
       </div>
+      <label>
+        <span className="admin-label">Close quiet chats</span>
+        <select value={autoResolve} onChange={(e) => setAutoResolve(Number(e.target.value))}>
+          {AUTO_RESOLVE.some((o) => o.minutes === autoResolve) ? null : (
+            <option value={autoResolve}>After {autoResolve} minutes</option>
+          )}
+          {AUTO_RESOLVE.map((o) => (
+            <option key={o.minutes} value={o.minutes}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+        <span className="admin-help muted">
+          Chats with the bot that the customer left, and chats where the agent wrote last, close by themselves after
+          this long without messages. Waiting chats never do.
+        </span>
+      </label>
       <label>
         <span className="admin-label">Logo URL (optional)</span>
         <input value={logo} onChange={(e) => setLogo(e.target.value)} placeholder="https://www.acme.com/logo.png" />

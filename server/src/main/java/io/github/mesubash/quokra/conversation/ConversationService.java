@@ -254,6 +254,37 @@ public class ConversationService {
         return conversation;
     }
 
+    public static final String AUTO_RESOLVED = "AUTO";
+
+    // Closes a quiet conversation (see AutoResolver). Checked again here, in its own transaction, so a
+    // message that arrived since the scan keeps it open. Returns whether it was closed.
+    @Transactional
+    public boolean autoResolve(UUID conversationId, java.time.Duration after) {
+        Conversation c = get(conversationId);
+        Instant now = clock.instant();
+        if (!c.getLastMessageAt().plus(after).isBefore(now) || !isQuiet(c)) {
+            return false;
+        }
+        c.moveTo(StateMachine.next(c.getStatus(), Transition.AUTO_RESOLVE), now);
+        c.touch(now);
+        events.save(ConversationEvent.of(conversationId, EventType.RESOLVED, SenderType.SYSTEM, null, AUTO_RESOLVED, now));
+        String text = botFor(c.getTenantId()).map(b -> b.texts().autoClosed()).orElse(BotConfig.Texts.DEFAULT.autoClosed());
+        save(Message.create(conversationId, SenderType.SYSTEM, null, null, text, null, null, now));
+        publishUpdate(c);
+        return true;
+    }
+
+    // With the bot, after the customer has said something; or with an agent who wrote last.
+    private boolean isQuiet(Conversation c) {
+        List<SenderType> last = messages.latestSenders(c.getId(), List.of(SenderType.CUSTOMER, SenderType.AGENT),
+            Limit.of(1));
+        return switch (c.getStatus()) {
+            case BOT -> !last.isEmpty();
+            case HUMAN -> !last.isEmpty() && last.getFirst() == SenderType.AGENT;
+            default -> false;
+        };
+    }
+
     // Blocks the customer's contact and closes the conversation. They can't chat again until unblocked.
     @Transactional
     public Conversation block(UUID conversationId, AgentRef agent) {

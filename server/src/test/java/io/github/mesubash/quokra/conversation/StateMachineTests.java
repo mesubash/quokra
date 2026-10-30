@@ -19,6 +19,8 @@ class StateMachineTests {
         "HUMAN RESOLVE", Status.RESOLVED,
         "HUMAN RETURN_TO_BOT", Status.BOT,
         "HUMAN TRANSFER_TO_QUEUE", Status.WAITING,
+        "BOT AUTO_RESOLVE", Status.RESOLVED,
+        "HUMAN AUTO_RESOLVE", Status.RESOLVED,
         "RESOLVED REOPEN", Status.BOT,
         "RESOLVED AGENT_REOPEN", Status.HUMAN);
 

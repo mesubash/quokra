@@ -188,6 +188,7 @@ export interface AdminTenant {
   logoUrl: string | null;
   primaryColor: string | null;
   botConfig: string;
+  autoResolveMinutes: number;
   hasSecret: boolean;
   agentCount: number;
   inviteCount: number;
@@ -202,6 +203,8 @@ export interface TenantForm {
   logoUrl: string | null;
   primaryColor: string | null;
   botConfig: string;
+  // 0 = never.
+  autoResolveMinutes: number;
 }
 
 export interface AdminAgents {

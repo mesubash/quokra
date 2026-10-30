@@ -21,6 +21,9 @@ final class StateMachine {
         new Key(HUMAN, Transition.RESOLVE), RESOLVED,
         new Key(HUMAN, Transition.RETURN_TO_BOT), BOT,
         new Key(HUMAN, Transition.TRANSFER_TO_QUEUE), WAITING,
+        // Quiet chats close by themselves; waiting ones never do (it's the team's turn).
+        new Key(BOT, Transition.AUTO_RESOLVE), RESOLVED,
+        new Key(HUMAN, Transition.AUTO_RESOLVE), RESOLVED,
         // The customer writes again: the bot picks it up. An agent reopens it: it's theirs.
         new Key(RESOLVED, Transition.REOPEN), BOT,
         new Key(RESOLVED, Transition.AGENT_REOPEN), HUMAN);

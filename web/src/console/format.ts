@@ -50,7 +50,7 @@ export function eventLabel(type: string, actorName: string | null, reason: strin
     case "ACCEPTED":
       return `${who} accepted`;
     case "RESOLVED":
-      return `${who} resolved`;
+      return reason === "AUTO" ? "Closed automatically (no reply)" : `${who} resolved`;
     case "RETURNED_TO_BOT":
       return `${who} handed back to the bot`;
     case "REOPENED":

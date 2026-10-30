@@ -304,6 +304,7 @@ interface Tenant {
   widgetOrigins: string[];               // sites that may show the chat
   consoleOrigins: string[];              // dashboards that may show the console
   logoUrl: string | null; primaryColor: string | null; botConfig: string;
+  autoResolveMinutes: number;            // close quiet chats after this long; 0 = never (default 1440)
   hasSecret: boolean;                    // the secret itself is never returned again
   agentCount: number; inviteCount: number; createdAt: string;
 }
@@ -313,7 +314,7 @@ interface Tenant {
 |---|---|
 | `GET /admin/bots` | Bot files the server has: `{ "items": ["demo", …] }` |
 | `GET /admin/tenants` | All tenants: `{ "items": [Tenant, …] }` |
-| `POST /admin/tenants` | Create one: `{ slug, displayName, widgetOrigins, consoleOrigins, logoUrl?, primaryColor?, botConfig }` → `201 Tenant` with a new publishable key. `409 SLUG_TAKEN` |
+| `POST /admin/tenants` | Create one: `{ slug, displayName, widgetOrigins, consoleOrigins, logoUrl?, primaryColor?, botConfig, autoResolveMinutes? }` → `201 Tenant` with a new publishable key. `409 SLUG_TAKEN` |
 | `GET /admin/tenants/{slug}` | One tenant |
 | `PUT /admin/tenants/{slug}` | Replace its settings (same body; the slug can't change) |
 | `POST /admin/tenants/{slug}/secret` | New secret key for identifying customers: `{ "secretKey": "sk_…" }`, shown only this once; the old one stops working. `409 SECRETS_DISABLED` without `TENANT_SECRET_ENCRYPTION_KEY` |

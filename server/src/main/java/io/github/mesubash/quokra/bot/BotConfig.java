@@ -30,7 +30,7 @@ public record BotConfig(
     // Wording a tenant can change; anything missing from the file keeps these defaults.
     // placeholder may contain {name}: the company's name, or the agent's once one has joined.
     public record Texts(String online, String waiting, String closed, String placeholder,
-                        String askEmail, String badEmail, String askName, String skip) {
+                        String askEmail, String badEmail, String askName, String skip, String autoClosed) {
 
         public static final Texts DEFAULT = new Texts(
             "Online · replies instantly",
@@ -40,7 +40,8 @@ public record BotConfig(
             "Before I connect you, what's your email? Our team will use it to follow up if you step away.",
             "That doesn't look like an email address. Could you check it?",
             "Thanks! And what's your name?",
-            "Skip");
+            "Skip",
+            "We've closed this chat since we haven't heard back. Write again any time.");
     }
 
     // Buttons shown under the greeting, answers and fallbacks.

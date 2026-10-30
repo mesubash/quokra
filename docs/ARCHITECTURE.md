@@ -219,8 +219,10 @@ texts:
   bad_email: "That doesn't look like an email address. Could you check it?"
   ask_name: "Thanks! And what's your name?"
   skip: "Skip"                                   # the button under ask_name
+  auto_closed: "We've closed this chat since we haven't heard back. Write again any time."
 ```
 
+- **Auto-resolve:** every 5 minutes (`quokra.auto-resolve.every`), quiet conversations close by themselves after the tenant's `auto_resolve_minutes` (default 24 hours, 0 = never, set in the Admin tab): chats **with the bot** where the customer wrote something and then left, and chats **with an agent** where the agent wrote last. Waiting chats and chats where the customer wrote last stay open. The customer sees `auto_closed`; the activity shows "Closed automatically" (event `RESOLVED`, reason `AUTO`); writing again reopens the chat as usual.
 - Urgent keywords are checked **first**, so they always win: the conversation gets priority `URGENT` and the tenant's urgent message, even if the text also matches a menu option or asks for a person. Each tenant chooses its own urgent keywords (e.g. "outage", "payment failed", or real emergencies).
 - Keyword matching: lowercase, accents and punctuation ignored, whole words or phrases (`payment failed`); the option with the most keyword hits wins; ties go to the first option in the file.
 - A missing bot file or any exception inside the engine is caught by `ConversationService` → `Handoff(BOT_ERROR)`.
