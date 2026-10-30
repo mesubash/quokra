@@ -30,7 +30,7 @@ For a free public demo instead (no real customers, no login provider), see
 
 | | |
 |---|---|
-| Image | `docker build -t quokra .` from the repo root |
+| Image | `ghcr.io/mesubash/quokra:<version>` (published for each release), or `docker build -t quokra .` from the repo root |
 | Database | PostgreSQL 15 or newer, an empty database; Quokra creates its tables on start (Flyway) |
 | Identity provider | Any OIDC provider for agents (Keycloak, Auth0, Okta, Entra ID, your own); see [Connect your identity provider](EMBEDDING.md#connect-your-identity-provider) |
 | A domain with HTTPS | e.g. `chat.example.com`, in front of Quokra (reverse proxy or load balancer) |
@@ -84,7 +84,7 @@ docker run -d --name quokra -p 8080:8080 \
   -e QUOKRA_SESSION_SIGNING_KEY=… -e TENANT_SECRET_ENCRYPTION_KEY=… \
   -e OIDC_ISSUER_URI=https://login.example.com/realms/main \
   -v /srv/quokra/bots:/bots -e QUOKRA_BOTS_DIR=/bots \
-  quokra
+  ghcr.io/mesubash/quokra:2.0.0
 ```
 
 - **Health:** `GET /actuator/health/liveness` and `/actuator/health/readiness` (the image has a health check).

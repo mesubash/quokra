@@ -108,7 +108,11 @@ Real secrets never go in the repo; use `.env` files (git-ignored) or the deploym
 
 ### 4.1 Git
 
-- `main` is always releasable. Work on branches: `feat/<topic>`, `fix/<topic>`, `chore/<topic>`, `docs/<topic>`.
+- `main` holds released versions only; the public demo deploys from it, and real deployments run a version tag.
+- `develop` is where work comes together. Branch from it (`feat/<topic>`, `fix/<topic>`, `chore/<topic>`,
+  `docs/<topic>`) and merge back into it. CI runs the server and web tests on every push and pull request.
+- An urgent fix for a released version: branch `fix/<topic>` from `main`, release it as a patch (below), and
+  merge `main` back into `develop`.
 - Commit messages: [Conventional Commits](https://www.conventionalcommits.org/) (`feat(server): add conversation state machine`), present tense, explaining *why* when it isn't obvious.
 - Small commits; one concern per commit.
 
@@ -145,7 +149,7 @@ Real secrets never go in the repo; use `.env` files (git-ignored) or the deploym
 | Web UI | Vitest + Testing Library | `web/**/*.test.ts(x)` |
 | Embedding (manual) | `test-host/` pages | Before each release |
 
-Commands *(planned)*:
+Commands (CI runs the same, see `.github/workflows/ci.yml`):
 
 ```bash
 cd server && ./mvnw verify
@@ -154,7 +158,24 @@ cd web && pnpm test
 
 ---
 
-## 6. Definition of done (for each build step)
+## 6. Releasing
+
+Versions follow [SemVer](https://semver.org/): `2.1.0` for new features, `2.0.1` for fixes. Each release:
+
+1. On `develop`: add the version's heading to [CHANGELOG.md](CHANGELOG.md) (what people notice), and set the
+   version in `server/pom.xml` and `web/package.json`.
+2. Merge `develop` into `main` (fast-forward) and push.
+3. Tag and push: `git tag v2.1.0 && git push origin v2.1.0`. The release workflow checks the tag matches
+   `server/pom.xml` and publishes `ghcr.io/mesubash/quokra:2.1.0` (also `:2.1` and `:latest`).
+4. Create the GitHub Release for the tag, with the changelog section as notes:
+   `gh release create v2.1.0 --title "Quokra 2.1.0" --notes-file <notes>`.
+
+Deployments pin a version (`ghcr.io/mesubash/quokra:2.1.0`), never `:latest`, and upgrade on purpose: read the
+changelog, back up the database (migrations run on start), then change the tag.
+
+---
+
+## 7. Definition of done (for each build step)
 
 1. The "done when" check in the [Plan](PLAN.md#6-v1-build-steps) passes.
 2. Tests for the new logic exist and pass locally.
