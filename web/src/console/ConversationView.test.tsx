@@ -39,6 +39,7 @@ function fakeApi(start: AgentConversation, extra: Partial<AgentApi> = {}) {
     detail: vi.fn(() => Promise.resolve({ conversation: current, messages: [], events: [], notes: [] })),
     accept: vi.fn(() => change(taken(current))),
     markRead: vi.fn(() => Promise.resolve()),
+    typing: vi.fn(() => Promise.resolve()),
     replies: vi.fn(() =>
       Promise.resolve({ items: [{ id: "r1", title: "Refunds", body: "Hi {name}, refunds take 5 days." }], nextCursor: null }),
     ),
