@@ -16,6 +16,8 @@ interface Props {
   disabled: boolean;
   botName: string;
   typing?: boolean;
+  // A person on the other side who is typing (the agent in the chat, the customer in the console).
+  typist?: { name: string } | null;
   pending?: PendingMessage[];
   onRetry?: (clientMessageId: string) => void;
   // Whose messages go on the right: the customer in the chat panel, the agent in the console.
@@ -183,6 +185,7 @@ export function MessageList({
   disabled,
   botName,
   typing = false,
+  typist = null,
   pending = [],
   onRetry,
   mine = "CUSTOMER",
@@ -197,7 +200,7 @@ export function MessageList({
 
   useEffect(() => {
     end.current?.scrollIntoView?.({ block: "end", behavior: "smooth" });
-  }, [messages.length, typing, options.length, pending.length]);
+  }, [messages.length, typing, typist, options.length, pending.length]);
 
   const groups = groupMessages(messages);
   const renderGroup = (group: Group) => {
@@ -299,6 +302,22 @@ export function MessageList({
           </div>
           <div className="group-body">
             <p className="bubble typing" aria-label={`${botName} is typing`}>
+              <span />
+              <span />
+              <span />
+            </p>
+          </div>
+        </div>
+      )}
+
+      {typist && !typing && (
+        <div className="group group-theirs">
+          <div className="group-avatar">
+            <span className="avatar">{initials(typist.name)}</span>
+          </div>
+          <div className="group-body">
+            <span className="sender">{typist.name} is typing…</span>
+            <p className="bubble typing" aria-label={`${typist.name} is typing`}>
               <span />
               <span />
               <span />

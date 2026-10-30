@@ -16,6 +16,7 @@ import type { Socket } from "../lib/realtime";
 import { BackIcon, CheckIcon, CloseIcon, CopyIcon, ExpandIcon, MoreIcon, PanelIcon } from "../lib/icons";
 import { Composer } from "../chat/Composer";
 import { MessageList, previewOf, quoteLabel, type TimelineItem } from "../chat/MessageList";
+import { useTypingSignal } from "../chat/typing";
 import { mergeMessages } from "../chat/messages";
 import { dateTime, eventLabel, eventTone, initials, priorityLabel, reasonLabel, shortTime } from "./format";
 
@@ -67,6 +68,7 @@ export function ConversationView({
   const [dialog, setDialog] = useState<Dialog>(null);
   const [saved, setSaved] = useState<SavedReply[]>([]);
   const [replyingTo, setReplyingTo] = useState<TimelineItem | null>(null);
+  const customerTyping = useTypingSignal();
 
   const load = useCallback(() => {
     api
@@ -92,8 +94,12 @@ export function ConversationView({
   // Messages and notes arrive live; a status change reloads the agent's view of the conversation.
   useEffect(() => {
     const stopChat = socket.subscribe(`/topic/conversations/${id}`, (event) => {
-      if (event.type === "message.created") setMessages((current) => mergeMessages(current, [event.data]));
-      else load();
+      if (event.type === "message.created") {
+        setMessages((current) => mergeMessages(current, [event.data]));
+        if (event.data.senderType === "CUSTOMER") customerTyping.clear();
+      } else if (event.type === "typing") {
+        if (event.data.senderType === "CUSTOMER") customerTyping.seen(event.data);
+      } else load();
     });
     const stopNotes = socket.subscribe(`/topic/conversations/${id}/notes`, (event) => {
       if (event.type === "note.created") setNotes((current) => addNote(current, event.data));
@@ -102,7 +108,7 @@ export function ConversationView({
       stopChat();
       stopNotes();
     };
-  }, [socket, id, load]);
+  }, [socket, id, load, customerTyping.seen, customerTyping.clear]);
 
   // What the agent has on screen counts as read, including messages that arrive while it's open.
   const lastId = messages.length > 0 ? messages[messages.length - 1].id : null;
@@ -291,6 +297,7 @@ export function ConversationView({
           mine="AGENT"
           customerName={customer}
           loadImage={loadImage}
+          typist={customerTyping.who && { name: customer }}
           onReply={
             canReply
               ? (m) => {
@@ -329,6 +336,7 @@ export function ConversationView({
                 : null
             }
             onCancelQuote={() => setReplyingTo(null)}
+            onTyping={writing === "reply" ? () => void api.typing(id).catch(() => {}) : undefined}
             onAttach={
               writing === "reply" && imagesAllowed(conversation.tenantSlug) ? (file) => void sendImage(file) : undefined
             }

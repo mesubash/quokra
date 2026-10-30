@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, MAX_IMAGE_BYTES, widgetApi, type Conversation, type Message } from "../lib/api";
 import { connectConversation } from "../lib/realtime";
 import { mergeMessages } from "./messages";
+import { useTypingSignal } from "./typing";
 
 // A message the customer sent that the server hasn't confirmed yet.
 export interface PendingMessage {
@@ -32,6 +33,7 @@ export function useChat(token: string | null, onUnauthorized?: () => void) {
     online: false,
     error: null,
   });
+  const typing = useTypingSignal();
   const messagesRef = useRef<Message[]>([]);
   messagesRef.current = state.messages;
 
@@ -76,8 +78,11 @@ export function useChat(token: string | null, onUnauthorized?: () => void) {
     return connectConversation(token, conversationId, {
       onEvent: (event) => {
         if (!mine()) return;
-        if (event.type === "message.created") addMessages([event.data]);
-        else if (event.type === "conversation.updated") setState((s) => ({ ...s, conversation: event.data }));
+        if (event.type === "message.created") {
+          addMessages([event.data]);
+          if (event.data.senderType === "AGENT") typing.clear();
+        } else if (event.type === "conversation.updated") setState((s) => ({ ...s, conversation: event.data }));
+        else if (event.type === "typing" && event.data.senderType === "AGENT") typing.seen(event.data);
       },
       onConnect: () => {
         setState((s) => ({ ...s, online: true }));
@@ -88,7 +93,7 @@ export function useChat(token: string | null, onUnauthorized?: () => void) {
       },
       onDisconnect: () => setState((s) => ({ ...s, online: false })),
     });
-  }, [token, conversationId, addMessages]);
+  }, [token, conversationId, addMessages, typing.seen, typing.clear]);
 
   // "Start a new chat": the panel empties and the greeting shows again.
   const startNew = useCallback(async (): Promise<boolean> => {
@@ -175,5 +180,10 @@ export function useChat(token: string | null, onUnauthorized?: () => void) {
 
   const loadImage = useCallback((messageId: string) => widgetApi.image(token ?? "", messageId), [token]);
 
-  return { ...state, send, retry, startNew, sendImage, loadImage };
+  // Tells the agent the customer is typing; only once a person has the chat.
+  const sendTyping = useCallback(() => {
+    if (token && state.conversation?.status === "HUMAN") widgetApi.typing(token).catch(() => {});
+  }, [token, state.conversation?.status]);
+
+  return { ...state, send, retry, startNew, sendImage, loadImage, agentTyping: typing.who, sendTyping };
 }

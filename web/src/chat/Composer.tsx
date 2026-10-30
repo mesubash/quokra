@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { IMAGE_TYPES } from "../lib/api";
+import { TYPING_EVERY_MS } from "./typing";
 import { CloseIcon, PaperclipIcon, SendIcon } from "../lib/icons";
 
 const MAX_LENGTH = 2000;
@@ -23,6 +24,8 @@ interface Props {
   // The message being replied to, shown above the input with a way to cancel.
   quote?: { label: string; preview: string } | null;
   onCancelQuote?: () => void;
+  // Called while the person types, at most every few seconds, so the other side can show it.
+  onTyping?: () => void;
 }
 
 // Replies whose title matches what's typed after "/". Only while the input is a single "/word".
@@ -43,7 +46,9 @@ export function Composer({
   onAttach,
   quote = null,
   onCancelQuote,
+  onTyping,
 }: Props) {
+  const lastTyping = useRef(0);
   const input = useRef<HTMLTextAreaElement>(null);
   const picker = useRef<HTMLInputElement>(null);
   const [text, setText] = useState("");
@@ -88,6 +93,11 @@ export function Composer({
 
   function type(value: string) {
     setText(value);
+    const now = Date.now();
+    if (onTyping && value.trim() && !value.startsWith("/") && now - lastTyping.current > TYPING_EVERY_MS) {
+      lastTyping.current = now;
+      onTyping();
+    }
     setActive(0);
     setHidden(false);
   }

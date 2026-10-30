@@ -1,5 +1,6 @@
 import { Client, type StompSubscription } from "@stomp/stompjs";
 import type { Conversation, HandoffReason, Message, Note, Person, Priority, SenderType, Status } from "./api";
+import type { Typist } from "../chat/typing";
 
 export type RealtimeEvent =
   | { type: "message.created"; conversationId: string; at: string; data: Message }
@@ -8,7 +9,8 @@ export type RealtimeEvent =
   | { type: "note.created"; conversationId: string; at: string; data: Note }
   | { type: "conversation.activity"; conversationId: string; at: string; data: Activity }
   | { type: "note.added"; conversationId: string; at: string; data: NoteAdded }
-  | { type: "conversation.transferred"; conversationId: string; at: string; data: Transferred };
+  | { type: "conversation.transferred"; conversationId: string; at: string; data: Transferred }
+  | { type: "typing"; conversationId: string; at: string; data: Typist };
 
 // A new message in a conversation, as agents see it on the queue topic.
 export interface Activity {

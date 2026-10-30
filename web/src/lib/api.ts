@@ -172,6 +172,9 @@ export const widgetApi = {
     }),
 
   image: (token: string, messageId: string) => image(`/widget/conversation/messages/${messageId}/attachment`, token),
+
+  // The customer is typing (sent every few seconds while they do).
+  typing: (token: string) => request<void>("/widget/conversation/typing", { method: "POST", token }),
 };
 
 // ---- Agent console ----
@@ -423,6 +426,7 @@ export function agentApi(getToken: () => string, refresh?: FreshToken) {
     transfer: (id: string, agentSub: string | null) => post<One>(`/conversations/${id}/transfer`, { agentSub }),
     block: (id: string) => post<One>(`/conversations/${id}/block`),
     unblock: (contactId: string) => post<void>(`/contacts/${contactId}/unblock`),
+    typing: (id: string) => post<void>(`/conversations/${id}/typing`),
     markRead: (id: string, messageId: string) => post<void>(`/conversations/${id}/read`, { messageId }),
     note: (id: string, body: string) => post<{ note: Note }>(`/conversations/${id}/notes`, { body }),
   };

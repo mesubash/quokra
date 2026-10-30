@@ -198,6 +198,7 @@ function Chat({ tenant, token, visible, onUnauthorized }: ChatProps) {
             disabled={!chat.conversation}
             botName={tenant.displayName}
             typing={typing}
+            typist={chat.agentTyping && { name: chat.agentTyping.name ?? "Agent" }}
             pending={chat.pending}
             onRetry={(id) => void retry(id)}
             loadImage={chat.loadImage}
@@ -221,6 +222,7 @@ function Chat({ tenant, token, visible, onUnauthorized }: ChatProps) {
               }
             }
             onCancelQuote={() => setReplyingTo(null)}
+            onTyping={chat.sendTyping}
             onAttach={
               tenant.attachments
                 ? (file) => {
