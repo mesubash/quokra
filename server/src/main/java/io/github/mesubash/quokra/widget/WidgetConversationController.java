@@ -1,6 +1,7 @@
 package io.github.mesubash.quokra.widget;
 
 import io.github.mesubash.quokra.common.ApiException;
+import io.github.mesubash.quokra.common.RateLimiter;
 import io.github.mesubash.quokra.conversation.Conversation;
 import io.github.mesubash.quokra.conversation.ConversationService;
 import io.github.mesubash.quokra.conversation.CustomerConversationView;
@@ -45,9 +46,11 @@ public class WidgetConversationController {
     public record SendResponse(MessageView message, CustomerConversationView conversation) {}
 
     private final ConversationService service;
+    private final RateLimiter rateLimiter;
 
-    public WidgetConversationController(ConversationService service) {
+    public WidgetConversationController(ConversationService service, RateLimiter rateLimiter) {
         this.service = service;
+        this.rateLimiter = rateLimiter;
     }
 
     @GetMapping
@@ -90,6 +93,7 @@ public class WidgetConversationController {
     @PostMapping("/messages")
     @ResponseStatus(HttpStatus.CREATED)
     public SendResponse send(@AuthenticationPrincipal Session session, @Valid @RequestBody SendRequest request) {
+        rateLimiter.check("messages:" + session.visitorId(), RateLimiter.MESSAGES_PER_MINUTE);
         UUID id = openConversation(session).getId();
         Message message = service.addCustomerMessage(id, request.clientMessageId(), request.body(), request.optionId());
         return new SendResponse(MessageView.of(message), CustomerConversationView.of(service.get(id)));

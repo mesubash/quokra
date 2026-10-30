@@ -3,6 +3,8 @@ package io.github.mesubash.quokra.widget;
 import io.github.mesubash.quokra.bot.BotConfig;
 import io.github.mesubash.quokra.bot.BotConfigRegistry;
 import io.github.mesubash.quokra.common.ApiException;
+import io.github.mesubash.quokra.common.RateLimiter;
+import jakarta.servlet.http.HttpServletRequest;
 import io.github.mesubash.quokra.session.SessionTokens;
 import io.github.mesubash.quokra.tenant.Tenant;
 import io.github.mesubash.quokra.tenant.TenantRepository;
@@ -49,9 +51,12 @@ public class WidgetController {
     private final TenantSecrets secrets;
     private final IdentityTokens identityTokens;
     private final ConversationService conversations;
+    private final RateLimiter rateLimiter;
 
     public WidgetController(TenantRepository tenants, SessionTokens sessionTokens, BotConfigRegistry bots,
-                            TenantSecrets secrets, IdentityTokens identityTokens, ConversationService conversations) {
+                            TenantSecrets secrets, IdentityTokens identityTokens, ConversationService conversations,
+                            RateLimiter rateLimiter) {
+        this.rateLimiter = rateLimiter;
         this.tenants = tenants;
         this.sessionTokens = sessionTokens;
         this.bots = bots;
@@ -70,7 +75,9 @@ public class WidgetController {
 
     @PostMapping("/sessions")
     @ResponseStatus(HttpStatus.CREATED)
-    public SessionResponse startSession(@Valid @RequestBody SessionRequest request) {
+    public SessionResponse startSession(@Valid @RequestBody SessionRequest request, HttpServletRequest http) {
+        // Behind a proxy, the client address comes from X-Forwarded-For (server.forward-headers-strategy).
+        rateLimiter.check("session:" + http.getRemoteAddr(), RateLimiter.SESSIONS_PER_MINUTE);
         Tenant tenant = findTenant(request.publishableKey());
         SessionTokens.Issued issued = sessionTokens.issue(tenant.getId());
         return new SessionResponse(issued.token(), issued.session().visitorId(), issued.session().expiresAt());

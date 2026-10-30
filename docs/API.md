@@ -458,9 +458,12 @@ Envelope:
 | 403 | `NOT_ASSIGNEE` | Agent action on a conversation assigned to someone else |
 | 403 | `ORIGIN_NOT_ALLOWED` | Request origin not allowed for the tenant |
 | 404 | `TENANT_NOT_FOUND` / `CONVERSATION_NOT_FOUND` | Unknown id or key |
+| 404 | `NOT_FOUND` | Unknown path |
+| 405 | `METHOD_NOT_ALLOWED` | Wrong HTTP method for the path |
+| 409 | `CONFLICT` | Someone else changed the same thing at the same moment; reload and retry |
 | 409 | `INVALID_TRANSITION` | State change not allowed |
 | 409 | `ALREADY_ACCEPTED` | Another agent accepted first |
 | 409 | `NO_OPEN_CONVERSATION` | Sending without an open conversation |
 | 422 | `MESSAGE_TOO_LONG` | Body over 2,000 characters |
-| 429 | `RATE_LIMITED` | Too many requests (`Retry-After` header set) |
+| 429 | `RATE_LIMITED` | Too many requests (`Retry-After` header set): 5 new chat sessions a minute per IP address, 20 customer messages a minute per session |
 | 500 | `INTERNAL_ERROR` | Unexpected; logged with the request id |

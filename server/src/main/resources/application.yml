@@ -27,6 +27,8 @@ quokra:
     allowed-origins: ${PUBLIC_BASE_URL:http://localhost:8080}
 
 server:
+  # Trust X-Forwarded-For only from proxies on private networks (Tomcat's default), so rate limits see the real client.
+  forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:native}
   compression:
     # sdk.js, the web UI and the robot image compress well.
     enabled: true

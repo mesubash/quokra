@@ -68,6 +68,7 @@ curl -X POST localhost:8080/dev/agent-token -H 'Content-Type: application/json' 
 | `QUOKRA_AGENT_ROLES_CLAIM` / `QUOKRA_AGENT_ROLE` | server | `roles` / `SUPPORT_AGENT` |
 | `TENANT_SECRET_ENCRYPTION_KEY` | server | dev profile: a fixed dev-only key. Elsewhere: 32 random bytes, base64 (`openssl rand -base64 32`); unset turns identify off |
 | `PUBLIC_BASE_URL` | server | step 6 |
+| `FORWARD_HEADERS_STRATEGY` | server | `native`: trusts `X-Forwarded-For` only from proxies on private networks, so rate limits see the real client. Use `none` if the server faces the internet directly |
 
 ### Tenant secret keys
 
