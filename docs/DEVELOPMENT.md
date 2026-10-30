@@ -66,8 +66,19 @@ curl -X POST localhost:8080/dev/agent-token -H 'Content-Type: application/json' 
 | `OIDC_ISSUER_URI` | server | unset: agent login only through dev tokens |
 | `OIDC_AUDIENCE` | server | `quokra-api` |
 | `QUOKRA_AGENT_ROLES_CLAIM` / `QUOKRA_AGENT_ROLE` | server | `roles` / `SUPPORT_AGENT` |
-| `TENANT_SECRET_ENCRYPTION_KEY` | server | step 9 |
+| `TENANT_SECRET_ENCRYPTION_KEY` | server | dev profile: a fixed dev-only key. Elsewhere: 32 random bytes, base64 (`openssl rand -base64 32`); unset turns identify off |
 | `PUBLIC_BASE_URL` | server | step 6 |
+
+### Tenant secret keys
+
+Each tenant's backend signs identity tokens with the tenant's secret key. Create or replace it with:
+
+```bash
+./mvnw -q spring-boot:run -Dspring-boot.run.arguments="tenant-secret demo"
+# or, from the image / jar: java -jar quokra-server.jar tenant-secret demo
+```
+
+It prints the new key once and exits; the old key stops working. Give it to the tenant over a secure channel. Locally, the `demo` tenant already has a dev-only key (`db/dev/V8_1`), used by `test-host/identify.html`.
 
 Real secrets never go in the repo; use `.env` files (git-ignored) or the deployment's secret store.
 

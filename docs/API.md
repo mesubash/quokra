@@ -80,10 +80,26 @@ Auth: chat session token.
 { "identityToken": "eyJ…" }   // signed by the host backend, see EMBEDDING.md §4
 
 // 200
-{ "sessionToken": "eyJ…", "customer": { "sub": "user-123", "name": "Asha", "email": "asha@example.com" } }
+{
+  "sessionToken": "eyJ…",
+  "visitorId": "0192…",
+  "customer": { "sub": "user-123", "name": "Asha", "email": "asha@example.com" },
+  "expiresAt": "2026-11-28T08:15:00Z"
+}
 ```
 
-Any open guest conversation for this visitor is attached to the customer. Errors: `401 IDENTITY_TOKEN_INVALID`, `401 IDENTITY_TOKEN_EXPIRED`.
+The token must be HS256, signed with the tenant's secret key, valid for at most 5 minutes (30 seconds of clock skew allowed), with `sub` set. The new session token replaces the old one; it carries the customer, so the customer's conversation is found on any device.
+
+What happens to conversations:
+
+| Customer already has an open conversation? | This visitor has an open guest conversation? | Result |
+|---|---|---|
+| No | No | Nothing yet; the next start creates one for the customer |
+| No | Yes | The guest conversation becomes the customer's. If the bot was asking for an email, the handoff goes ahead |
+| Yes | No | The session joins the customer's conversation |
+| Yes | Yes | Guest messages move into the customer's conversation (with a system note); the guest conversation is resolved |
+
+If this browser's open conversation belongs to a *different* customer (someone else logged in here before), the new customer gets a fresh visitor id and doesn't see it. Errors: `401 IDENTITY_TOKEN_INVALID` (bad signature, wrong tenant, too long-lived, or identify not set up for the tenant), `401 IDENTITY_TOKEN_EXPIRED`.
 
 ### 3.4 `GET /widget/conversation`: current conversation
 
@@ -357,6 +373,8 @@ Every message: `{ "source": "quokra", "type": "...", ...fields }`. Receivers che
 | panel → host | `chat.unread` | `count` | Unread messages while closed |
 | host → panel | `chat.open` / `chat.close` | | Open or close from the host |
 | host → panel | `chat.identify` | `token` | Identity token from the host backend |
+| panel → host | `chat.identified` | | Identify worked |
+| panel → host | `chat.identify.failed` | `code` | Identify failed, e.g. `IDENTITY_TOKEN_EXPIRED` |
 
 The host side (`sdk.js`) only accepts messages from the Quokra origin. The panel only sends `chat.*` messages to the parent and never sends tokens out.
 
@@ -388,8 +406,8 @@ The host side (`sdk.js`) only accepts messages from the Quokra origin. The panel
 |---|---|
 | `Quokra.chat.init({ slug, pk, mode?, container?, position? })` | Mount the chat. `mode`: `"bubble"` (default), `"inline"`, `"popup"`. `container`: element or selector for inline. `position`: `"right"` (default) or `"left"` |
 | `Quokra.chat.open()` / `Quokra.chat.close()` | Open or close the panel |
-| `Quokra.chat.identify(token)` | Identify the customer (token from the host backend) |
-| `Quokra.chat.on(event, handler)` | Events: `ready`, `open`, `close`, `unread` (count) |
+| `Quokra.chat.identify(token)` | Identify the customer (token from the host backend). Can be called before the panel has loaded; it's sent once the panel is ready |
+| `Quokra.chat.on(event, handler)` | Events: `ready`, `open`, `close`, `unread` (count), `identified`, `identifyfailed` (error code) |
 | `Quokra.chat.destroy()` | Remove bubble and iframe |
 
 Declarative alternatives, no JavaScript needed:

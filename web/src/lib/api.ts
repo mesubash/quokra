@@ -82,6 +82,13 @@ export const widgetApi = {
       { token },
     ),
 
+  // Swaps a guest session for one that carries the logged-in customer.
+  identify: (token: string, identityToken: string) =>
+    request<Session & { customer: { sub: string; name: string | null; email: string | null } }>(
+      "/widget/sessions/identify",
+      { method: "POST", token, body: JSON.stringify({ identityToken }) },
+    ),
+
   send: (token: string, message: { clientMessageId: string; body?: string; optionId?: string }) =>
     request<{ message: Message; conversation: Conversation }>("/widget/conversation/messages", {
       method: "POST",

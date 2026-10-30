@@ -11,7 +11,7 @@
  *   <button data-quokra-chat-trigger="slug" data-quokra-pk="pk_...">Chat with us</button>
  *
  * JavaScript: Quokra.chat.init({ slug, pk, mode, container, position, teaserDelay }), open(), close(),
- *             on(event, fn), destroy()
+ *             identify(token), on(event, fn), destroy()
  *
  * Agent console (in your dashboard; getToken returns the agent's access token or a Promise of it):
  *   Quokra.console.mount("#console", { tenant: "slug", getToken })
@@ -134,10 +134,21 @@
     return ORIGIN + "/w/" + encodeURIComponent(slug) + "?pk=" + encodeURIComponent(pk) + "&mode=" + mode;
   }
 
-  function post(type) {
+  function post(type, fields) {
     if (state && state.frame.contentWindow) {
-      state.frame.contentWindow.postMessage({ source: SOURCE, type: type }, ORIGIN);
+      var message = { source: SOURCE, type: type };
+      for (var key in fields) message[key] = fields[key];
+      state.frame.contentWindow.postMessage(message, ORIGIN);
     }
+  }
+
+  // An identity token waits here until the panel is ready, so identify() can be called any time.
+  var pendingIdentity = null;
+
+  function sendIdentity() {
+    if (!state || !state.ready || !pendingIdentity) return;
+    post("chat.identify", { token: pendingIdentity });
+    pendingIdentity = null;
   }
 
   function setBadge(count) {
@@ -267,6 +278,8 @@
         scheduleTeaser();
       }
       if (state.open) post("chat.open");
+      state.ready = true;
+      sendIdentity();
       emit("ready");
     } else if (data.type === "chat.close") {
       chat.close();
@@ -274,6 +287,10 @@
     } else if (data.type === "chat.unread" && typeof data.count === "number") {
       setBadge(data.count);
       emit("unread", data.count);
+    } else if (data.type === "chat.identified") {
+      emit("identified");
+    } else if (data.type === "chat.identify.failed") {
+      emit("identifyfailed", typeof data.code === "string" ? data.code : "UNKNOWN");
     }
   }
 
@@ -300,6 +317,7 @@
         pk: options.pk,
         open: mode === "inline",
         teaserText: null,
+        ready: false,
         animation: null,
         waveTimer: null,
         teaserDelay: options.teaserDelay === "off" ? -1 : isFinite(delay) && options.teaserDelay !== undefined ? delay : DEFAULT_TEASER_DELAY,
@@ -379,6 +397,13 @@
       }
       post("chat.close");
       emit("close");
+    },
+
+    // token: a short-lived identity token from your backend, signed with your secret key.
+    identify: function (token) {
+      if (typeof token !== "string" || !token) throw new Error("Quokra: identify needs a token");
+      pendingIdentity = token;
+      sendIdentity();
     },
 
     on: function (event, fn) {

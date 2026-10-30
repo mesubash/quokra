@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Test host: identify</title>
+    <style>body { font-family: system-ui, sans-serif; margin: 24px; max-width: 640px; }</style>
+  </head>
+  <body>
+    <h1>Identify a logged-in customer</h1>
+    <p><a href="index.html">Back</a></p>
+    <p>
+      Pretend to log in. A real site signs this token <strong>on its backend</strong>; this page signs it in the
+      browser with the demo tenant's dev-only secret, just for testing.
+    </p>
+    <p>
+      <label>User id <input id="sub" value="user-1" /></label>
+      <label>Name <input id="name" value="Pat Doe" /></label>
+      <label>Email <input id="email" value="pat@example.test" /></label>
+    </p>
+    <button id="login" type="button">Log in</button>
+    <p id="status"></p>
+
+    <script src="http://localhost:8080/sdk.js" data-quokra-chat="demo" data-quokra-pk="pk_test_demo"></script>
+    <script>
+      // Dev only (see server/src/main/resources/db/dev/V8_1__demo_tenant_secret.sql). Never put a real secret in a page.
+      const DEV_SECRET = "sk_dev_demo_only_not_a_secret_0123456789abcdef";
+
+      const b64url = (bytes) => btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/=+$/, "")
+        .replace(/\+/g, "-").replace(/\//g, "_");
+      const encode = (value) => b64url(new TextEncoder().encode(JSON.stringify(value)));
+
+      async function sign(claims) {
+        const input = encode({ alg: "HS256", typ: "JWT" }) + "." + encode(claims);
+        const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(DEV_SECRET),
+          { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+        return input + "." + b64url(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(input)));
+      }
+
+      const status = document.getElementById("status");
+      Quokra.chat.on("identified", () => (status.textContent = "Identified."));
+      Quokra.chat.on("identifyfailed", (code) => (status.textContent = "Identify failed: " + code));
+
+      document.getElementById("login").addEventListener("click", async () => {
+        const now = Math.floor(Date.now() / 1000);
+        Quokra.chat.identify(await sign({
+          sub: document.getElementById("sub").value,
+          name: document.getElementById("name").value,
+          email: document.getElementById("email").value,
+          iat: now,
+          exp: now + 300,
+        }));
+      });
+    </script>
+  </body>
+</html>

@@ -41,7 +41,7 @@ public class WidgetController {
 
     public record IdentifyRequest(@NotBlank @Size(max = 4096) String identityToken) {}
 
-    public record IdentifyResponse(String sessionToken, CustomerIdentity customer, Instant expiresAt) {}
+    public record IdentifyResponse(String sessionToken, UUID visitorId, CustomerIdentity customer, Instant expiresAt) {}
 
     private final TenantRepository tenants;
     private final SessionTokens sessionTokens;
@@ -92,7 +92,7 @@ public class WidgetController {
             visitorId = session.visitorId();
         }
         SessionTokens.Issued issued = sessionTokens.issue(session.tenantId(), visitorId, customer);
-        return new IdentifyResponse(issued.token(), customer, issued.session().expiresAt());
+        return new IdentifyResponse(issued.token(), visitorId, customer, issued.session().expiresAt());
     }
 
     private Tenant findTenant(String publishableKey) {

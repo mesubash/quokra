@@ -88,7 +88,7 @@ export function QuokraChatLoader() {
 
 Without this step every visitor is a **guest**. To show agents who the customer is, and to keep one conversation across devices, sign an identity token **on your backend** and pass it to the chat.
 
-**Rules:** sign with your **secret key**, algorithm HS256, lifetime of **5 minutes or less**, claim `sub` required. Never put the secret key in browser code.
+**Rules:** sign with your **secret key**, algorithm HS256, lifetime of **5 minutes or less**, claim `sub` required. Never put the secret key in browser code. The support admin creates the secret key for your tenant and sends it to you.
 
 ### 4.1 Backend: Java (Spring, jjwt)
 
@@ -123,7 +123,11 @@ const { token } = await fetch("/api/support-identity").then((r) => r.json()); //
 Quokra.chat.identify(token);
 ```
 
-Call `identify` after login, or on page load for users who are already logged in. A guest conversation started before login is kept and linked to the user.
+Call `identify` after login, or on page load for users who are already logged in. A guest conversation started before login is kept and linked to the user. Identified customers aren't asked for their email before reaching your team.
+
+```js
+Quokra.chat.on("identifyfailed", (code) => console.warn("Support chat identify failed:", code));
+```
 
 ---
 

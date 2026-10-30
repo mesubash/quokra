@@ -28,10 +28,17 @@ export async function getSession(pk: string): Promise<Session> {
   if (existing) return existing;
 
   const session = await widgetApi.startSession(pk);
+  saveSession(pk, session);
+  return session;
+}
+
+export function saveSession(pk: string, session: Session) {
   try {
-    localStorage.setItem(storageKey(pk), JSON.stringify(session));
+    localStorage.setItem(
+      storageKey(pk),
+      JSON.stringify({ sessionToken: session.sessionToken, visitorId: session.visitorId, expiresAt: session.expiresAt }),
+    );
   } catch {
     // Storage can be blocked in some iframes; the session then lasts for this page only.
   }
-  return session;
 }

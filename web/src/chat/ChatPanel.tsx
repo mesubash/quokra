@@ -2,12 +2,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { embedded, onHostMessage, postToHost } from "../lib/bridge";
 import { textOn } from "../lib/color";
 import { CloseIcon } from "../lib/icons";
-import { widgetApi, type Conversation, type Tenant } from "../lib/api";
+import { ApiError, widgetApi, type Conversation, type Tenant } from "../lib/api";
 import { Composer } from "./Composer";
 import { MessageList } from "./MessageList";
 import { RobotAvatar } from "./RobotAvatar";
 import { activeOptions, countUnread } from "./messages";
-import { forgetSession, getSession } from "./session";
+import { forgetSession, getSession, saveSession } from "./session";
 import { useChat } from "./useChat";
 
 // Bubble and popup panels start hidden and are opened by sdk.js; inline and full-page ones are always shown.
@@ -26,8 +26,35 @@ export function ChatPanel({ slug }: { slug: string }) {
   const [attempt, setAttempt] = useState(0);
   const renewed = useRef(false);
 
+  // The host's identity token: swap this guest session for the logged-in customer's.
+  // The new token remounts the chat, which then loads the customer's conversation.
+  const setupRef = useRef(setup);
+  setupRef.current = setup;
+  const identify = useCallback(
+    (identityToken: string) => {
+      const current = setupRef.current;
+      if (!pk || current.status !== "ready") return;
+      widgetApi
+        .identify(current.token, identityToken)
+        .then((session) => {
+          saveSession(pk, session);
+          setSetup((s) => (s.status === "ready" ? { ...s, token: session.sessionToken } : s));
+          postToHost({ type: "chat.identified" });
+        })
+        .catch((e) => postToHost({ type: "chat.identify.failed", code: e instanceof ApiError ? e.code : "UNKNOWN" }));
+    },
+    [pk],
+  );
+
   // Listen before telling the host we're ready, so its "open" reply isn't missed.
-  useEffect(() => onHostMessage((m) => setVisible(m.type === "chat.open")), []);
+  useEffect(
+    () =>
+      onHostMessage((m) => {
+        if (m.type === "chat.open" || m.type === "chat.close") setVisible(m.type === "chat.open");
+        else if (m.type === "chat.identify") identify(m.token);
+      }),
+    [identify],
+  );
 
   // Escape closes a bubble or popup panel, like any dialog.
   useEffect(() => {

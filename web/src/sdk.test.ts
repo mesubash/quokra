@@ -4,6 +4,7 @@ import code from "../public/sdk.js?raw";
 
 type Chat = {
   init: (o: Record<string, unknown>) => void;
+  identify: (token: string) => void;
   open: () => void;
   close: () => void;
   on: (e: string, fn: (v?: unknown) => void) => void;
@@ -113,6 +114,40 @@ describe("sdk.js", () => {
 
     expect(button.getAttribute("aria-expanded")).toBe("true");
     expect(button.getAttribute("aria-controls")).toBe(frame().id);
+  });
+});
+
+describe("sdk.js identify", () => {
+  it("passes the identity token to its own frame once the panel is ready", () => {
+    chat().identify("id-token");
+    const post = vi.spyOn(frame().contentWindow!, "postMessage");
+
+    fromFrame({ source: "quokra", type: "chat.ready" });
+
+    expect(post).toHaveBeenCalledWith({ source: "quokra", type: "chat.identify", token: "id-token" }, window.location.origin);
+  });
+
+  it("sends it straight away when the panel is already ready, and only once", () => {
+    fromFrame({ source: "quokra", type: "chat.ready" });
+    const post = vi.spyOn(frame().contentWindow!, "postMessage");
+
+    chat().identify("id-token");
+    fromFrame({ source: "quokra", type: "chat.ready" });
+
+    expect(post.mock.calls.filter(([m]) => (m as { type: string }).type === "chat.identify")).toHaveLength(1);
+  });
+
+  it("reports the result", () => {
+    const identified = vi.fn();
+    const failed = vi.fn();
+    chat().on("identified", identified);
+    chat().on("identifyfailed", failed);
+
+    fromFrame({ source: "quokra", type: "chat.identified" });
+    fromFrame({ source: "quokra", type: "chat.identify.failed", code: "IDENTITY_TOKEN_EXPIRED" });
+
+    expect(identified).toHaveBeenCalled();
+    expect(failed).toHaveBeenCalledWith("IDENTITY_TOKEN_EXPIRED");
   });
 });
 
