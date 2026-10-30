@@ -6,6 +6,7 @@ import io.github.mesubash.quokra.agent.AgentViews.Summary;
 import io.github.mesubash.quokra.attachment.Images;
 import io.github.mesubash.quokra.canned.CannedReplies;
 import io.github.mesubash.quokra.common.RateLimiter;
+import io.github.mesubash.quokra.presence.AgentPresence;
 import io.github.mesubash.quokra.conversation.Enums.SenderType;
 import io.github.mesubash.quokra.realtime.TypingSignals;
 import io.github.mesubash.quokra.common.ApiException;
@@ -84,6 +85,14 @@ public class AgentController {
 
     record ReadRequest(@NotNull UUID messageId) {}
 
+    // status: ONLINE or AWAY; missing keeps the current one.
+    record PresenceRequest(AgentPresence.Status status) {}
+
+    record PresenceView(AgentPresence.Status status) {}
+
+    // Someone a chat can be transferred to, and whether they're answering chats now.
+    record MemberView(String sub, String name, boolean online) {}
+
     private final ConversationService service;
     private final TenantRepository tenants;
     private final TenantAgents tenantAgents;
@@ -93,10 +102,13 @@ public class AgentController {
     private final CannedReplies replies;
     private final TypingSignals typing;
     private final RateLimiter rateLimiter;
+    private final AgentPresence presence;
 
     public AgentController(ConversationService service, TenantRepository tenants, TenantAgents tenantAgents,
                            ContactRepository contacts, AgentReads reads, AgentJwtConverter agentTokens,
-                           CannedReplies replies, TypingSignals typing, RateLimiter rateLimiter) {
+                           CannedReplies replies, TypingSignals typing, RateLimiter rateLimiter,
+                           AgentPresence presence) {
+        this.presence = presence;
         this.replies = replies;
         this.typing = typing;
         this.rateLimiter = rateLimiter;
@@ -272,8 +284,17 @@ public class AgentController {
 
     // Who the conversation can be transferred to.
     @GetMapping("/conversations/{id}/agents")
-    public Page<TenantAgents.Member> agents(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
-        return new Page<>(tenantAgents.members(visible(jwt, id).getTenantId()), null);
+    public Page<MemberView> agents(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
+        List<TenantAgents.Member> members = tenantAgents.members(visible(jwt, id).getTenantId());
+        var online = presence.online(members.stream().map(TenantAgents.Member::sub).toList());
+        return new Page<>(members.stream().map(m -> new MemberView(m.sub(), m.name(), online.contains(m.sub())))
+            .toList(), null);
+    }
+
+    // The open console checks in every minute; the agent's status is ONLINE or AWAY (see AgentPresence).
+    @PostMapping("/presence")
+    public PresenceView presence(@AuthenticationPrincipal Jwt jwt, @RequestBody(required = false) PresenceRequest request) {
+        return new PresenceView(presence.checkIn(jwt.getSubject(), request == null ? null : request.status()));
     }
 
     // Saved replies of the conversation's tenant.

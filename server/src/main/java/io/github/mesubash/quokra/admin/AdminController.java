@@ -4,6 +4,7 @@ import io.github.mesubash.quokra.admin.TenantAdmin.TenantForm;
 import io.github.mesubash.quokra.admin.TenantAdmin.TenantView;
 import io.github.mesubash.quokra.attachment.StorageCheck;
 import io.github.mesubash.quokra.bot.BotConfigRegistry;
+import io.github.mesubash.quokra.presence.AgentPresence;
 import io.github.mesubash.quokra.bot.TenantBots;
 import io.github.mesubash.quokra.canned.CannedReplies;
 import io.github.mesubash.quokra.common.ApiException;
@@ -41,7 +42,9 @@ public class AdminController {
 
     record SecretResponse(String secretKey) {}
 
-    record AgentsResponse(List<TenantAgents.Agent> agents, List<TenantAgents.Invite> invites) {}
+    record AgentView(String sub, String name, String email, boolean online) {}
+
+    record AgentsResponse(List<AgentView> agents, List<TenantAgents.Invite> invites) {}
 
     record AddAgentRequest(@NotBlank @Email @Size(max = 254) String email) {}
 
@@ -61,11 +64,13 @@ public class AdminController {
     private final TenantBots tenantBots;
     private final TenantRepository tenantRepository;
     private final StorageCheck storage;
+    private final AgentPresence presence;
 
     public AdminController(TenantAdmin tenants, TenantAgents agents, TenantSecrets secrets, BotConfigRegistry bots,
                            CannedReplies replies, TenantBots tenantBots, TenantRepository tenantRepository,
-                           StorageCheck storage) {
+                           StorageCheck storage, AgentPresence presence) {
         this.storage = storage;
+        this.presence = presence;
         this.tenantBots = tenantBots;
         this.tenantRepository = tenantRepository;
         this.replies = replies;
@@ -121,7 +126,11 @@ public class AdminController {
     @GetMapping("/tenants/{slug}/agents")
     public AgentsResponse agents(@PathVariable String slug) {
         var tenant = tenants.get(slug);
-        return new AgentsResponse(agents.agents(tenant.id()), agents.invites(tenant.id()));
+        List<TenantAgents.Agent> list = agents.agents(tenant.id());
+        var online = presence.online(list.stream().map(TenantAgents.Agent::sub).toList());
+        return new AgentsResponse(list.stream()
+            .map(a -> new AgentView(a.sub(), a.name(), a.email(), online.contains(a.sub()))).toList(),
+            agents.invites(tenant.id()));
     }
 
     @PostMapping("/tenants/{slug}/agents")

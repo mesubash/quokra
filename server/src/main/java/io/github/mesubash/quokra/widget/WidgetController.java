@@ -4,6 +4,7 @@ import io.github.mesubash.quokra.bot.BotConfig;
 import io.github.mesubash.quokra.bot.TenantBots;
 import io.github.mesubash.quokra.common.ApiException;
 import io.github.mesubash.quokra.common.RateLimiter;
+import io.github.mesubash.quokra.presence.AgentPresence;
 import jakarta.servlet.http.HttpServletRequest;
 import io.github.mesubash.quokra.session.SessionTokens;
 import io.github.mesubash.quokra.tenant.Tenant;
@@ -35,8 +36,9 @@ import org.springframework.web.bind.annotation.RestController;
 public class WidgetController {
 
     // open: inside the tenant's opening hours (always, when it has none). attachments: images can be sent.
+    // teamOnline: someone of the team is answering chats right now.
     public record TenantView(String slug, String displayName, Branding branding, String teaser, Texts texts,
-                             boolean open, boolean attachments) {
+                             boolean open, boolean attachments, boolean teamOnline) {
         public record Branding(String logoUrl, String primaryColor) {}
 
         // The wording the chat panel shows itself; the bot's own lines stay on the server.
@@ -63,11 +65,13 @@ public class WidgetController {
     private final ConversationService conversations;
     private final RateLimiter rateLimiter;
     private final Clock clock;
+    private final AgentPresence presence;
 
     public WidgetController(TenantRepository tenants, SessionTokens sessionTokens, TenantBots bots,
                             TenantSecrets secrets, IdentityTokens identityTokens, ConversationService conversations,
-                            RateLimiter rateLimiter, Clock clock) {
+                            RateLimiter rateLimiter, Clock clock, AgentPresence presence) {
         this.clock = clock;
+        this.presence = presence;
         this.rateLimiter = rateLimiter;
         this.tenants = tenants;
         this.sessionTokens = sessionTokens;
@@ -85,7 +89,7 @@ public class WidgetController {
             new TenantView.Branding(tenant.getLogoUrl(), tenant.getPrimaryColor()),
             bot.map(BotConfig::teaser).orElse(null),
             TenantView.Texts.of(bot.map(BotConfig::texts).orElse(BotConfig.Texts.DEFAULT)),
-            tenant.isOpen(clock.instant()), conversations.imagesAllowed(tenant));
+            tenant.isOpen(clock.instant()), conversations.imagesAllowed(tenant), presence.anyoneOnline(tenant.getId()));
     }
 
     @PostMapping("/sessions")

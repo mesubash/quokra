@@ -404,6 +404,23 @@ class AgentControllerTests {
     }
 
     @Test
+    void theChatShowsWhetherAnyoneOfTheTeamIsOnline() {
+        String widget = "/api/v1/widget/tenants/pk_test_acme";
+        assertThat(mvc.get().uri(widget)).bodyJson().extractingPath("$.teamOnline").isEqualTo(false);
+
+        assertThat(post(alice, "/presence", null)).bodyJson().extractingPath("$.status").isEqualTo("ONLINE");
+        assertThat(mvc.get().uri(widget)).bodyJson().extractingPath("$.teamOnline").isEqualTo(true);
+        UUID id = taken(alice);
+        assertThat(get(alice, "/conversations/" + id + "/agents")).bodyJson()
+            .extractingPath("$.items[?(@.sub == 'alice')].online").isEqualTo(List.of(true));
+
+        assertThat(post(alice, "/presence", "{\"status\":\"AWAY\"}")).bodyJson()
+            .extractingPath("$.status").isEqualTo("AWAY");
+        assertThat(post(alice, "/presence", null)).bodyJson().extractingPath("$.status").isEqualTo("AWAY");
+        assertThat(mvc.get().uri(widget)).bodyJson().extractingPath("$.teamOnline").isEqualTo(false);
+    }
+
+    @Test
     void notesAreForAgentsOnly() {
         UUID id = taken(alice);
 
