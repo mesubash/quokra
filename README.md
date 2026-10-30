@@ -38,6 +38,8 @@
 
 ## See it in a real app
 
+**[Live demo](https://quokra.subashsdhami.com.np)**: chat as a customer, then sign in as Sam or Alex to answer from the Support page. It runs on free plans, so the first load after a quiet spell can take a few minutes, and anyone can use the demo agents, so don't enter anything private.
+
 [**quokra-playground**](https://github.com/mesubash/quokra-playground) is a sample dashboard with Quokra embedded the way a real product would use it. Sign in as a customer to chat, or as a demo agent (Sam or Alex) to answer from the Support page; open both side by side to see it live.
 
 ## Embed it
