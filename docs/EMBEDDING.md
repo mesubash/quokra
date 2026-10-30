@@ -141,7 +141,7 @@ The console runs in an iframe and uses **your dashboard's login**. Your dashboar
 
 ### 5.1 Requirements
 
-- Agents log in to your dashboard through the OIDC provider the support server trusts.
+- Agents log in to your dashboard through an OIDC provider that the Quokra server trusts (see "Connect your identity provider" below).
 - Their access token includes the audience `quokra-api` and the role `SUPPORT_AGENT`. Where the role sits in the token is configurable (`QUOKRA_AGENT_ROLES_CLAIM`, e.g. `roles` or `realm_access.roles`).
 - Each agent is a member of the tenant. In v1 the support admin adds them with SQL, using the agent's `sub` from the identity provider:
 
@@ -150,6 +150,29 @@ The console runs in an iframe and uses **your dashboard's login**. Your dashboar
   select id, 'the-agent-sub' from tenants where slug = 'your-slug';
   ```
 - Your dashboard's origin is registered as a **console origin**.
+
+### Connect your identity provider
+
+Quokra works with any OIDC provider (Keycloak, Auth0, Okta, Entra ID, your own). It only reads access tokens; it never sees passwords and needs no client secret. The provider must:
+
+1. Issue **signed JWT access tokens** (RS256 or ES256), with public keys at a JWKS URL.
+2. Put Quokra's **audience** in `aud` (default `quokra-api`).
+3. Include `iss`, `sub` and `exp`. The `sub` is what you register as the agent's id in Quokra.
+4. Put a **role** for support staff in the token (default `SUPPORT_AGENT`), in a list claim such as `roles` or `realm_access.roles`.
+5. Optionally a display name in `name`, `preferred_username` or `email`.
+
+Then set these on the Quokra server:
+
+| Variable | Example | Notes |
+|---|---|---|
+| `OIDC_ISSUER_URI` | `https://login.example.com/realms/main` | Must equal the tokens' `iss` exactly |
+| `OIDC_JWKS_URI` | `https://login.example.com/keys` | Only if the provider has no `/.well-known/openid-configuration` |
+| `OIDC_AUDIENCE` | `quokra-api` | |
+| `QUOKRA_AGENT_ROLES_CLAIM` | `roles`, `realm_access.roles` | Dot path to the list of roles |
+| `QUOKRA_AGENT_ROLE` | `SUPPORT_AGENT` | |
+| `QUOKRA_AGENT_NAME_CLAIM` | `full_name` | Only if the name is in an unusual claim |
+
+Check it with a real token: `GET /api/v1/agent/me` answers `200` with the agent's name and tenants; `401` means the token didn't pass (issuer, audience, signature or expiry); `403` means the role is missing.
 
 ### 5.2 Code
 

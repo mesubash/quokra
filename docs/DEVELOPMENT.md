@@ -47,7 +47,24 @@ Then open `http://localhost:5500/` (a page from a different origin that embeds t
 
 ### Local agent login
 
-Agents normally log in through an OIDC provider (`OIDC_ISSUER_URI`). Locally, the `dev` profile turns on `quokra.dev.agent-tokens`: the server signs agent tokens itself with a key made at startup.
+Agents log in through an OIDC provider. Locally there are two ways, and both work at the same time:
+
+**1. Keycloak (real login).** `compose.yaml` starts Keycloak on `http://localhost:8180` together with PostgreSQL, importing the dev realm from `server/keycloak/quokra-realm.json`, and the `dev` profile trusts it. Users (dev only, the passwords are public):
+
+| User | Password | Role |
+|---|---|---|
+| `sam` | `sam` | `SUPPORT_AGENT`, member of the demo tenant |
+| `alex` | `alex` | `SUPPORT_AGENT`, member of the demo tenant |
+| `riley` | `riley` | none (refused by Quokra) |
+
+The client `quokra-dashboard` is public with PKCE, for apps on `localhost:5173` (playground) and `localhost:5500` (test host). The Keycloak admin console is at `http://localhost:8180/admin` (`admin` / `admin`). To get a token from the command line (direct grants are on for dev only):
+
+```bash
+curl -s -X POST localhost:8180/realms/quokra/protocol/openid-connect/token \
+  -d grant_type=password -d client_id=quokra-dashboard -d username=sam -d password=sam
+```
+
+**2. Dev tokens (quick, no login page).** The `dev` profile also turns on `quokra.dev.agent-tokens`: the server signs agent tokens itself with a key made at startup.
 
 ```bash
 curl -X POST localhost:8080/dev/agent-token -H 'Content-Type: application/json' -d '{"sub":"dev-agent","name":"Sam"}'

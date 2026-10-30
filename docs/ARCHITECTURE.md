@@ -262,7 +262,9 @@ The tenant secret must be readable by the server to verify HMAC signatures, so i
 
 ### 8.3 Agent token requirements
 
-Valid signature via the issuer's JWKS, issuer matching `OIDC_ISSUER_URI`, audience `quokra-api`, not expired, and the role `SUPPORT_AGENT` in the configured roles claim (`roles` by default; nested paths like `realm_access.roles` work). The agent's display name comes from `name`, then `preferred_username`, then `email`, then `sub`. Without `OIDC_ISSUER_URI`, agent endpoints refuse every request (logged at startup), except when dev agent tokens are on.
+Valid signature via the issuer's JWKS (from its discovery document, or `OIDC_JWKS_URI`), issuer matching `OIDC_ISSUER_URI`, audience `quokra-api`, not expired, and the role `SUPPORT_AGENT` in the configured roles claim (`roles` by default; nested paths like `realm_access.roles` work). The agent's display name comes from `QUOKRA_AGENT_NAME_CLAIM` if set, then `name`, `preferred_username`, `email`, then `sub`. Without `OIDC_ISSUER_URI`, agent endpoints refuse every request (logged at startup), except when dev agent tokens are on.
+
+When dev agent tokens are on as well (the `dev` profile), both issuers are accepted: the token's `iss` picks which one checks it, and that issuer's own keys and rules decide. Keys are fetched on first use, so the server starts even while the provider is still starting.
 
 ---
 
