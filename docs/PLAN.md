@@ -4,7 +4,7 @@ Quokra is an embeddable customer support platform. A FAQ bot answers first; when
 
 | | |
 |---|---|
-| **Status** | Plan v7: v1 done (steps 1–11); v2 next |
+| **Status** | Plan v7: v1 done (steps 1–11); v2 in progress (notifications 1–2 and auto-resolve done) |
 | **Last updated** | 2026-10-30 |
 | **Current target** | v1: FAQ bot + human handoff on the web |
 | **Stack** | Spring Boot 4.1 (Java 21) + PostgreSQL · React + TypeScript (Vite), served by the server · one repository, one deployable |
@@ -60,7 +60,7 @@ AI answers · WhatsApp / Instagram / email · reports · automations · file att
 | Version | Theme | Contents | Rough size |
 |---|---|---|---|
 | **v1** | **FAQ bot + handoff** | Chat panel + console (full-page or bubble), both embeddable via `sdk.js`; FAQ bot; handoff; realtime; tenants by publishable key; guests + identified customers; agents via OIDC | 3–4 weeks |
-| v2 | Daily operations | **Notifications** (see below), auto-resolve after silence, standalone console login (OIDC in the browser), canned replies, business hours + offline message, attachments, FAQ editing in the Admin tab, more languages, retention job | 2–3 weeks |
+| v2 | Daily operations | **Notifications** (see below, 1–2 done), auto-resolve after silence (done), canned replies, business hours + offline message, FAQ editing in the Admin tab, retention job, more languages, attachments; standalone console login (OIDC in the browser) when someone needs it | 2–3 weeks |
 | v3 | AI answers | Knowledge documents, search with sources, grounded LLM answers, evaluation set, AI summary on handoff | 3–4 weeks |
 | v4 | Channels + lookups | WhatsApp Cloud API, email; identity-verified lookups through backend-validated tools | 3–4 weeks |
 | v5 | Platform | Tenant self-service, per-tenant identity providers, analytics, CSAT, public release | later |
@@ -69,8 +69,8 @@ A version starts only when the previous one is in real use and there's a clear n
 
 ### v2 notifications, in order
 
-1. **In the console:** a chime and the button badge for new customer messages in *my* chats and for chats transferred to me (today only new queue items chime); the badge counts waiting + my unread; a short toast for what just arrived.
-2. **Browser notifications:** system notifications while the dashboard is in another tab or app ("Pat: Hello?"), clicking opens that chat. Shown by `sdk.js` on the host page (an embedded iframe can't ask for the permission), opt-in with `notifications: true` and a one-time "turn on notifications" prompt.
+1. **Done. In the console:** a chime and the button badge for new customer messages in *my* chats and for chats transferred to me (today only new queue items chime); the badge counts waiting + my unread; a short toast for what just arrived.
+2. **Done. Browser notifications:** system notifications while the dashboard is in another tab or app ("Pat: Hello?"), clicking opens that chat. Shown by `sdk.js` on the host page (an embedded iframe can't ask for the permission), opt-in with `notifications: true` and a one-time "turn on notifications" prompt.
 3. **Email:** to the team when a chat has waited longer than X minutes with no agent online; to the customer when an agent replies after they've left. Needs an email provider.
 4. **Mobile push:** later, with a PWA or an app.
 
