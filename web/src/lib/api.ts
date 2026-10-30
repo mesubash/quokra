@@ -284,6 +284,11 @@ export interface AdminTenant {
   attachmentsEnabled: boolean;
   // Resolved chats are deleted after this many months (0 = kept forever).
   retentionMonths: number;
+  // Email alerts: where "a chat is waiting" goes (null: the agents' own emails), after how long (0 = never),
+  // and whether customers get an agent's reply they haven't seen.
+  alertEmail: string | null;
+  waitingAlertMinutes: number;
+  emailCustomers: boolean;
   hasSecret: boolean;
   agentCount: number;
   inviteCount: number;
@@ -303,6 +308,16 @@ export interface TenantForm {
   openingHours: OpeningHours | null;
   attachmentsEnabled: boolean;
   retentionMonths?: number;
+  alertEmail: string | null;
+  waitingAlertMinutes: number;
+  emailCustomers: boolean;
+}
+
+// Whether the server can send email (GET /admin/mail).
+export interface MailStatus {
+  configured: boolean;
+  ok: boolean;
+  problem: string | null;
 }
 
 // What the server lets companies choose for keeping chats; maxMonths 0 means "forever" is allowed.
@@ -363,6 +378,7 @@ export function adminApi(getToken: () => string, refresh?: FreshToken) {
     bots: () => call<{ items: string[] }>("GET", "/bots"),
     storage: () => call<StorageStatus>("GET", "/storage"),
     retention: () => call<RetentionLimits>("GET", "/retention"),
+    mail: () => call<MailStatus>("GET", "/mail"),
     tenants: () => call<{ items: AdminTenant[] }>("GET", "/tenants"),
     create: (form: TenantForm) => call<AdminTenant>("POST", "/tenants", form),
     update: (s: string, form: TenantForm) => call<AdminTenant>("PUT", `/tenants/${slug(s)}`, form),

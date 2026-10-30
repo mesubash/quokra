@@ -5,6 +5,7 @@ import {
   type AdminApi,
   type AdminTenant,
   type OpeningHours,
+  type MailStatus,
   type RetentionLimits,
   type SavedReply,
   type StorageStatus,
@@ -559,6 +560,9 @@ function TenantFormView({
   const [hours, setHours] = useState<OpeningHours | null>(tenant?.openingHours ?? null);
   const [images, setImages] = useState(tenant?.attachmentsEnabled ?? false);
   const [retention, setRetention] = useState<number | undefined>(tenant?.retentionMonths);
+  const [alertEmail, setAlertEmail] = useState(tenant?.alertEmail ?? "");
+  const [waitingAlert, setWaitingAlert] = useState(tenant?.waitingAlertMinutes ?? 10);
+  const [emailCustomers, setEmailCustomers] = useState(tenant?.emailCustomers ?? false);
   const [widget, setWidget] = useState<string[]>(tenant?.widgetOrigins ?? []);
   const [consoleSites, setConsoleSites] = useState<string[]>(tenant?.consoleOrigins ?? []);
   const [error, setError] = useState<string | null>(null);
@@ -583,6 +587,9 @@ function TenantFormView({
       openingHours: hours,
       attachmentsEnabled: images,
       retentionMonths: retention,
+      alertEmail: alertEmail.trim() || null,
+      waitingAlertMinutes: waitingAlert,
+      emailCustomers,
       widgetOrigins: widget,
       consoleOrigins: consoleSites,
     };
@@ -686,6 +693,49 @@ function TenantFormView({
       </section>
 
       <section className="settings-group">
+        <h4>Email</h4>
+        <MailStatusLine api={api} />
+        <Row label="Waiting alert" help="Email the team when a chat has waited this long and nobody is online.">
+          <select
+            value={waitingAlert}
+            onChange={(e) => setWaitingAlert(Number(e.target.value))}
+            aria-label="Waiting alert"
+          >
+            {WAITING_ALERTS.some((o) => o.minutes === waitingAlert) ? null : (
+              <option value={waitingAlert}>After {waitingAlert} minutes</option>
+            )}
+            {WAITING_ALERTS.map((o) => (
+              <option key={o.minutes} value={o.minutes}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </Row>
+        <Row label="Send alerts to" help="Up to 5 addresses, separated by commas. Empty: each agent's own email.">
+          <input
+            value={alertEmail}
+            onChange={(e) => setAlertEmail(e.target.value)}
+            placeholder="support-team@acme.com"
+            aria-label="Send alerts to"
+          />
+        </Row>
+        <Row
+          label="Email customers"
+          help="When an agent replied and the customer hasn't answered in a few minutes, email them the reply. Only for customers who left an email."
+        >
+          <label className="admin-check">
+            <input
+              type="checkbox"
+              role="switch"
+              checked={emailCustomers}
+              onChange={(e) => setEmailCustomers(e.target.checked)}
+            />
+            Email unseen replies
+          </label>
+        </Row>
+      </section>
+
+      <section className="settings-group">
         <h4>Sites</h4>
         <Row label="Websites" help="Where the chat may appear. Include www. and staging sites you use.">
           <SitesField value={widget} onChange={setWidget} placeholder="https://www.acme.com" name="website" />
@@ -775,6 +825,39 @@ function SitesField({
         </button>
       </div>
     </div>
+  );
+}
+
+const WAITING_ALERTS = [
+  { minutes: 0, label: "Never" },
+  { minutes: 5, label: "After 5 minutes" },
+  { minutes: 10, label: "After 10 minutes" },
+  { minutes: 15, label: "After 15 minutes" },
+  { minutes: 30, label: "After 30 minutes" },
+  { minutes: 60, label: "After 1 hour" },
+];
+
+// Whether the server can send email at all; without it, the settings below are kept but nothing is sent.
+function MailStatusLine({ api }: { api: AdminApi }) {
+  const [mail, setMail] = useState<MailStatus | null>(null);
+
+  useEffect(() => {
+    api
+      .mail()
+      .then(setMail)
+      .catch(() => setMail(null));
+  }, [api]);
+
+  if (!mail) return null;
+  const text = !mail.configured
+    ? "Email isn't set up on this server (SMTP_HOST and QUOKRA_MAIL_FROM), so nothing below is sent yet."
+    : mail.ok
+      ? "Email is working."
+      : `The email server isn't answering: ${mail.problem}. Nothing is sent until it is.`;
+  return (
+    <p className={mail.ok || !mail.configured ? "settings-group-help" : "settings-group-help error-text"} role="status">
+      {text}
+    </p>
   );
 }
 
