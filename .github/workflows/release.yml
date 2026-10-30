@@ -1,10 +1,19 @@
 # For a version tag (v2.1.0): checks that the server's version matches, then publishes the Docker image as
 # ghcr.io/<owner>/quokra:2.1.0, :2.1 and :latest. Create the GitHub Release from the changelog yourself.
+# For a tag made before this workflow (or to rebuild one): Actions → Release → Run workflow, with the tag.
 name: Release
 
 on:
   push:
     tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Version tag to publish, e.g. v2.0.0
+        required: true
+
+env:
+  TAG: ${{ inputs.tag || github.ref_name }}
 
 permissions:
   contents: read
@@ -15,12 +24,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
 
       - name: Tag matches server/pom.xml
         run: |
           version="$(sed -n 's|^\t<version>\(.*\)</version>|\1|p' server/pom.xml | head -1)"
-          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
-            echo "Tag $GITHUB_REF_NAME doesn't match server/pom.xml version $version" >&2
+          if [ "v$version" != "$TAG" ]; then
+            echo "Tag $TAG doesn't match server/pom.xml version $version" >&2
             exit 1
           fi
 
@@ -35,8 +46,8 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository_owner }}/quokra
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{version}},value=${{ env.TAG }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ env.TAG }}
             type=raw,value=latest
       - uses: docker/build-push-action@v6
         with:
