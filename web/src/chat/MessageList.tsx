@@ -1,5 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { Message, Option } from "../lib/api";
+import { CloseIcon } from "../lib/icons";
 import { RobotAvatar } from "./RobotAvatar";
 import { dayKey, dayLabel } from "./messages";
 import type { PendingMessage } from "./useChat";
@@ -62,10 +64,18 @@ function Bubble({ message, loadImage }: { message: TimelineItem; loadImage?: Pro
   );
 }
 
-// Click opens the full image in a new tab.
+// Click shows the image full size over the chat; Escape, ✕ or a click outside closes it.
 function ImageBubble({ message, load }: { message: TimelineItem; load: (messageId: string) => Promise<Blob> }) {
   const [url, setUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("keydown", close);
+    return () => document.removeEventListener("keydown", close);
+  }, [open]);
 
   useEffect(() => {
     let live = true;
@@ -86,15 +96,27 @@ function ImageBubble({ message, load }: { message: TimelineItem; load: (messageI
   return (
     <p className="bubble bubble-image">
       {url ? (
-        <a href={url} target="_blank" rel="noopener noreferrer">
+        <button type="button" className="image-open" onClick={() => setOpen(true)} aria-label="Show full size">
           <img src={url} alt={message.attachment?.name ?? "Image"} />
-        </a>
+        </button>
       ) : (
         <span className="bubble-text">{failed ? "The image couldn't load." : "Loading image…"}</span>
       )}
       <time className="bubble-time" dateTime={message.createdAt}>
         {time(message.createdAt)}
       </time>
+      {open &&
+        url &&
+        // On <body>, so nothing in the thread (scrolling, animations) can box it in.
+        createPortal(
+          <div className="lightbox" role="dialog" aria-modal="true" aria-label="Image" onClick={() => setOpen(false)}>
+            <img src={url} alt={message.attachment?.name ?? "Image"} onClick={(e) => e.stopPropagation()} />
+            <button type="button" className="lightbox-close" aria-label="Close" onClick={() => setOpen(false)}>
+              <CloseIcon size={22} />
+            </button>
+          </div>,
+          document.body,
+        )}
     </p>
   );
 }

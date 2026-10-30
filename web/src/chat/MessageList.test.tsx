@@ -36,6 +36,11 @@ describe("MessageList", () => {
     expect(img.src).toBe("blob:shot");
     expect(loadImage).toHaveBeenCalledWith("06");
     expect(screen.queryByText("Sent an image")).toBeNull();
+
+    fireEvent.click(screen.getByLabelText("Show full size"));
+    expect(screen.getByRole("dialog", { name: "Image" })).toBeTruthy();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("shows messages as plain text", () => {
