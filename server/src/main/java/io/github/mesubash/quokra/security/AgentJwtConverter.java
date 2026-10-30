@@ -1,5 +1,6 @@
 package io.github.mesubash.quokra.security;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -18,25 +19,41 @@ import org.springframework.stereotype.Component;
 public class AgentJwtConverter implements Converter<Jwt, AbstractAuthenticationToken> {
 
     public static final String AGENT_ROLE = "AGENT";
+    public static final String ADMIN_ROLE = "ADMIN";
 
     private final String rolesClaim;
     private final String agentRole;
+    private final String adminRole;
     private final String nameClaim;
 
     public AgentJwtConverter(@Value("${quokra.agents.roles-claim}") String rolesClaim,
                              @Value("${quokra.agents.role}") String agentRole,
+                             @Value("${quokra.admins.role:QUOKRA_ADMIN}") String adminRole,
                              @Value("${quokra.agents.name-claim:}") String nameClaim) {
         this.rolesClaim = rolesClaim;
         this.agentRole = agentRole;
+        this.adminRole = adminRole;
         this.nameClaim = nameClaim;
     }
 
     @Override
     public AbstractAuthenticationToken convert(Jwt jwt) {
-        List<GrantedAuthority> authorities = roles(jwt).contains(agentRole)
-            ? List.of(new SimpleGrantedAuthority("ROLE_" + AGENT_ROLE))
-            : List.of();
+        Collection<?> roles = roles(jwt);
+        List<GrantedAuthority> authorities = new ArrayList<>();
+        if (roles.contains(agentRole)) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_" + AGENT_ROLE));
+        }
+        if (roles.contains(adminRole)) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_" + ADMIN_ROLE));
+        }
         return new JwtAuthenticationToken(jwt, authorities, jwt.getSubject());
+    }
+
+    // The email only if the provider says it's verified, since an admin's invite trusts it.
+    public String verifiedEmail(Jwt jwt) {
+        String email = jwt.getClaimAsString("email");
+        return email != null && !email.isBlank() && Boolean.TRUE.equals(jwt.getClaimAsBoolean("email_verified"))
+            ? email.strip() : null;
     }
 
     public String displayName(Jwt jwt) {

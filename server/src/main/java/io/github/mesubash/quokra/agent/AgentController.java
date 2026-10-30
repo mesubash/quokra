@@ -27,6 +27,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -48,7 +49,8 @@ public class AgentController {
     static final int HISTORY_LIMIT = 100;
     static final int HISTORY_ITEMS = 20;
 
-    record Me(String sub, String name, List<String> tenants) {}
+    // agent / admin: which parts of the console this person may use.
+    record Me(String sub, String name, List<String> tenants, boolean agent, boolean admin) {}
 
     record TenantItem(UUID id, String slug, String displayName) {}
 
@@ -89,10 +91,20 @@ public class AgentController {
     }
 
     @GetMapping("/me")
-    public Me me(@AuthenticationPrincipal Jwt jwt) {
-        tenantAgents.rememberName(jwt.getSubject(), agentTokens.displayName(jwt));
-        return new Me(jwt.getSubject(), agentTokens.displayName(jwt),
-            myTenants(jwt).values().stream().map(Tenant::getSlug).sorted().toList());
+    public Me me(@AuthenticationPrincipal Jwt jwt, Authentication auth) {
+        String name = agentTokens.displayName(jwt);
+        String email = agentTokens.verifiedEmail(jwt);
+        // The console calls this first, so it's where invites by email are picked up.
+        if (email != null) {
+            tenantAgents.acceptInvites(jwt.getSubject(), name, email);
+        }
+        tenantAgents.rememberProfile(jwt.getSubject(), name, email);
+        return new Me(jwt.getSubject(), name, myTenants(jwt).values().stream().map(Tenant::getSlug).sorted().toList(),
+            hasRole(auth, AgentJwtConverter.AGENT_ROLE), hasRole(auth, AgentJwtConverter.ADMIN_ROLE));
+    }
+
+    private static boolean hasRole(Authentication auth, String role) {
+        return auth.getAuthorities().stream().anyMatch(a -> ("ROLE_" + role).equals(a.getAuthority()));
     }
 
     @GetMapping("/tenants")

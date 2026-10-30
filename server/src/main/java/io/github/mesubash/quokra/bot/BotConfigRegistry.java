@@ -45,6 +45,10 @@ public class BotConfigRegistry {
         log.info("Loaded bot configs: {}", configs.keySet());
     }
 
+    public List<String> names() {
+        return configs.keySet().stream().sorted().toList();
+    }
+
     public Optional<BotConfig> find(String name) {
         return Optional.ofNullable(configs.get(name));
     }

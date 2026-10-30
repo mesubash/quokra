@@ -23,6 +23,9 @@ quokra:
     # Where the roles are in the token, e.g. "roles" or "realm_access.roles".
     roles-claim: ${QUOKRA_AGENT_ROLES_CLAIM:roles}
     role: ${QUOKRA_AGENT_ROLE:SUPPORT_AGENT}
+  admins:
+    # People with this role (in the same roles claim) manage companies, keys, sites and agents.
+    role: ${QUOKRA_ADMIN_ROLE:QUOKRA_ADMIN}
   tenant-secrets:
     # 32 random bytes, base64. Encrypts tenant secret keys in the database. Empty: identify is off.
     encryption-key: ${TENANT_SECRET_ENCRYPTION_KEY:}

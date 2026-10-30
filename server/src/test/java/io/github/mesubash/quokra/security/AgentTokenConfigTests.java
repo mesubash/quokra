@@ -83,7 +83,7 @@ class AgentTokenConfigTests {
         var jwt = org.springframework.security.oauth2.jwt.Jwt.withTokenValue("t").header("alg", "RS256")
             .subject("agent-1").claim("full_name", "Sam Lee").claim("name", "sam").build();
 
-        assertThat(new AgentJwtConverter("roles", "SUPPORT_AGENT", "full_name").displayName(jwt)).isEqualTo("Sam Lee");
-        assertThat(new AgentJwtConverter("roles", "SUPPORT_AGENT", "").displayName(jwt)).isEqualTo("sam");
+        assertThat(new AgentJwtConverter("roles", "SUPPORT_AGENT", "QUOKRA_ADMIN", "full_name").displayName(jwt)).isEqualTo("Sam Lee");
+        assertThat(new AgentJwtConverter("roles", "SUPPORT_AGENT", "QUOKRA_ADMIN", "").displayName(jwt)).isEqualTo("sam");
     }
 }

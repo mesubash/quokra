@@ -28,12 +28,12 @@ public class SecurityConfig {
     static final AccessDeniedHandler FORBIDDEN = (request, response, e) ->
         writeError(response, HttpServletResponse.SC_FORBIDDEN, "FORBIDDEN", "Not allowed");
 
-    // Agent endpoints: OIDC access tokens with the agent role.
+    // Agent and admin endpoints: OIDC access tokens with the agent or admin role.
     @Bean
     @Order(1)
     SecurityFilterChain agentChain(HttpSecurity http, ObjectProvider<JwtDecoder> decoder, AgentJwtConverter converter)
             throws Exception {
-        common(http.securityMatcher("/api/v1/agent/**"));
+        common(http.securityMatcher("/api/v1/agent/**", "/api/v1/admin/**"));
         JwtDecoder jwtDecoder = decoder.getIfAvailable();
         if (jwtDecoder != null) {
             http.oauth2ResourceServer(oauth -> oauth
@@ -41,7 +41,11 @@ public class SecurityConfig {
                 .authenticationEntryPoint(UNAUTHORIZED)
                 .accessDeniedHandler(FORBIDDEN));
         }
-        http.authorizeHttpRequests(auth -> auth.anyRequest().hasRole(AgentJwtConverter.AGENT_ROLE));
+        http.authorizeHttpRequests(auth -> auth
+            .requestMatchers("/api/v1/admin/**").hasRole(AgentJwtConverter.ADMIN_ROLE)
+            // Admins who aren't agents still need to know who they are.
+            .requestMatchers("/api/v1/agent/me").hasAnyRole(AgentJwtConverter.AGENT_ROLE, AgentJwtConverter.ADMIN_ROLE)
+            .anyRequest().hasRole(AgentJwtConverter.AGENT_ROLE));
         return http.build();
     }
 

@@ -38,7 +38,8 @@ public class DevAgentTokens {
 
     static final String ISSUER = "quokra-dev";
 
-    public record TokenRequest(@NotBlank String sub, String name) {}
+    // admin: also give the admin role. email: a verified email, for testing invites.
+    public record TokenRequest(@NotBlank String sub, String name, Boolean admin, String email) {}
 
     public record TokenResponse(String accessToken) {}
 
@@ -46,12 +47,14 @@ public class DevAgentTokens {
     private final String audience;
     private final List<String> roles;
     private final String rolesClaim;
+    private final String adminRole;
     private final Clock clock;
 
     public DevAgentTokens(@Value("${APP_ENV:}") String appEnv,
                           @Value("${quokra.agents.audience}") String audience,
                           @Value("${quokra.agents.role}") String role,
                           @Value("${quokra.agents.roles-claim}") String rolesClaim,
+                          @Value("${quokra.admins.role:QUOKRA_ADMIN}") String adminRole,
                           Clock clock) throws NoSuchAlgorithmException {
         if ("production".equalsIgnoreCase(appEnv)) {
             throw new IllegalStateException("quokra.dev.agent-tokens must not be enabled when APP_ENV=production");
@@ -63,6 +66,7 @@ public class DevAgentTokens {
         this.audience = audience;
         this.roles = List.of(role);
         this.rolesClaim = rolesClaim;
+        this.adminRole = adminRole;
         this.clock = clock;
     }
 
@@ -77,13 +81,23 @@ public class DevAgentTokens {
     @CrossOrigin(originPatterns = {"http://localhost:[*]", "http://127.0.0.1:[*]"})
     @PostMapping("/dev/agent-token")
     public TokenResponse token(@Valid @RequestBody TokenRequest request) throws JOSEException {
-        return new TokenResponse(sign(request.sub(), request.name() == null ? request.sub() : request.name(), roles));
+        List<String> tokenRoles = Boolean.TRUE.equals(request.admin()) ? List.of(roles.getFirst(), adminRole) : roles;
+        return new TokenResponse(sign(request.sub(), request.name() == null ? request.sub() : request.name(), tokenRoles,
+            request.email()));
     }
 
     // Also used by tests that need tokens with other roles.
     public String sign(String sub, String name, List<String> tokenRoles) throws JOSEException {
+        return sign(sub, name, tokenRoles, null);
+    }
+
+    public String sign(String sub, String name, List<String> tokenRoles, String verifiedEmail) throws JOSEException {
         Instant now = clock.instant();
-        JWTClaimsSet claims = new JWTClaimsSet.Builder()
+        JWTClaimsSet.Builder builder = new JWTClaimsSet.Builder();
+        if (verifiedEmail != null) {
+            builder.claim("email", verifiedEmail).claim("email_verified", true);
+        }
+        JWTClaimsSet claims = builder
             .issuer(ISSUER)
             .audience(audience)
             .subject(sub)
