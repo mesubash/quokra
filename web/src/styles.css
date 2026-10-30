@@ -203,6 +203,10 @@ button {
   background: #d29922;
 }
 
+.dot-away {
+  background: var(--dot-off);
+}
+
 .icon-button {
   flex: none;
   display: grid;
@@ -1719,6 +1723,42 @@ button {
   resize: vertical;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.82rem;
+}
+
+.admin-hours {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.admin-hours legend {
+  margin-bottom: 4px;
+  padding: 0;
+}
+
+.admin-form .admin-check {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+}
+
+.admin-day {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 36px;
+  font-size: 0.88rem;
+}
+
+.admin-times {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .admin-form textarea.admin-reply-body {

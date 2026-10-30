@@ -4,6 +4,7 @@ import {
   type AdminAgents,
   type AdminApi,
   type AdminTenant,
+  type OpeningHours,
   type SavedReply,
   type TenantForm,
 } from "../../lib/api";
@@ -508,6 +509,7 @@ function TenantFormView({
   const [logo, setLogo] = useState(tenant?.logoUrl ?? "");
   const [bot, setBot] = useState(tenant?.botConfig ?? "");
   const [autoResolve, setAutoResolve] = useState(tenant?.autoResolveMinutes ?? 1440);
+  const [hours, setHours] = useState<OpeningHours | null>(tenant?.openingHours ?? null);
   const [widget, setWidget] = useState((tenant?.widgetOrigins ?? []).join("\n"));
   const [consoleSites, setConsoleSites] = useState((tenant?.consoleOrigins ?? []).join("\n"));
   const [error, setError] = useState<string | null>(null);
@@ -529,6 +531,7 @@ function TenantFormView({
       logoUrl: logo || null,
       botConfig: bot,
       autoResolveMinutes: autoResolve,
+      openingHours: hours,
       widgetOrigins: lines(widget),
       consoleOrigins: lines(consoleSites),
     };
@@ -606,6 +609,7 @@ function TenantFormView({
           this long without messages. Waiting chats never do.
         </span>
       </label>
+      <HoursField value={hours} onChange={setHours} />
       <label>
         <span className="admin-label">Logo URL (optional)</span>
         <input value={logo} onChange={(e) => setLogo(e.target.value)} placeholder="https://www.acme.com/logo.png" />
@@ -645,6 +649,107 @@ function TenantFormView({
         </button>
       </div>
     </form>
+  );
+}
+
+const DAYS = [
+  ["MON", "Monday"],
+  ["TUE", "Tuesday"],
+  ["WED", "Wednesday"],
+  ["THU", "Thursday"],
+  ["FRI", "Friday"],
+  ["SAT", "Saturday"],
+  ["SUN", "Sunday"],
+] as const;
+
+const NINE_TO_FIVE = "09:00-17:00";
+const WEEKDAYS: OpeningHours["days"] = {
+  MON: NINE_TO_FIVE,
+  TUE: NINE_TO_FIVE,
+  WED: NINE_TO_FIVE,
+  THU: NINE_TO_FIVE,
+  FRI: NINE_TO_FIVE,
+};
+
+// Opening hours: off means always open. Turning it on starts with weekdays 9 to 5 in the admin's time zone.
+function HoursField({ value, onChange }: { value: OpeningHours | null; onChange: (v: OpeningHours | null) => void }) {
+  function setDay(day: string, range: string | null) {
+    if (!value) return;
+    const days = { ...value.days };
+    if (range) days[day] = range;
+    else delete days[day];
+    onChange({ ...value, days });
+  }
+
+  return (
+    <fieldset className="admin-hours">
+      <legend className="admin-label">Opening hours</legend>
+      <label className="admin-check">
+        <input
+          type="checkbox"
+          checked={value !== null}
+          onChange={(e) =>
+            onChange(
+              e.target.checked ? { timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, days: WEEKDAYS } : null,
+            )
+          }
+        />
+        Only answer chats at set times
+      </label>
+      <span className="admin-help muted">
+        Outside these hours the chat says the team is away and when it's back. Chats still reach the queue.
+      </span>
+      {value && (
+        <>
+          <label>
+            <span className="admin-label">Time zone</span>
+            <input
+              value={value.timezone}
+              onChange={(e) => onChange({ ...value, timezone: e.target.value })}
+              placeholder="Europe/Berlin"
+              required
+            />
+          </label>
+          {DAYS.map(([day, label]) => {
+            const range = value.days[day];
+            const [from, to] = (range ?? NINE_TO_FIVE).split("-");
+            return (
+              <div className="admin-day" key={day}>
+                <label className="admin-check">
+                  <input
+                    type="checkbox"
+                    checked={!!range}
+                    onChange={(e) => setDay(day, e.target.checked ? `${from}-${to}` : null)}
+                  />
+                  {label}
+                </label>
+                {range ? (
+                  <span className="admin-times">
+                    <input
+                      type="time"
+                      value={from}
+                      onChange={(e) => setDay(day, `${e.target.value}-${to}`)}
+                      aria-label={`${label} from`}
+                      required
+                    />
+                    <span className="muted">to</span>
+                    <input
+                      type="time"
+                      value={to}
+                      onChange={(e) => setDay(day, `${from}-${e.target.value}`)}
+                      aria-label={`${label} until`}
+                      required
+                    />
+                  </span>
+                ) : (
+                  <span className="muted">Closed</span>
+                )}
+              </div>
+            );
+          })}
+        </>
+      )}
+    </fieldset>
   );
 }
 

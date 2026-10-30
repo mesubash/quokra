@@ -178,7 +178,7 @@ function Chat({ tenant, token, visible, onUnauthorized }: ChatProps) {
         </span>
         <div className="header-text">
           <h1>{tenant.displayName}</h1>
-          <HeaderStatus conversation={chat.conversation} online={chat.online} texts={tenant.texts} />
+          <HeaderStatus conversation={chat.conversation} online={chat.online} tenant={tenant} />
         </div>
         <CloseButton />
       </header>
@@ -257,11 +257,17 @@ function StateBody({ message, onRetry }: { message: string; onRetry?: () => void
   );
 }
 
-function HeaderStatus({ conversation, online, texts }: { conversation: Conversation | null; online: boolean; texts: Tenant["texts"] }) {
+function HeaderStatus({ conversation, online, tenant }: { conversation: Conversation | null; online: boolean; tenant: Tenant }) {
+  const texts = tenant.texts;
   if (conversation && !online) return <p className="header-status">Reconnecting…</p>;
   switch (conversation?.status) {
     case "WAITING":
-      return <p className="header-status"><span className="dot dot-waiting" />{texts.waiting}</p>;
+      return (
+        <p className="header-status">
+          <span className={tenant.open ? "dot dot-waiting" : "dot dot-away"} />
+          {tenant.open ? texts.waiting : texts.offline}
+        </p>
+      );
     case "HUMAN":
       return (
         <p className="header-status">
@@ -272,6 +278,10 @@ function HeaderStatus({ conversation, online, texts }: { conversation: Conversat
     case "RESOLVED":
       return <p className="header-status">{texts.closed}</p>;
     default:
-      return <p className="header-status"><span className="dot" />{texts.online}</p>;
+      return tenant.open ? (
+        <p className="header-status"><span className="dot" />{texts.online}</p>
+      ) : (
+        <p className="header-status"><span className="dot dot-away" />{texts.offline}</p>
+      );
   }
 }

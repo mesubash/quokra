@@ -4,7 +4,9 @@ export interface Tenant {
   branding: { logoUrl: string | null; primaryColor: string | null };
   teaser: string | null;
   // The tenant's wording for the header and input; placeholder may contain {name}.
-  texts: { online: string; waiting: string; closed: string; placeholder: string };
+  texts: { online: string; waiting: string; closed: string; placeholder: string; offline: string };
+  // Inside the tenant's opening hours (always, when it has none).
+  open: boolean;
 }
 
 export interface Session {
@@ -178,6 +180,12 @@ export interface Me {
 
 // ---- Admin ----
 
+// When the team answers chats. days maps MON..SUN to "09:00-17:00"; days left out are closed.
+export interface OpeningHours {
+  timezone: string;
+  days: Record<string, string>;
+}
+
 export interface AdminTenant {
   id: string;
   slug: string;
@@ -189,6 +197,8 @@ export interface AdminTenant {
   primaryColor: string | null;
   botConfig: string;
   autoResolveMinutes: number;
+  // null means always open.
+  openingHours: OpeningHours | null;
   hasSecret: boolean;
   agentCount: number;
   inviteCount: number;
@@ -205,6 +215,7 @@ export interface TenantForm {
   botConfig: string;
   // 0 = never.
   autoResolveMinutes: number;
+  openingHours: OpeningHours | null;
 }
 
 export interface AdminAgents {
