@@ -8,6 +8,7 @@ import io.github.mesubash.quokra.presence.AgentPresence;
 import io.github.mesubash.quokra.bot.TenantBots;
 import io.github.mesubash.quokra.canned.CannedReplies;
 import io.github.mesubash.quokra.common.ApiException;
+import io.github.mesubash.quokra.conversation.RetentionLimits;
 import io.github.mesubash.quokra.conversation.Message;
 import io.github.mesubash.quokra.tenant.Tenant;
 import io.github.mesubash.quokra.tenant.TenantAgents;
@@ -65,10 +66,12 @@ public class AdminController {
     private final TenantRepository tenantRepository;
     private final StorageCheck storage;
     private final AgentPresence presence;
+    private final RetentionLimits retention;
 
     public AdminController(TenantAdmin tenants, TenantAgents agents, TenantSecrets secrets, BotConfigRegistry bots,
                            CannedReplies replies, TenantBots tenantBots, TenantRepository tenantRepository,
-                           StorageCheck storage, AgentPresence presence) {
+                           StorageCheck storage, AgentPresence presence, RetentionLimits retention) {
+        this.retention = retention;
         this.storage = storage;
         this.presence = presence;
         this.tenantBots = tenantBots;
@@ -89,6 +92,12 @@ public class AdminController {
     @GetMapping("/storage")
     public StorageCheck.Status storage() {
         return storage.status();
+    }
+
+    // What companies may choose for keeping chats (maxMonths 0: "forever" is allowed too).
+    @GetMapping("/retention")
+    public RetentionLimits retention() {
+        return retention;
     }
 
     @GetMapping("/tenants")

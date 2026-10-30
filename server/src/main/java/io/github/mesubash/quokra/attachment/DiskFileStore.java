@@ -34,6 +34,15 @@ class DiskFileStore implements FileStore {
         }
     }
 
+    @Override
+    public void delete(String key) {
+        try {
+            Files.deleteIfExists(resolve(key));
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
     private Path resolve(String key) {
         Path file = root.resolve(key).normalize();
         if (!file.startsWith(root)) {

@@ -6,4 +6,7 @@ public interface FileStore {
     void put(String key, byte[] bytes, String contentType);
 
     byte[] get(String key);
+
+    // Gone already is fine.
+    void delete(String key);
 }

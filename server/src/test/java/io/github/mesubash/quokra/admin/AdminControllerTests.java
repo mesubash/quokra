@@ -117,6 +117,20 @@ class AdminControllerTests {
     }
 
     @Test
+    void retentionStaysWithinTheServersLimits() {
+        assertThat(call("POST", admin, "/tenants", ACME)).bodyJson().extractingPath("$.retentionMonths").isEqualTo(12);
+        assertThat(call("GET", admin, "/retention", null)).bodyJson().extractingPath("$.maxMonths").isEqualTo(60);
+
+        String withRetention = ACME.replace("\"botConfig\":\"test\"", "\"botConfig\":\"test\",\"retentionMonths\":24");
+        assertThat(call("PUT", admin, "/tenants/acme", withRetention)).bodyJson()
+            .extractingPath("$.retentionMonths").isEqualTo(24);
+        assertThat(call("PUT", admin, "/tenants/acme", withRetention.replace(":24", ":0")))
+            .hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(call("PUT", admin, "/tenants/acme", withRetention.replace(":24", ":120")))
+            .hasStatus(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
     void savesOpeningHours() {
         String withHours = ACME.replace("\"botConfig\":\"test\"",
             "\"botConfig\":\"test\",\"openingHours\":{\"timezone\":\"Europe/Berlin\",\"days\":{\"MON\":\"09:00-17:00\"}}");

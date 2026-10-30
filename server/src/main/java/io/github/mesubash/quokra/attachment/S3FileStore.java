@@ -20,6 +20,11 @@ class S3FileStore implements FileStore {
     }
 
     @Override
+    public void delete(String key) {
+        s3.deleteObject(r -> r.bucket(bucket).key(key));
+    }
+
+    @Override
     public byte[] get(String key) {
         return s3.getObjectAsBytes(r -> r.bucket(bucket).key(key)).asByteArray();
     }

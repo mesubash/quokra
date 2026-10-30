@@ -43,6 +43,13 @@ quokra:
       region: ${QUOKRA_ATTACHMENTS_S3_REGION:us-east-1}
       # Only for R2 or MinIO, e.g. https://<account>.r2.cloudflarestorage.com
       endpoint: ${QUOKRA_ATTACHMENTS_S3_ENDPOINT:}
+  retention:
+    # What companies may choose for keeping resolved chats (Settings → General), in months.
+    # max-months 0 allows "forever"; otherwise nothing is kept longer than max-months.
+    min-months: ${QUOKRA_RETENTION_MIN_MONTHS:1}
+    max-months: ${QUOKRA_RETENTION_MAX_MONTHS:60}
+    # When old chats are deleted (server time).
+    cron: ${QUOKRA_RETENTION_CRON:0 0 3 * * *}
   ws:
     # Origins allowed to open the WebSocket: where the chat panel and console are served.
     allowed-origins: ${PUBLIC_BASE_URL:http://localhost:8080}
