@@ -30,7 +30,7 @@
 - Notifications: sounds, toasts and browser notifications for new chats, replies in my chats, transfers and notes.
 - Quiet chats close by themselves after a time each company sets.
 - Opening hours: outside them, customers are told when the team is back.
-- Settings behind the gear icon: notifications for each agent; for admins, the company's look, bot and wording, saved replies, agents and embed code.
+- Settings behind the gear icon: notifications for each agent; for admins, the company's look, bot and wording, saved replies, agents, embed code and how long chats are kept.
 
 **For the site embedding it**
 - Follows your page's light or dark mode by itself, or a theme you choose, and your own accent colour.

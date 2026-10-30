@@ -225,6 +225,7 @@ texts:
   offline_handoff: "We're away right now and back {opens}. Leave your message here and we'll reply then."
 ```
 
+- **Retention:** `RetentionJob` runs nightly and deletes each tenant's resolved conversations whose last message is older than `tenants.retention_months` (brought within `RetentionLimits`, the server's min/max), with their messages, events, notes, read markers and image files. Contacts stay. Open conversations are never deleted.
 - **Presence:** `agent_presence(agent_sub, status, last_seen)`. The console checks in every minute with ONLINE or AWAY; an agent is online when ONLINE and seen in the last 2 minutes (`AgentPresence`). The chat's config says whether anyone of the tenant's team is online, and the transfer list and Settings → Agents mark who is.
 - **Typing:** `typing` events on the conversation topic, sent by `POST …/typing` at most every 3 seconds from each side; never stored (`TypingSignals`).
 - **Replies:** a customer or agent message can answer an earlier customer or agent message in the same conversation (not the bot's, not a note). The quote is copied onto the reply when it's sent, so every view, event and notification has it without a lookup.

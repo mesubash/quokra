@@ -367,6 +367,7 @@ interface Tenant {
   logoUrl: string | null; primaryColor: string | null; botConfig: string;
   autoResolveMinutes: number;            // close quiet chats after this long; 0 = never (default 1440)
   attachmentsEnabled: boolean;           // customers and agents may send images (default false)
+  retentionMonths: number;               // resolved chats are deleted after this long; 0 = forever (default 12)
   openingHours: { timezone: string; days: { [day: string]: string } } | null;
                                          // e.g. { "timezone": "Europe/Berlin", "days": { "MON": "09:00-17:00" } };
                                          // days MON..SUN, left out = closed; null = always open
@@ -377,6 +378,7 @@ interface Tenant {
 
 | Endpoint | What it does |
 |---|---|
+| `GET /admin/retention` | What companies may choose for `retentionMonths`: `{ "minMonths": 1, "maxMonths": 60 }`; `maxMonths: 0` means 0 (forever) is allowed too. Anything else is `400 VALIDATION_ERROR` |
 | `GET /admin/storage` | Whether image storage works: `{ "ok": true, "store": "disk", "problem": null }`. Checked by writing and reading a small file, at most every 5 minutes |
 | `GET /admin/bots` | Bot files the server has: `{ "items": ["demo", …] }` |
 | `GET /admin/tenants` | All tenants: `{ "items": [Tenant, …] }` |

@@ -36,6 +36,9 @@ What changed, newest first. Each entry says what people notice; the commits have
   and is retried once.
 
 **Admins**
+- **Keep chats for** a time each company chooses (default 12 months), within the server's limits
+  (`QUOKRA_RETENTION_MIN_MONTHS` / `_MAX_MONTHS`). Resolved chats older than that are deleted at night,
+  with their messages and images; contacts stay.
 - **Settings behind the gear icon** instead of an Admin tab: General, Notifications, Bot, Saved replies,
   Agents, Embed & keys, as plain rows rather than cards. A console embedded for one company only shows that
   company; managing all companies needs a console mounted without `tenant`.

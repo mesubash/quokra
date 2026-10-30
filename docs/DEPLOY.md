@@ -49,6 +49,8 @@ All through environment variables. Generate random secrets with `openssl rand -b
 | `QUOKRA_AGENT_ROLES_CLAIM` | | Default `roles`; e.g. `realm_access.roles` |
 | `QUOKRA_AGENT_ROLE` / `QUOKRA_ADMIN_ROLE` | | Defaults `SUPPORT_AGENT` / `QUOKRA_ADMIN` |
 | `QUOKRA_BOTS_DIR` | | A folder with your bot files (`*.yml`), mounted into the container |
+| `QUOKRA_RETENTION_MIN_MONTHS` / `_MAX_MONTHS` | | What companies may choose for keeping resolved chats (default 1 to 60 months; max `0` also allows "forever"). A company's choice outside new limits is brought inside them |
+| `QUOKRA_RETENTION_CRON` | | When old chats are deleted, server time (default `0 0 3 * * *`, 03:00 every night) |
 | `QUOKRA_ATTACHMENTS_STORE` | | Where images sent in chats go: `disk` (default) or `s3` |
 | `QUOKRA_ATTACHMENTS_DIR` | | For `disk`: the folder; the image uses `/data/attachments`, so mount a volume at `/data` |
 | `QUOKRA_ATTACHMENTS_S3_BUCKET` / `_REGION` | for `s3` | The bucket and its region |
