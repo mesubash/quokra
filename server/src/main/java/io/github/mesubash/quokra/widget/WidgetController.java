@@ -18,6 +18,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -33,13 +34,15 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/widget")
 public class WidgetController {
 
-    public record TenantView(String slug, String displayName, Branding branding, String teaser, Texts texts) {
+    // open: inside the tenant's opening hours (always, when it has none).
+    public record TenantView(String slug, String displayName, Branding branding, String teaser, Texts texts,
+                             boolean open) {
         public record Branding(String logoUrl, String primaryColor) {}
 
         // The wording the chat panel shows itself; the bot's own lines stay on the server.
-        public record Texts(String online, String waiting, String closed, String placeholder) {
+        public record Texts(String online, String waiting, String closed, String placeholder, String offline) {
             static Texts of(BotConfig.Texts t) {
-                return new Texts(t.online(), t.waiting(), t.closed(), t.placeholder());
+                return new Texts(t.online(), t.waiting(), t.closed(), t.placeholder(), t.offline());
             }
         }
     }
@@ -59,10 +62,12 @@ public class WidgetController {
     private final IdentityTokens identityTokens;
     private final ConversationService conversations;
     private final RateLimiter rateLimiter;
+    private final Clock clock;
 
     public WidgetController(TenantRepository tenants, SessionTokens sessionTokens, BotConfigRegistry bots,
                             TenantSecrets secrets, IdentityTokens identityTokens, ConversationService conversations,
-                            RateLimiter rateLimiter) {
+                            RateLimiter rateLimiter, Clock clock) {
+        this.clock = clock;
         this.rateLimiter = rateLimiter;
         this.tenants = tenants;
         this.sessionTokens = sessionTokens;
@@ -79,7 +84,8 @@ public class WidgetController {
         return new TenantView(tenant.getSlug(), tenant.getDisplayName(),
             new TenantView.Branding(tenant.getLogoUrl(), tenant.getPrimaryColor()),
             bot.map(BotConfig::teaser).orElse(null),
-            TenantView.Texts.of(bot.map(BotConfig::texts).orElse(BotConfig.Texts.DEFAULT)));
+            TenantView.Texts.of(bot.map(BotConfig::texts).orElse(BotConfig.Texts.DEFAULT)),
+            tenant.isOpen(clock.instant()));
     }
 
     @PostMapping("/sessions")

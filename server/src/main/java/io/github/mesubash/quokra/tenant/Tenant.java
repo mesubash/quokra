@@ -1,6 +1,7 @@
 package io.github.mesubash.quokra.tenant;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -35,6 +36,14 @@ public class Tenant {
     private String primaryColor;
 
     private String botConfig;
+
+    // Null means always open.
+    @Convert(converter = OpeningHoursConverter.class)
+    private OpeningHours openingHours;
+
+    public boolean isOpen(Instant at) {
+        return openingHours == null || openingHours.isOpen(at);
+    }
 
     @Column(insertable = false, updatable = false)
     private Instant createdAt;

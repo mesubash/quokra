@@ -109,6 +109,19 @@ class AdminControllerTests {
     }
 
     @Test
+    void savesOpeningHours() {
+        String withHours = ACME.replace("\"botConfig\":\"test\"",
+            "\"botConfig\":\"test\",\"openingHours\":{\"timezone\":\"Europe/Berlin\",\"days\":{\"MON\":\"09:00-17:00\"}}");
+        assertThat(call("POST", admin, "/tenants", withHours)).hasStatus(HttpStatus.CREATED)
+            .bodyJson().extractingPath("$.openingHours.days.MON").isEqualTo("09:00-17:00");
+
+        assertThat(call("PUT", admin, "/tenants/acme", withHours.replace("Europe/Berlin", "Nowhere")))
+            .hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(call("PUT", admin, "/tenants/acme", ACME)).bodyJson()
+            .extractingPath("$.openingHours").isNull();
+    }
+
+    @Test
     void savedRepliesCanBeAddedEditedAndRemoved() throws Exception {
         call("POST", admin, "/tenants", ACME);
 

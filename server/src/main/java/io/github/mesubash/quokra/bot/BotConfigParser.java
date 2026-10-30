@@ -74,7 +74,7 @@ final class BotConfigParser {
 
     private static final java.util.Set<String> TEXT_KEYS =
         java.util.Set.of("online", "waiting", "closed", "placeholder", "ask_email", "bad_email", "ask_name", "skip",
-            "auto_closed");
+            "auto_closed", "offline", "offline_handoff");
 
     // Optional; unknown keys are an error so a typo doesn't silently keep the default.
     private BotConfig.Texts texts(Object value) {
@@ -97,7 +97,9 @@ final class BotConfigParser {
             or(optionalText(map, "bad_email"), d.badEmail()),
             or(optionalText(map, "ask_name"), d.askName()),
             or(optionalText(map, "skip"), d.skip()),
-            or(optionalText(map, "auto_closed"), d.autoClosed()));
+            or(optionalText(map, "auto_closed"), d.autoClosed()),
+            or(optionalText(map, "offline"), d.offline()),
+            or(optionalText(map, "offline_handoff"), d.offlineHandoff()));
     }
 
     private static String or(String value, String fallback) {

@@ -253,6 +253,22 @@ class ConversationServiceTests {
     }
 
     @Test
+    void outsideOpeningHoursTheCustomerHearsWhenTheTeamIsBack() {
+        // Open only on a day three days from now, so it's closed today.
+        String day = java.time.LocalDate.now(java.time.ZoneOffset.UTC).plusDays(3).getDayOfWeek().name().substring(0, 3);
+        jdbc.update("update tenants set opening_hours = ? where id = ?",
+            "{\"timezone\":\"UTC\",\"days\":{\"" + day + "\":\"09:00-10:00\"}}", TENANT);
+        UUID id = start();
+
+        Conversation c = service.handoff(id, HandoffReason.CUSTOMER_REQUEST, SenderType.CUSTOMER);
+
+        assertThat(c.getStatus()).isEqualTo(Status.WAITING);
+        assertThat(history(id).getLast().getBody())
+            .startsWith("We're away right now and back ")
+            .contains("at 09:00 (UTC)");
+    }
+
+    @Test
     void secondHandoffIsRejected() {
         UUID id = start();
         service.handoff(id, HandoffReason.CUSTOMER_REQUEST, SenderType.CUSTOMER);

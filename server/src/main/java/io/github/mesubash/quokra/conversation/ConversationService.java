@@ -585,7 +585,8 @@ public class ConversationService {
         conversation.handOff(reason, now);
         conversation.touch(now);
         events.save(ConversationEvent.of(conversation.getId(), EventType.HANDOFF, actor, null, reason.name(), now));
-        save(Message.create(conversation.getId(), SenderType.SYSTEM, null, null, text, null, null, now));
+        save(Message.create(conversation.getId(), SenderType.SYSTEM, null, null, offlineOr(conversation, text, now), null,
+            null, now));
         publishUpdate(conversation);
     }
 
@@ -605,6 +606,15 @@ public class ConversationService {
 
     private BotConfig.Texts textsFor(Conversation conversation) {
         return botFor(conversation.getTenantId()).map(BotConfig::texts).orElse(BotConfig.Texts.DEFAULT);
+    }
+
+    // Outside opening hours the customer hears when the team is back, not "someone will reply shortly".
+    private String offlineOr(Conversation conversation, String text, Instant now) {
+        return tenants.findById(conversation.getTenantId())
+            .filter(t -> !t.isOpen(now))
+            .map(t -> textsFor(conversation).offlineHandoff()
+                .replace("{opens}", t.getOpeningHours().nextOpening(now).orElse("soon")))
+            .orElse(text);
     }
 
     private String handoffText(Conversation conversation) {
