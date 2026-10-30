@@ -23,7 +23,8 @@
 - A console for your dashboard: full page, or a drawer opened from a floating button, with "open full view".
 - Queue, my chats and resolved lists with unread counts, search, and live updates.
 - Reply (which also accepts the chat), private notes, transfer to a colleague or back to the queue, return to the bot, resolve, reopen, block a contact.
-- A sound for new chats.
+- Notifications: sounds, toasts and browser notifications for new chats, replies in my chats, transfers and notes.
+- Quiet chats close by themselves after a time each company sets.
 
 **For the site embedding it**
 - Follows your page's light or dark mode by itself, or a theme you choose, and your own accent colour.
@@ -81,7 +82,7 @@ The dev profile starts PostgreSQL with Docker Compose and loads a demo tenant. M
 
 ## Status
 
-v1 (FAQ bot + human handoff on the web) is complete: real agent login, an Admin tab for companies and keys, and a Docker image. Next (v2): notifications, auto-resolve and other daily-operations features. See the [plan](docs/PLAN.md).
+v1 (FAQ bot + human handoff on the web) is complete: real agent login, an Admin tab for companies and keys, and a Docker image. v2 (daily operations) is in progress: notifications and auto-resolve are done; canned replies, business hours and more come next. See the [plan](docs/PLAN.md).
 
 ## Docs
 
