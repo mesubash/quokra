@@ -1,7 +1,14 @@
 # 7. Write the bot
 
-Each company's bot answers from a YAML file: a greeting, a menu of common questions, keywords for typed
-questions, and when to hand over to a person.
+Each company's bot has a greeting, a menu of common questions, keywords for typed questions, and rules
+for when to hand over to a person.
+
+**The quick way:** in the console's **Admin** tab, open the company and edit its **Bot** card: questions,
+keywords and answers, reordered with Up and Down. Saving makes the company's own copy and applies to new
+messages straight away; **Go back to the bot file** drops the copy. Wording in `texts` (below) stays as in
+the file it was copied from.
+
+**With a file** (handy for keeping bots in version control):
 
 1. Copy `server/src/main/resources/bots/demo.yml` to a folder of bot files, e.g. `bots/acme.yml`, and
    point the server at it with `QUOKRA_BOTS_DIR=/path/to/bots` (restart to reload).

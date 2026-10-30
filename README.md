@@ -15,7 +15,7 @@
 
 **For customers**
 - A chat bubble, inline panel or popup on any website, in your brand colour and wording.
-- A FAQ bot with a menu and keywords, answering common questions straight away.
+- A FAQ bot with a menu and keywords, answering common questions straight away. Edit it in the Admin tab, or keep it in a file.
 - "Talk to a person" (or an urgent keyword, or the bot not understanding twice) hands the chat to your team. Guests are asked for their email and name in the chat first, so the team can follow up.
 - Logged-in customers can be identified by your backend, and keep one conversation across devices.
 
@@ -83,7 +83,7 @@ The dev profile starts PostgreSQL with Docker Compose and loads a demo tenant. M
 
 ## Status
 
-v1 (FAQ bot + human handoff on the web) is complete: real agent login, an Admin tab for companies and keys, and a Docker image. v2 (daily operations) is in progress: notifications, auto-resolve, saved replies and opening hours are done; FAQ editing in the Admin tab and more come next. See the [plan](docs/PLAN.md).
+v1 (FAQ bot + human handoff on the web) is complete: real agent login, an Admin tab for companies and keys, and a Docker image. v2 (daily operations) is in progress: notifications, auto-resolve, saved replies, opening hours and FAQ editing are done; a retention job and more come next. See the [plan](docs/PLAN.md).
 
 ## Docs
 

@@ -335,6 +335,9 @@ interface Tenant {
 | `POST /admin/tenants/{slug}/agents` | `{ "email": "…" }` → `{ "result": "ADDED" }` if someone already signed in with that verified email, else `"INVITED"` |
 | `DELETE /admin/tenants/{slug}/agents/{sub}` | Remove an agent (`204`) |
 | `DELETE /admin/tenants/{slug}/invites/{email}` | Cancel an invite (`204`) |
+| `GET /admin/tenants/{slug}/bot` | `{ "custom": false, "file": "demo", "bot": { greeting, teaser?, menu: [{ id, title, keywords, answer }], human, urgent, fallback, max_fallbacks, handoff_message, texts } }`: the same fields as a bot file. `custom` is true once edited here |
+| `PUT /admin/tenants/{slug}/bot` | Save the company's own bot (body: the `bot` object above). Checked with the same rules as bot files; `400 VALIDATION_ERROR` names the field, e.g. `bot: menu needs at least one item`. Used for new messages at once |
+| `DELETE /admin/tenants/{slug}/bot` | Drop the edited bot and use the bot file again |
 | `GET /admin/tenants/{slug}/replies` | Saved replies: `{ "items": [{ id, title, body }] }` |
 | `POST /admin/tenants/{slug}/replies` | `{ title, body }` → `201 { id, title, body }`. Title up to 80 characters, body up to 2,000; `{name}` in the body becomes the customer's name |
 | `PUT /admin/tenants/{slug}/replies/{id}` | Change one (same body). `404 REPLY_NOT_FOUND` |

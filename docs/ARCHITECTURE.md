@@ -190,7 +190,7 @@ decide(config, text, optionId, fallbackCount):
 
 The greeting is sent when the conversation starts. Answers and fallbacks come with the menu as buttons (`options`); an answer resets the miss count, a fallback adds one.
 
-Bot file (one per tenant, named by the tenant's `bot_config`):
+Bot file (one per tenant, named by the tenant's `bot_config`; an admin can instead edit the tenant's own copy in the Admin tab, stored in `tenants.bot_custom` with the same fields and checked by the same parser, see `TenantBots`):
 
 ```yaml
 greeting: "Hi! How can we help? Pick a topic below or type your question."
@@ -376,6 +376,7 @@ create table tenants (
   logo_url           text,
   primary_color      text,
   bot_config         text not null,           -- bot file name, without .yml
+  bot_custom         text,                    -- the bot as edited in the Admin tab (JSON, same fields); null = use the file
   created_at         timestamptz not null
 );
 

@@ -10,7 +10,8 @@ agents. Admins set them up in the console's **Admin** tab.
    - **Slug:** a short id like `acme-shop`. It's used in the embed code and can't change later.
    - **Name:** shown in the chat header.
    - **Brand colour** and **logo** (optional).
-   - **Bot file:** which FAQ the bot answers from (see [Write the bot](07-write-the-bot.md)).
+   - **Bot file:** which FAQ the bot starts from. You can edit the questions afterwards in the **Bot** card
+     (see [Write the bot](07-write-the-bot.md)).
    - **Close quiet chats:** when chats without replies close by themselves (default after 24 hours).
    - **Opening hours** (optional): a time zone and hours per day. Outside them the bot still answers,
      and "Talk to a person" still reaches the queue, but the customer is told the team is away and when
