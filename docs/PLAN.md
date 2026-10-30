@@ -4,7 +4,7 @@ Quokra is an embeddable customer support platform. A FAQ bot answers first; when
 
 | | |
 |---|---|
-| **Status** | Plan v7: v1 done (steps 1–11); v2 in progress (notifications 1–2, auto-resolve, canned replies, business hours and FAQ editing done) |
+| **Status** | Plan v7: v1 done (steps 1–11); v2 in progress, see the table below and the [changelog](CHANGELOG.md) |
 | **Last updated** | 2026-10-30 |
 | **Current target** | v1: FAQ bot + human handoff on the web |
 | **Stack** | Spring Boot 4.1 (Java 21) + PostgreSQL · React + TypeScript (Vite), served by the server · one repository, one deployable |
@@ -60,7 +60,7 @@ AI answers · WhatsApp / Instagram / email · reports · automations · file att
 | Version | Theme | Contents | Rough size |
 |---|---|---|---|
 | **v1** | **FAQ bot + handoff** | Chat panel + console (full-page or bubble), both embeddable via `sdk.js`; FAQ bot; handoff; realtime; tenants by publishable key; guests + identified customers; agents via OIDC | 3–4 weeks |
-| v2 | Daily operations | **Notifications** (see below, 1–2 done), auto-resolve after silence (done), canned replies (done), business hours + offline message (done), FAQ editing in Settings (done), retention job, more languages, attachments (images, done); standalone console login (OIDC in the browser) when someone needs it | 2–3 weeks |
+| v2 | Daily operations | **Done:** notifications in the console and browser, auto-resolve after silence, saved replies, business hours + offline message, the bot and its wording edited in Settings, Settings behind a gear (scoped to the console's company), images (disk or S3), "start a new chat", replying to a message. **Next:** deploying for the first real company, retention job. **Later, on demand:** email notifications, more languages, mobile push, standalone console login | 2–3 weeks |
 | v3 | AI answers | Knowledge documents, search with sources, grounded LLM answers, evaluation set, AI summary on handoff | 3–4 weeks |
 | v4 | Channels + lookups | WhatsApp Cloud API, email; identity-verified lookups through backend-validated tools | 3–4 weeks |
 | v5 | Platform | Tenant self-service, per-tenant identity providers, analytics, CSAT, public release | later |

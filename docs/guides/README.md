@@ -1,7 +1,8 @@
 # Guides
 
 Step-by-step guides for the common tasks. For every option and endpoint, see the reference docs:
-[Embedding guide](../EMBEDDING.md) · [API](../API.md) · [Deploying](../DEPLOY.md).
+[Embedding guide](../EMBEDDING.md) · [API](../API.md) · [Deploying](../DEPLOY.md). What changed lately:
+[Changelog](../CHANGELOG.md).
 
 | Guide | You'll |
 |---|---|

@@ -143,11 +143,14 @@ History, oldest first after the cursor. Use without `after` for the latest page.
 // menu button
 { "clientMessageId": "c-7f3b", "optionId": "account" }
 
+// a reply to an earlier message
+{ "clientMessageId": "c-7f3c", "body": "Yes, that one", "replyTo": "0192…" }
+
 // 201
 { "message": Message, "conversation": Conversation }
 ```
 
-The customer message is stored first. Bot replies arrive as realtime events, and also in the next `GET …/messages`. Errors: `409 NO_OPEN_CONVERSATION`, `422 MESSAGE_TOO_LONG`, `429 RATE_LIMITED`.
+`replyTo` (optional) must be a customer's or agent's message in the same conversation (`400 VALIDATION_ERROR` otherwise); the stored message then carries a `replyTo` quote (see `Message`). The customer message is stored first. Bot replies arrive as realtime events, and also in the next `GET …/messages`. Errors: `409 NO_OPEN_CONVERSATION`, `422 MESSAGE_TOO_LONG`, `429 RATE_LIMITED`.
 
 ### 3.8 `POST /widget/conversation/handoff`: "Talk to a person"
 
@@ -166,7 +169,7 @@ The email isn't verified, so it only groups conversations for agents: a customer
 
 ### 3.10 Images
 
-`POST /widget/conversation/attachments` (multipart: `file`, optional `clientMessageId`) sends an image, like a message:
+`POST /widget/conversation/attachments` (multipart: `file`, optional `clientMessageId` and `replyTo`) sends an image, like a message:
 
 ```json
 // 201
@@ -239,7 +242,7 @@ All require an agent token. The agent only sees tenants they're a member of (`te
 ### 4.5 `POST /agent/conversations/{id}/messages`
 
 ```json
-{ "clientMessageId": "a-91c2", "body": "Hi Asha, I can help with that." }
+{ "clientMessageId": "a-91c2", "body": "Hi Asha, I can help with that.", "replyTo": "0192…" }   // replyTo optional
 // 201 { "message": Message }
 ```
 
@@ -329,7 +332,7 @@ Saved replies of the conversation's tenant, by title. The console fills in `{nam
 
 ### 4.19 Images
 
-`POST /agent/conversations/{id}/attachments` (multipart: `file`, optional `clientMessageId`) → `201 { "message": Message }`. Same rules as a reply (the assignee of an accepted chat) and the same checks as 3.10. `GET /agent/conversations/{id}/messages/{messageId}/attachment` returns the image to any agent of the tenant.
+`POST /agent/conversations/{id}/attachments` (multipart: `file`, optional `clientMessageId` and `replyTo`) → `201 { "message": Message }`. Same rules as a reply (the assignee of an accepted chat) and the same checks as 3.10. `GET /agent/conversations/{id}/messages/{messageId}/attachment` returns the image to any agent of the tenant.
 
 ---
 
@@ -466,6 +469,8 @@ interface Message {
   clientMessageId: string | null;
   createdAt: string;
   attachment: { name: string; contentType: string; size: number } | null;   // an image; body is "Sent an image"
+  replyTo: { id: string; senderType: SenderType; senderName: string | null; preview: string } | null;
+                                // the message this answers, copied when sent; preview is its first line or "Image"
 }
 
 interface ConversationEvent {

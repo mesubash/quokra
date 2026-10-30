@@ -225,6 +225,7 @@ texts:
   offline_handoff: "We're away right now and back {opens}. Leave your message here and we'll reply then."
 ```
 
+- **Replies:** a customer or agent message can answer an earlier customer or agent message in the same conversation (not the bot's, not a note). The quote is copied onto the reply when it's sent, so every view, event and notification has it without a lookup.
 - **Images:** a message can carry one image (`messages.attachment_*`), stored in a `FileStore`: a folder (`DiskFileStore`) or an S3-compatible bucket (`S3FileStore`, AWS SDK), chosen by `quokra.attachments.store`. Files are checked by their first bytes (PNG, JPEG, GIF, WebP; 5 MB), served only through the conversation's own endpoints, and offered only when the tenant has `attachments_enabled` and `StorageCheck` (a write-and-read probe, also in `/actuator/health`) passes.
 - **Opening hours:** optional per tenant (Settings; a time zone and a range per weekday, stored as JSON in `tenants.opening_hours`; none = always open). Outside them the bot answers as usual and handoffs still go to the queue, but the customer sees `offline_handoff` instead of the handoff or urgent message, with `{opens}` like "tomorrow at 09:00 (Europe/Berlin)", and the header shows `offline`.
 
@@ -424,6 +425,11 @@ create table messages (
   body               text not null,
   options            text,                    -- menu buttons as JSON [{ id, title }]
   client_message_id  text,
+  attachment_key     text,                    -- an image in the FileStore, with _type, _size, _name
+  reply_to_id        uuid references messages,-- the message this answers, with a copied quote:
+  reply_to_sender    text,                    --   its sender type, name and first line ("Image" for an image)
+  reply_to_name      text,
+  reply_to_preview   text,
   created_at         timestamptz not null,
   unique (conversation_id, client_message_id)
 );

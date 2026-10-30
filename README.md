@@ -18,16 +18,18 @@
 - A FAQ bot with a menu and keywords, answering common questions straight away. Edit it in Settings, or keep it in a file.
 - "Talk to a person" (or an urgent keyword, or the bot not understanding twice) hands the chat to your team. Guests are asked for their email and name in the chat first, so the team can follow up.
 - Logged-in customers can be identified by your backend, and keep one conversation across devices.
-- Images (screenshots, photos) from customers and agents, stored on disk or in S3-compatible storage.
+- Images (screenshots, photos), shown full size in the chat; stored on disk or in S3-compatible storage.
+- Reply to a particular message: the answer quotes it.
 - "Start a new chat" from the chat's menu; the team keeps the old one in its history.
 
 **For agents**
 - A console for your dashboard: full page, or a drawer opened from a floating button, with "open full view".
 - Queue, my chats and resolved lists with unread counts, search, and live updates.
-- Reply (which also accepts the chat), saved replies picked with `/`, private notes, transfer to a colleague or back to the queue, return to the bot, resolve, reopen, block a contact.
+- Reply (which also accepts the chat), reply to a particular message, images, saved replies picked with `/`, private notes, transfer to a colleague or back to the queue, return to the bot, resolve, reopen, block a contact.
 - Notifications: sounds, toasts and browser notifications for new chats, replies in my chats, transfers and notes.
 - Quiet chats close by themselves after a time each company sets.
 - Opening hours: outside them, customers are told when the team is back.
+- Settings behind the gear icon: notifications for each agent; for admins, the company's look, bot and wording, saved replies, agents and embed code.
 
 **For the site embedding it**
 - Follows your page's light or dark mode by itself, or a theme you choose, and your own accent colour.
@@ -85,12 +87,13 @@ The dev profile starts PostgreSQL with Docker Compose and loads a demo tenant. M
 
 ## Status
 
-v1 (FAQ bot + human handoff on the web) is complete: real agent login, settings for companies and keys, and a Docker image. v2 (daily operations) is in progress: notifications, auto-resolve, saved replies, opening hours and FAQ editing are done; a retention job and more come next. See the [plan](docs/PLAN.md).
+v1 (FAQ bot + human handoff on the web) is complete: real agent login, settings for companies and keys, and a Docker image. v2 (daily operations) is in progress: notifications, auto-resolve, saved replies, opening hours, editing the bot in Settings, images, new chat and replying to a message are done; a retention job and more come next. See the [plan](docs/PLAN.md) and the [changelog](docs/CHANGELOG.md).
 
 ## Docs
 
 | Doc | What's in it |
 |---|---|
+| [Changelog](docs/CHANGELOG.md) | What changed, newest first |
 | [Guides](docs/guides/README.md) | Step by step: get started, set up a company, add the chat and console, identify customers, connect your login, write the bot, notifications |
 | [Plan](docs/PLAN.md) | Goals, versions, v1 scope and build steps, open decisions |
 | [Architecture](docs/ARCHITECTURE.md) | Components, flows, state machine, data model, security, deployment, decisions |

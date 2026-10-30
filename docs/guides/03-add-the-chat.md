@@ -18,7 +18,8 @@ A chat button appears in the bottom-right corner once the chat has loaded. If Qu
 nothing is shown.
 
 Customers come back to the same conversation on their next visit. The **⋯** menu in the chat header has
-**Start a new chat** for a fresh start; the old chat stays in your team's history.
+**Start a new chat** for a fresh start; the old chat stays in your team's history. Customers can reply to a
+particular message (↩) and, if the company allows images, send screenshots and photos.
 
 ## Other placements
 

@@ -41,12 +41,19 @@ Quokra.console.mount("#support", { tenant: "your-slug", getToken, conversation: 
 
 Use one of the two per page: the button everywhere, and the full console on `/support`.
 
+## What agents can do
+
+Accept a waiting chat by replying to it; reply to a particular message (the ↩ next to it); send images if
+the company allows them; type `/` for saved replies; add private notes; transfer, resolve, reopen, hand back
+to the bot or block a contact from the ⋯ menu. The details panel shows the customer and their earlier chats.
+
 ## When things go wrong
 
 - **Quokra is down:** nothing broken is shown; `Quokra.console.on("unavailable", …)` fires after 15
   seconds so you can show your own message.
-- **The login expired:** `getToken` should refresh it, or send the agent to sign in again. If no token
-  arrives, the console says "Couldn't sign you in" with Try again.
+- **The login expired:** `getToken` is asked again before the token runs out and whenever a call is refused,
+  and that call is retried once, so `getToken` should refresh silently (e.g. with your OIDC library's
+  refresh token). If no token arrives, the console says "Couldn't sign you in" with Try again.
 
 The console follows your dashboard's light or dark mode by itself. Agents who also have the
 `QUOKRA_ADMIN` role also see the company's sections in **Settings** (the gear icon); everyone gets
