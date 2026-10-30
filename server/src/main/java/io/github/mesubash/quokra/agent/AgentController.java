@@ -5,6 +5,9 @@ import io.github.mesubash.quokra.agent.AgentViews.EventView;
 import io.github.mesubash.quokra.agent.AgentViews.Summary;
 import io.github.mesubash.quokra.attachment.Images;
 import io.github.mesubash.quokra.canned.CannedReplies;
+import io.github.mesubash.quokra.common.RateLimiter;
+import io.github.mesubash.quokra.conversation.Enums.SenderType;
+import io.github.mesubash.quokra.realtime.TypingSignals;
 import io.github.mesubash.quokra.common.ApiException;
 import io.github.mesubash.quokra.conversation.AgentRef;
 import io.github.mesubash.quokra.conversation.Conversation;
@@ -88,11 +91,15 @@ public class AgentController {
     private final AgentReads reads;
     private final AgentJwtConverter agentTokens;
     private final CannedReplies replies;
+    private final TypingSignals typing;
+    private final RateLimiter rateLimiter;
 
     public AgentController(ConversationService service, TenantRepository tenants, TenantAgents tenantAgents,
                            ContactRepository contacts, AgentReads reads, AgentJwtConverter agentTokens,
-                           CannedReplies replies) {
+                           CannedReplies replies, TypingSignals typing, RateLimiter rateLimiter) {
         this.replies = replies;
+        this.typing = typing;
+        this.rateLimiter = rateLimiter;
         this.reads = reads;
         this.agentTokens = agentTokens;
         this.service = service;
@@ -214,6 +221,15 @@ public class AgentController {
         visible(jwt, id);
         var image = service.image(id, messageId);
         return Images.response(image.bytes(), image.contentType(), image.name());
+    }
+
+    // The agent is typing a reply; the customer sees "<name> is typing…". Nothing is stored.
+    @PostMapping("/conversations/{id}/typing")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void typing(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
+        visible(jwt, id);
+        rateLimiter.check("typing:" + jwt.getSubject(), RateLimiter.TYPING_PER_MINUTE);
+        typing.typing(id, SenderType.AGENT, agentTokens.displayName(jwt));
     }
 
     @PostMapping("/conversations/{id}/resolve")

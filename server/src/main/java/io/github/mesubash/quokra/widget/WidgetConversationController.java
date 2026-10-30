@@ -11,6 +11,7 @@ import io.github.mesubash.quokra.conversation.Enums.SenderType;
 import io.github.mesubash.quokra.conversation.Message;
 import io.github.mesubash.quokra.conversation.MessageView;
 import io.github.mesubash.quokra.conversation.Status;
+import io.github.mesubash.quokra.realtime.TypingSignals;
 import io.github.mesubash.quokra.session.SessionTokens.Session;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
@@ -54,10 +55,12 @@ public class WidgetConversationController {
 
     private final ConversationService service;
     private final RateLimiter rateLimiter;
+    private final TypingSignals typing;
 
-    public WidgetConversationController(ConversationService service, RateLimiter rateLimiter) {
+    public WidgetConversationController(ConversationService service, RateLimiter rateLimiter, TypingSignals typing) {
         this.service = service;
         this.rateLimiter = rateLimiter;
+        this.typing = typing;
     }
 
     @GetMapping
@@ -136,6 +139,14 @@ public class WidgetConversationController {
     public ResponseEntity<byte[]> image(@AuthenticationPrincipal Session session, @PathVariable UUID messageId) {
         var image = service.image(openConversation(session).getId(), messageId);
         return Images.response(image.bytes(), image.contentType(), image.name());
+    }
+
+    // The customer is typing; the agent sees it for a few seconds. Nothing is stored.
+    @PostMapping("/typing")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void typing(@AuthenticationPrincipal Session session) {
+        rateLimiter.check("typing:" + session.visitorId(), RateLimiter.TYPING_PER_MINUTE);
+        typing.typing(openConversation(session).getId(), SenderType.CUSTOMER, null);
     }
 
     @PostMapping("/handoff")

@@ -182,6 +182,28 @@ class RealtimeTests {
     }
 
     @Test
+    void typingReachesTheOtherSideAndIsNotStored() throws Exception {
+        String customer = sessionTokens.issue(tenantId).token();
+        String conversationId = startConversation(customer);
+        BlockingQueue<Object> agentSees = subscribe(connect(agentToken(agentSub)), conversationId);
+        BlockingQueue<Object> customerSees = subscribe(connect(customer), conversationId);
+
+        http.post().uri("/conversation/typing").header(HttpHeaders.AUTHORIZATION, "Bearer " + customer)
+            .retrieve().toBodilessEntity();
+        Object customerTyping = agentSees.poll(5, TimeUnit.SECONDS);
+        assertThat(JsonPath.<String>read(customerTyping, "$.type")).isEqualTo("typing");
+        assertThat(JsonPath.<String>read(customerTyping, "$.data.senderType")).isEqualTo("CUSTOMER");
+
+        customerSees.clear();
+        agentHttp.post().uri("/conversations/" + conversationId + "/typing")
+            .header(HttpHeaders.AUTHORIZATION, "Bearer " + agentToken(agentSub)).retrieve().toBodilessEntity();
+        Object agentTyping = customerSees.poll(5, TimeUnit.SECONDS);
+        assertThat(JsonPath.<String>read(agentTyping, "$.data.senderType")).isEqualTo("AGENT");
+        assertThat(jdbc.queryForObject("select count(*) from messages where conversation_id = ?::uuid", Integer.class,
+            conversationId)).isEqualTo(1);
+    }
+
+    @Test
     void agentOfAnotherTenantCannotWatchTheQueue() throws Exception {
         BlockingQueue<String> errors = new LinkedBlockingQueue<>();
         StompSession session = connect(agentToken(otherAgentSub), errors);
