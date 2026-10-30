@@ -6,7 +6,7 @@ What changed, newest first. Each entry says what people notice; the commits have
 
 ---
 
-## v2, daily operations
+## 2.0.0 (v2, daily operations), 2026-10-30
 
 ### 2026-10-30
 
@@ -64,7 +64,7 @@ What changed, newest first. Each entry says what people notice; the commits have
 
 ---
 
-## v1, FAQ bot + human handoff
+## 1.0.0 (v1, FAQ bot + human handoff)
 
 The chat panel and the agent console, both embeddable with one script tag; a FAQ bot with a menu and
 keywords; handoff to the team in the same conversation; live updates; guests and identified customers;
