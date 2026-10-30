@@ -46,6 +46,18 @@ function time(iso: string) {
   return Number.isNaN(d.getTime()) ? "" : d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
+// Rendered as text, never as HTML. The time sits inside the bubble, bottom right.
+function Bubble({ message }: { message: TimelineItem }) {
+  return (
+    <p className="bubble">
+      <span className="bubble-text">{message.body}</span>
+      <time className="bubble-time" dateTime={message.createdAt}>
+        {time(message.createdAt)}
+      </time>
+    </p>
+  );
+}
+
 function initials(name: string | null) {
   return (name ?? "?").split(/\s+/).map((p) => p[0]).join("").slice(0, 2).toUpperCase();
 }
@@ -87,9 +99,7 @@ export function MessageList({
               <div className="group-body">
                 <span className="sender">Private note · {group.name}</span>
                 {group.messages.map((m) => (
-                  <p key={m.id} className="bubble" title={time(m.createdAt)}>
-                    {m.body}
-                  </p>
+                  <Bubble key={m.id} message={m} />
                 ))}
               </div>
             </div>
@@ -111,13 +121,10 @@ export function MessageList({
             <div className="group-body">
               {!isMine && <span className="sender">{name}</span>}
               {group.messages.map((m) => (
-                // Rendered as text, never as HTML.
-                <p key={m.id} className="bubble" title={time(m.createdAt)}>
-                  {m.body}
-                </p>
+                <Bubble key={m.id} message={m} />
               ))}
               {sentId && group.messages.some((m) => m.id === sentId) && (
-                <span className="delivery">Sent · {time(group.messages[group.messages.length - 1].createdAt)}</span>
+                <span className="delivery">Sent</span>
               )}
             </div>
           </div>
