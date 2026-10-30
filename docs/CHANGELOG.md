@@ -10,6 +10,10 @@ What changed, newest first. Each entry says what people notice; the commits have
 
 ### 2026-10-30
 
+**Customers and agents**
+- **Typing indicator.** The customer sees "Sam is typing…" while the agent writes a reply, and the agent sees
+  the customer typing. Nothing is stored.
+
 **Customers**
 - **Reply to a message.** Hover a message (on phones the button is always shown) and pick Reply; the answer
   quotes it, and clicking the quote jumps to the original. Agents can do the same.

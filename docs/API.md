@@ -180,6 +180,10 @@ PNG, JPEG, GIF or WebP up to 5 MB, recognised by the file's first bytes (not its
 
 `GET /widget/conversation/messages/{messageId}/attachment` returns the image itself, only for the current conversation. It needs the session token, so pages fetch it and show it from a blob. Served inline with `nosniff` and a `sandbox` Content-Security-Policy.
 
+### 3.11 `POST /widget/conversation/typing`
+
+No body; `204`. Tells the agent the customer is typing (event `typing`). The chat sends it at most every 3 seconds while the customer types, once a person has the chat. `429 RATE_LIMITED` past 40 a minute.
+
 ### 3.9 `POST /widget/conversation/new`: "Start a new chat"
 
 No request body. Closes the current conversation, whoever has it (event `RESOLVED`, reason `CUSTOMER`, so agents see "Customer started a new chat"), and starts a new one with the greeting. Nothing is deleted: the old one stays in the team's history. A guest's email and name carry over, so they aren't asked again.
@@ -330,6 +334,10 @@ Saved replies of the conversation's tenant, by title. The console fills in `{nam
 200 { "items": [{ "id": "…", "title": "Refunds", "body": "Hi {name}, refunds take 5 days." }], "nextCursor": null }
 ```
 
+### 4.20 `POST /agent/conversations/{id}/typing`
+
+No body; `204`. The customer sees "<agent name> is typing…" (event `typing`). The console sends it at most every 3 seconds while the agent types a reply (not a note).
+
 ### 4.19 Images
 
 `POST /agent/conversations/{id}/attachments` (multipart: `file`, optional `clientMessageId` and `replyTo`) → `201 { "message": Message }`. Same rules as a reply (the assignee of an accepted chat) and the same checks as 3.10. `GET /agent/conversations/{id}/messages/{messageId}/attachment` returns the image to any agent of the tenant.
@@ -408,6 +416,7 @@ Every event has this envelope:
 | `conversation.updated` | conversation, queue | `Conversation` (customers get the customer view) |
 | `conversation.waiting` | queue | Agent snapshot of the conversation (as `ConversationSummary`, without `lastMessagePreview`; `tenantId` instead of `tenantSlug`) |
 | `note.created` | notes | `Note` |
+| `typing` | conversation | `{ "senderType": "CUSTOMER" \| "AGENT", "name": "Sam" \| null }`: someone is typing. Not stored; show it for about 5 s, and drop it when their message arrives. Both sides get every one, so ignore your own |
 | `conversation.activity` | queue | `{ id, lastMessagePreview, lastMessageAt, senderType, assigneeSub, customerName }` for every new message, so lists update their preview and unread count live, and the assigned agent is notified |
 | `conversation.transferred` | queue | `{ id, toSub, toName, byName, customerName }`: a chat was handed to an agent |
 | `note.added` | queue | `{ id, authorSub, authorName, assigneeSub, customerName, preview }`: a private note on a chat (the note itself goes to the notes topic) |

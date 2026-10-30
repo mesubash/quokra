@@ -19,12 +19,12 @@
 - "Talk to a person" (or an urgent keyword, or the bot not understanding twice) hands the chat to your team. Guests are asked for their email and name in the chat first, so the team can follow up.
 - Logged-in customers can be identified by your backend, and keep one conversation across devices.
 - Images (screenshots, photos), shown full size in the chat; stored on disk or in S3-compatible storage.
-- Reply to a particular message: the answer quotes it.
+- Reply to a particular message: the answer quotes it. See when the agent is typing.
 - "Start a new chat" from the chat's menu; the team keeps the old one in its history.
 
 **For agents**
 - A console for your dashboard: full page, or a drawer opened from a floating button, with "open full view".
-- Queue, my chats and resolved lists with unread counts, search, and live updates.
+- Queue, my chats and resolved lists with unread counts, search, and live updates, including when the customer is typing.
 - Reply (which also accepts the chat), reply to a particular message, images, saved replies picked with `/`, private notes, transfer to a colleague or back to the queue, return to the bot, resolve, reopen, block a contact.
 - Notifications: sounds, toasts and browser notifications for new chats, replies in my chats, transfers and notes.
 - Quiet chats close by themselves after a time each company sets.
