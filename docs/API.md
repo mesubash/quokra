@@ -289,7 +289,7 @@ Per agent. Marking an older message changes nothing. `ConversationSummary.unread
 
 ### 4.15 `GET /agent/conversations/counts`
 
-`200 { "waiting": 3, "mine": 1 }`: waiting conversations across the caller's tenants, and the caller's open (`HUMAN`) chats. For badges, so the console doesn't have to load whole lists to count them.
+`200 { "waiting": 3, "mine": 1, "myUnread": 2 }`: waiting conversations across the caller's tenants, the caller's open (`HUMAN`) chats, and unread customer messages in them. For badges, so the console doesn't have to load whole lists to count them.
 
 ---
 
@@ -353,7 +353,9 @@ Every event has this envelope:
 | `conversation.updated` | conversation, queue | `Conversation` (customers get the customer view) |
 | `conversation.waiting` | queue | Agent snapshot of the conversation (as `ConversationSummary`, without `lastMessagePreview`; `tenantId` instead of `tenantSlug`) |
 | `note.created` | notes | `Note` |
-| `conversation.activity` | queue | `{ id, lastMessagePreview, lastMessageAt, senderType }` for every new message, so lists update their preview and unread count live |
+| `conversation.activity` | queue | `{ id, lastMessagePreview, lastMessageAt, senderType, assigneeSub, customerName }` for every new message, so lists update their preview and unread count live, and the assigned agent is notified |
+| `conversation.transferred` | queue | `{ id, toSub, toName, byName, customerName }`: a chat was handed to an agent |
+| `note.added` | queue | `{ id, authorSub, authorName, assigneeSub, customerName, preview }`: a private note on a chat (the note itself goes to the notes topic) |
 | `typing` | conversation | `{ "senderType": "AGENT" \| "CUSTOMER", "on": true }` |
 
 Typing is sent by clients to `/app/conversations/{id}/typing` with `{ "on": true }`; the server relays it. It is never stored. *(Not built yet: until then the server rejects any client `SEND` over the socket.)*
@@ -456,6 +458,10 @@ The host side (`sdk.js`) only accepts messages from the Quokra origin. The panel
 | host → console | `auth.token` | `token` | Agent access token |
 | console → host | `console.unread` | `count` | Waiting conversations (for a nav badge) |
 | console → host | `console.close` | | The agent closed the drawer (bubble mode) |
+| console → host | `console.notify` | `kind`, `title`, `body`, `conversationId` | Something to tell the agent; `sdk.js` shows it as a browser notification if allowed and the console isn't in front |
+| console → host | `console.notifications.check` / `.request` | | Ask for the notification status / ask the browser for permission (from a click) |
+| host → console | `console.notifications` | `available`, `permission` | Whether the dashboard turned notifications on, and the browser's permission |
+| host → console | `console.open` | `conversationId` | Show this conversation (after a notification was clicked) |
 | console → host | `console.expand` | `conversationId` (or `null`) | The agent wants the full view (bubble mode, only when the host gave `fullView`) |
 
 `/console?tenant=slug` can only be framed by that tenant's `console_origins` (`frame-ancestors`), and the console only accepts `auth.token` from its parent window. `sdk.js` sends tokens only to the Quokra origin, and only to its own frame.
@@ -494,11 +500,11 @@ Declarative alternatives, no JavaScript needed:
 
 | Call | Purpose |
 |---|---|
-| `Quokra.console.mount(target, { tenant, getToken, height?, theme?, accent?, conversation? })` | **Full-page mode:** mount the console in `target`. `getToken`: function returning a fresh agent access token (or a Promise of one). `tenant`: slug, used to check which sites may frame the console |
-| `Quokra.console.init({ mode: "bubble", tenant, getToken, position?, theme?, accent?, fullView? })` | **Bubble mode:** floating button with the waiting-chats badge; opens the console in a side drawer. `fullView`: your full-page console, as a URL or a function `(conversationId) => …`; the drawer then shows an "Open full view" button. `conversation` (mount): a conversation id to open first |
+| `Quokra.console.mount(target, { tenant, getToken, height?, theme?, accent?, conversation?, notifications? })` | **Full-page mode:** mount the console in `target`. `getToken`: function returning a fresh agent access token (or a Promise of one). `tenant`: slug, used to check which sites may frame the console |
+| `Quokra.console.init({ mode: "bubble", tenant, getToken, position?, theme?, accent?, fullView?, notifications? })` | **Bubble mode:** floating button with the waiting-chats badge; opens the console in a side drawer. `fullView`: your full-page console, as a URL or a function `(conversationId) => …`; the drawer then shows an "Open full view" button. `conversation` (mount): a conversation id to open first |
 | `Quokra.console.open()` / `Quokra.console.close()` | Open or close the drawer (bubble mode) |
 | `Quokra.console.setTheme(theme)` | Change the theme (`"host"`, `"light"`, `"dark"`, `"auto"`) |
-| `Quokra.console.on(event, handler)` | Events: `ready`, `unread` (waiting count), `open`, `close`, `expand` (conversation id), `unavailable` (didn't load within 15 seconds) |
+| `Quokra.console.on(event, handler)` | Events: `ready`, `unread` (waiting chats + unread in my chats), `open`, `close`, `expand` (conversation id), `notification` (`{ kind, title, body, conversationId }`, for your own UI), `unavailable` (didn't load within 15 seconds). `notifications: true` lets the console show browser notifications |
 | `Quokra.console.unmount()` | Remove it |
 
 ---

@@ -87,6 +87,7 @@ v1 (FAQ bot + human handoff on the web) is complete: real agent login, an Admin 
 
 | Doc | What's in it |
 |---|---|
+| [Guides](docs/guides/README.md) | Step by step: get started, set up a company, add the chat and console, identify customers, connect your login, write the bot, notifications |
 | [Plan](docs/PLAN.md) | Goals, versions, v1 scope and build steps, open decisions |
 | [Architecture](docs/ARCHITECTURE.md) | Components, flows, state machine, data model, security, deployment, decisions |
 | [API](docs/API.md) | REST endpoints, realtime events, postMessage protocol, `sdk.js` API, errors |

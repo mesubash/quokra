@@ -2,7 +2,7 @@
 
 How a host adds the customer chat to a website or app, and the agent console to a dashboard. This guide is for the developer doing the integration.
 
-**Other docs:** [Plan](PLAN.md) · [Architecture](ARCHITECTURE.md) · [API](API.md) · [Development](DEVELOPMENT.md)
+**Other docs:** [Guides](guides/README.md) · [Plan](PLAN.md) · [Architecture](ARCHITECTURE.md) · [API](API.md) · [Development](DEVELOPMENT.md)
 
 > v1 is under construction; examples use `chat.example.com`. Replace with the real domain.
 
@@ -236,6 +236,8 @@ Quokra.console.init({
 // On /support:
 Quokra.console.mount("#support-console", { tenant: "demo", getToken, conversation: params.get("conversation") });
 ```
+
+Pass `notifications: true` to give agents sounds, toasts and browser notifications for new chats, replies in their chats, transfers and notes; see [the notifications guide](guides/08-notifications.md).
 
 Put it in your dashboard's main layout so it appears on every page. A page holds one console, so you can use bubble mode everywhere and full-page mode on `/support`, but not both on the same page.
 
