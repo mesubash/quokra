@@ -446,6 +446,24 @@ All errors use one envelope: `{ "error": { "code": "...", "message": "...", "det
 
 | Area | Measure | Checked by |
 |---|---|---|
+| Who can embed the chat | Chat app sends `frame-ancestors <widget_origins>` for `/w/<slug>` | `SpaControllerTests` |
+| Who can embed the console | `frame-ancestors <console_origins>` for `/console?tenant=<slug>`; the console takes tokens only from its parent window | `SpaControllerTests`, `bridge.test.ts` |
+| postMessage | Checks `event.origin`, `event.source`, and `data.source == 'quokra'`; tokens are only ever posted to the Quokra origin | `bridge.test.ts`, `sdk.test.ts`, `sdk-console.test.ts` |
+| Customer data access | Session token bound to tenant + visitor (+ customer after identify); every widget query filters by them | `WidgetConversationControllerTests`, `IdentifyTests`, `RealtimeTests` |
+| Agent data access | JWT (JWKS, audience, expiry) + role + `tenant_agents` membership on every endpoint and topic; notes topic agents only | `AgentControllerTests`, `RealtimeTests` |
+| Identity tokens | HS256 with the tenant secret, `exp − iat ≤ 5 min`, `sub` required; the session's tenant decides which secret checks it | `IdentityTokensTests`, `IdentifyTests` |
+| Tenant secrets | AES-GCM at rest, fresh nonce each time, tampering detected; created with the `tenant-secret` command, printed once | `TenantSecretsTests` |
+| WebSocket | Authenticated CONNECT; authorised SUBSCRIBE | `RealtimeTests` |
+| Abuse | Rate limits: 20 messages/min per session, 5 new sessions/min per IP (in memory, per instance); body length limit; blocked contacts | `RateLimiterTests`, `HardeningTests`, `ConversationServiceTests` |
+| CORS | None for the API (same origin); only `POST /dev/agent-token` allows localhost, and only in dev | `HardeningTests`, `AgentControllerTests` |
+| Errors | One envelope for every error; unexpected ones logged and returned as `INTERNAL_ERROR` without details | `HardeningTests`, `SecurityConfigTests` |
+| Content | Bodies stored and rendered as text | `MessageList.test.tsx` |
+| Secrets | Environment variables only; tenant secrets encrypted at rest; never logged | Review (2026-10-30): only setting names are logged |
+| Urgent keywords | Urgent rule always produces a top-priority handoff | `BotEngineTests` |
+
+**Checklist for v1 release:** every row above has its test or review done. ✅ (2026-10-30)
+
+---|---|---|
 | Who can embed the chat | Chat app sends `frame-ancestors <widget_origins>` for `/w/<slug>` | Integration test |
 | Who can embed the console | `frame-ancestors <console_origins>` for `/console`; console accepts postMessage only from those origins | Integration test |
 | postMessage | Checks `event.origin`, `event.source`, and `data.source == 'quokra'`; never sends tokens to `*` | Unit tests for `bridge.ts` and `sdk.js` |
