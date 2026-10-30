@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { adminApi, agentApi, ApiError, type ConversationSummary, type Me, type TenantItem } from "../lib/api";
 import { postToHost } from "../lib/bridge";
-import { BellIcon, CloseIcon, ExpandIcon } from "../lib/icons";
+import { BellIcon, CloseIcon, ExpandIcon, SearchIcon } from "../lib/icons";
 import { chime, setSoundEnabled, soundEnabled } from "../lib/sound";
 import { openSocket, type QueueSnapshot, type Socket } from "../lib/realtime";
 import { ConversationView } from "./ConversationView";
 import { AdminList, AdminMain, useAdmin } from "./admin/AdminArea";
-import { ago, initials, priorityLabel, reasonLabel } from "./format";
+import { ago, initials, listTime, priorityLabel, reasonLabel } from "./format";
 import { useConversationList, type Tab } from "./useConversationList";
 
 const TABS: { id: Tab; label: string }[] = [
@@ -223,6 +223,7 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose, onExp
         ) : (
           <>
             <div className="console-search">
+              <SearchIcon size={15} />
               <input
                 type="search"
                 value={query}
@@ -327,7 +328,9 @@ function Row({
       <span className="item-body">
         <span className="item-top">
           <strong>{name}</strong>
-          <span className="muted item-time">{ago(c.waitingSince ?? c.lastMessageAt)}</span>
+          <span className="muted item-time" title={`${ago(c.waitingSince ?? c.lastMessageAt)} ago`}>
+            {listTime(c.lastMessageAt)}
+          </span>
         </span>
         <span className="item-middle">
           {c.lastMessagePreview && (

@@ -1,6 +1,7 @@
-import { useEffect, useRef } from "react";
+import { Fragment, useEffect, useRef } from "react";
 import type { Message, Option } from "../lib/api";
 import { RobotAvatar } from "./RobotAvatar";
+import { dayKey, dayLabel } from "./messages";
 import type { PendingMessage } from "./useChat";
 
 // The console mixes agent-only notes into the thread.
@@ -83,53 +84,65 @@ export function MessageList({
     end.current?.scrollIntoView?.({ block: "end", behavior: "smooth" });
   }, [messages.length, typing, options.length, pending.length]);
 
+  const groups = groupMessages(messages);
+  const renderGroup = (group: Group) => {
+    if (group.sender === "SYSTEM") {
+      return (
+        <p key={group.key} className="system-note">
+          {group.messages[0].body}
+        </p>
+      );
+    }
+    if (group.sender === "NOTE") {
+      return (
+        <div key={group.key} className="group group-note">
+          <div className="group-body">
+            <span className="sender">Private note · {group.name}</span>
+            {group.messages.map((m) => (
+              <Bubble key={m.id} message={m} />
+            ))}
+          </div>
+        </div>
+      );
+    }
+    const isMine = group.sender === mine;
+    const name = group.sender === "BOT" ? botName : group.sender === "CUSTOMER" ? customerName : group.name;
+    return (
+      <div key={group.key} className={`group ${isMine ? "group-mine" : "group-theirs"}`}>
+        {!isMine && (
+          <div className="group-avatar">
+            {group.sender === "BOT" ? (
+              <RobotAvatar size={32} />
+            ) : (
+              <span className={`avatar avatar-${group.sender.toLowerCase()}`}>{initials(name)}</span>
+            )}
+          </div>
+        )}
+        <div className="group-body">
+          {!isMine && <span className="sender">{name}</span>}
+          {group.messages.map((m) => (
+            <Bubble key={m.id} message={m} />
+          ))}
+          {sentId && group.messages.some((m) => m.id === sentId) && (
+            <span className="delivery">Sent</span>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="messages" role="log" aria-live="polite">
-      {groupMessages(messages).map((group) => {
-        if (group.sender === "SYSTEM") {
-          return (
-            <p key={group.key} className="system-note">
-              {group.messages[0].body}
+      {groups.map((group, i) => (
+        <Fragment key={group.key}>
+          {(i === 0 || dayKey(group.messages[0].createdAt) !== dayKey(groups[i - 1].messages[0].createdAt)) && (
+            <p className="day-divider" role="separator">
+              <span>{dayLabel(group.messages[0].createdAt)}</span>
             </p>
-          );
-        }
-        if (group.sender === "NOTE") {
-          return (
-            <div key={group.key} className="group group-note">
-              <div className="group-body">
-                <span className="sender">Private note · {group.name}</span>
-                {group.messages.map((m) => (
-                  <Bubble key={m.id} message={m} />
-                ))}
-              </div>
-            </div>
-          );
-        }
-        const isMine = group.sender === mine;
-        const name = group.sender === "BOT" ? botName : group.sender === "CUSTOMER" ? customerName : group.name;
-        return (
-          <div key={group.key} className={`group ${isMine ? "group-mine" : "group-theirs"}`}>
-            {!isMine && (
-              <div className="group-avatar">
-                {group.sender === "BOT" ? (
-                  <RobotAvatar size={32} />
-                ) : (
-                  <span className={`avatar avatar-${group.sender.toLowerCase()}`}>{initials(name)}</span>
-                )}
-              </div>
-            )}
-            <div className="group-body">
-              {!isMine && <span className="sender">{name}</span>}
-              {group.messages.map((m) => (
-                <Bubble key={m.id} message={m} />
-              ))}
-              {sentId && group.messages.some((m) => m.id === sentId) && (
-                <span className="delivery">Sent</span>
-              )}
-            </div>
-          </div>
-        );
-      })}
+          )}
+          {renderGroup(group)}
+        </Fragment>
+      ))}
 
       {pending.length > 0 && (
         <div className="group group-mine">

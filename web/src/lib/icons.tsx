@@ -113,3 +113,12 @@ export function CheckIcon({ size = 16 }: { size?: number }) {
     </svg>
   );
 }
+
+export function SearchIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg {...base} width={size} height={size}>
+      <circle cx="11" cy="11" r="8" />
+      <path d="m21 21-4.3-4.3" />
+    </svg>
+  );
+}

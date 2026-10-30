@@ -336,9 +336,8 @@ button {
 
 .bubble {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 2px 10px;
+  flex-direction: column;
+  gap: 4px;
   padding: 8px 12px;
   border-radius: 12px;
   background: var(--bubble);
@@ -352,10 +351,30 @@ button {
 
 /* Small and quiet, in the bubble's bottom-right corner. */
 .bubble-time {
-  margin-left: auto;
+  align-self: flex-start;
   font-size: 0.68rem;
-  opacity: 0.6;
+  opacity: 0.65;
   white-space: nowrap;
+}
+
+.group-mine .bubble-time {
+  align-self: flex-end;
+}
+
+/* Between days: "Today", "Monday, January 15". */
+.day-divider {
+  display: flex;
+  justify-content: center;
+  margin: 4px 0;
+}
+
+.day-divider span {
+  padding: 2px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 0.72rem;
 }
 
 .bubble-time:empty {
@@ -710,7 +729,7 @@ button {
   flex-direction: column;
   min-height: 0;
   border-right: var(--pane-border);
-  background: var(--surface);
+  background: var(--bg);
 }
 
 .console-chat-pane {
@@ -782,7 +801,16 @@ button {
 }
 
 .console-search {
+  position: relative;
   padding: 0 16px 10px;
+}
+
+.console-search svg {
+  position: absolute;
+  top: 9px;
+  left: 27px;
+  color: var(--muted);
+  pointer-events: none;
 }
 
 .console-search input {
@@ -1806,4 +1834,84 @@ button {
   .segmented button {
     transition: background-color 0.15s ease;
   }
+}
+
+/* ---- Console look: roomier, like a messaging app ---- */
+
+.console .console-search input {
+  padding-left: 32px;
+}
+
+.console .console-item {
+  padding: 10px 12px;
+  align-items: center;
+}
+
+.console .console-item .avatar {
+  width: 40px;
+  height: 40px;
+  font-size: 0.82rem;
+}
+
+.console .item-top strong {
+  font-weight: 600;
+}
+
+.console .item-middle .count {
+  background: var(--text);
+  color: var(--bg);
+  font-weight: 600;
+}
+
+.console .console-item.selected {
+  background: var(--hover);
+}
+
+.console .messages {
+  gap: 18px;
+  padding: 20px 24px 12px;
+}
+
+.console .group-body {
+  max-width: min(70%, 640px);
+}
+
+.console .sender {
+  margin-left: 0;
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.console .bubble {
+  padding: 10px 14px;
+  border-radius: 10px;
+}
+
+.console .group-theirs .bubble:not(:last-child),
+.console .group-theirs .bubble + .bubble,
+.console .group-mine .bubble:not(:last-child),
+.console .group-mine .bubble + .bubble {
+  border-radius: 10px;
+}
+
+.console .group-avatar {
+  margin-top: 22px;
+}
+
+.console .conversation-header {
+  min-height: 60px;
+}
+
+/* Status line under the customer's name: green while someone is on it, amber while waiting. */
+.conversation-sub {
+  color: var(--muted);
+}
+
+.conversation-sub.status-text-human {
+  color: var(--dot-online);
+}
+
+.conversation-sub.status-text-waiting {
+  color: var(--warn-text);
 }

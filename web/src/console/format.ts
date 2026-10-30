@@ -95,3 +95,23 @@ export function eventTone(type: string) {
       return "muted";
   }
 }
+
+// For list rows: the time today, "Yesterday", or a short date.
+export function listTime(iso: string | null, now = new Date()) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const days = daysAgo(d, now);
+  if (days === 0) return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  if (days === 1) return "Yesterday";
+  return d.toLocaleDateString([], {
+    month: "short",
+    day: "numeric",
+    year: d.getFullYear() === now.getFullYear() ? undefined : "numeric",
+  });
+}
+
+function daysAgo(d: Date, now: Date) {
+  const day = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  return Math.round((day(now) - day(d)) / 86_400_000);
+}

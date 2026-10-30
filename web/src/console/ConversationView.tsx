@@ -187,7 +187,7 @@ export function ConversationView({ id, api, me, socket, onBack, onClose, onExpan
             <span className="avatar avatar-customer">{initials(customer)}</span>
             <span className="conversation-title">
               <span className="conversation-name">{customer}</span>
-              <span className="conversation-sub muted">
+              <span className={`conversation-sub status-text-${status.toLowerCase()}`}>
                 <span className={`dot-status status-${status.toLowerCase()}`} />
                 <span>
                   {STATUS_LABEL[status]}
