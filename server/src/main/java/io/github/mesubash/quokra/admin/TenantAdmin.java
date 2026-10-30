@@ -4,6 +4,7 @@ import io.github.mesubash.quokra.bot.BotConfigRegistry;
 import io.github.mesubash.quokra.common.ApiException;
 import io.github.mesubash.quokra.tenant.OpeningHours;
 import io.github.mesubash.quokra.tenant.OpeningHoursConverter;
+import io.github.mesubash.quokra.tenant.TenantRepository;
 import java.security.SecureRandom;
 import java.sql.Array;
 import java.sql.ResultSet;
@@ -59,9 +60,11 @@ public class TenantAdmin {
 
     private final JdbcTemplate jdbc;
     private final BotConfigRegistry bots;
+    private final TenantRepository tenantRepository;
 
-    public TenantAdmin(JdbcTemplate jdbc, BotConfigRegistry bots) {
+    public TenantAdmin(JdbcTemplate jdbc, BotConfigRegistry bots, TenantRepository tenantRepository) {
         this.jdbc = jdbc;
+        this.tenantRepository = tenantRepository;
         this.bots = bots;
     }
 
@@ -111,6 +114,14 @@ public class TenantAdmin {
             """, c.displayName(), array(c.widgetOrigins()), array(c.consoleOrigins()), c.logoUrl(), c.primaryColor(),
             c.botConfig(), c.autoResolveMinutes(), c.openingHours(), slug);
         return get(slug);
+    }
+
+    // The tenant's own bot as JSON, or null to go back to its bot file.
+    @Transactional
+    public void setBot(String slug, String json) {
+        tenantRepository.findBySlug(slug)
+            .orElseThrow(() -> ApiException.notFound("TENANT_NOT_FOUND", "No company with that slug"))
+            .useBot(json);
     }
 
     private record Clean(String displayName, List<String> widgetOrigins, List<String> consoleOrigins, String logoUrl,

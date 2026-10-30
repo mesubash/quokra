@@ -1,7 +1,7 @@
 package io.github.mesubash.quokra.conversation;
 
 import io.github.mesubash.quokra.bot.BotConfig;
-import io.github.mesubash.quokra.bot.BotConfigRegistry;
+import io.github.mesubash.quokra.bot.TenantBots;
 import io.github.mesubash.quokra.bot.BotEngine;
 import io.github.mesubash.quokra.common.ApiException;
 import io.github.mesubash.quokra.contact.Contact;
@@ -54,13 +54,13 @@ public class ConversationService {
     private final TenantRepository tenants;
     private final ContactRepository contacts;
     private final NoteRepository notes;
-    private final BotConfigRegistry bots;
+    private final TenantBots bots;
     private final ApplicationEventPublisher publisher;
     private final Clock clock;
 
     public ConversationService(ConversationRepository conversations, MessageRepository messages,
                                ConversationEventRepository events, TenantRepository tenants,
-                               ContactRepository contacts, NoteRepository notes, BotConfigRegistry bots,
+                               ContactRepository contacts, NoteRepository notes, TenantBots bots,
                                ApplicationEventPublisher publisher, Clock clock) {
         this.conversations = conversations;
         this.messages = messages;
@@ -639,7 +639,7 @@ public class ConversationService {
     }
 
     private Optional<BotConfig> botFor(UUID tenantId) {
-        return tenants.findById(tenantId).flatMap(tenant -> bots.find(tenant.getBotConfig()));
+        return tenants.findById(tenantId).flatMap(tenant -> bots.forTenant(tenant));
     }
 
     private String optionTitle(UUID tenantId, String optionId) {

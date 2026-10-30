@@ -3,16 +3,20 @@ package io.github.mesubash.quokra.admin;
 import io.github.mesubash.quokra.admin.TenantAdmin.TenantForm;
 import io.github.mesubash.quokra.admin.TenantAdmin.TenantView;
 import io.github.mesubash.quokra.bot.BotConfigRegistry;
+import io.github.mesubash.quokra.bot.TenantBots;
 import io.github.mesubash.quokra.canned.CannedReplies;
 import io.github.mesubash.quokra.common.ApiException;
 import io.github.mesubash.quokra.conversation.Message;
+import io.github.mesubash.quokra.tenant.Tenant;
 import io.github.mesubash.quokra.tenant.TenantAgents;
+import io.github.mesubash.quokra.tenant.TenantRepository;
 import io.github.mesubash.quokra.tenant.TenantSecrets;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -42,6 +46,9 @@ public class AdminController {
 
     record AddAgentResponse(TenantAgents.Added result) {}
 
+    // custom: edited in the Admin tab; otherwise the bot file is used. bot has the same fields as a bot file.
+    record BotResponse(boolean custom, String file, Map<String, Object> bot) {}
+
     record ReplyForm(@NotBlank @Size(max = CannedReplies.MAX_TITLE) String title,
                      @NotBlank @Size(max = Message.MAX_BODY_LENGTH) String body) {}
 
@@ -50,9 +57,13 @@ public class AdminController {
     private final TenantSecrets secrets;
     private final BotConfigRegistry bots;
     private final CannedReplies replies;
+    private final TenantBots tenantBots;
+    private final TenantRepository tenantRepository;
 
     public AdminController(TenantAdmin tenants, TenantAgents agents, TenantSecrets secrets, BotConfigRegistry bots,
-                           CannedReplies replies) {
+                           CannedReplies replies, TenantBots tenantBots, TenantRepository tenantRepository) {
+        this.tenantBots = tenantBots;
+        this.tenantRepository = tenantRepository;
         this.replies = replies;
         this.tenants = tenants;
         this.agents = agents;
@@ -124,6 +135,38 @@ public class AdminController {
         if (!agents.removeInvite(tenants.get(slug).id(), email)) {
             throw ApiException.notFound("INVITE_NOT_FOUND", "No invite for that email");
         }
+    }
+
+    @GetMapping("/tenants/{slug}/bot")
+    public BotResponse bot(@PathVariable String slug) {
+        return botOf(slug);
+    }
+
+    // Replaces the tenant's bot with an edited one, checked with the same rules as bot files.
+    @PutMapping("/tenants/{slug}/bot")
+    public BotResponse saveBot(@PathVariable String slug, @RequestBody Map<String, Object> bot) {
+        String json;
+        try {
+            json = tenantBots.validate(bot);
+        } catch (TenantBots.InvalidBot e) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", e.getMessage());
+        }
+        tenants.setBot(slug, json);
+        return botOf(slug);
+    }
+
+    // Back to the bot file; the edited bot is dropped.
+    @DeleteMapping("/tenants/{slug}/bot")
+    public BotResponse resetBot(@PathVariable String slug) {
+        tenants.setBot(slug, null);
+        return botOf(slug);
+    }
+
+    private BotResponse botOf(String slug) {
+        Tenant tenant = tenantRepository.findBySlug(slug)
+            .orElseThrow(() -> ApiException.notFound("TENANT_NOT_FOUND", "No company with that slug"));
+        return new BotResponse(tenant.getBotCustom() != null, tenant.getBotConfig(),
+            tenantBots.fieldsFor(tenant).orElse(null));
     }
 
     @GetMapping("/tenants/{slug}/replies")

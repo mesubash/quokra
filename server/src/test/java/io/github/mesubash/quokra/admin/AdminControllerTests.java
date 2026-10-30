@@ -4,8 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.jayway.jsonpath.JsonPath;
 import io.github.mesubash.quokra.TestcontainersConfiguration;
+import io.github.mesubash.quokra.conversation.ConversationService;
 import io.github.mesubash.quokra.security.DevAgentTokens;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +21,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.json.JsonMapper;
 
 @SpringBootTest(properties = {
     "quokra.dev.agent-tokens=true",
@@ -28,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 class AdminControllerTests {
 
     static final String BASE = "/api/v1/admin";
+    static final JsonMapper JSON = JsonMapper.builder().build();
     static final String ACME = """
         {"slug":"acme","displayName":"Acme","widgetOrigins":["https://www.acme.test/","https://shop.acme.test"],
          "consoleOrigins":["https://admin.acme.test"],"primaryColor":"#0051fb","botConfig":"test"}
@@ -38,6 +43,9 @@ class AdminControllerTests {
 
     @Autowired
     DevAgentTokens devTokens;
+
+    @Autowired
+    ConversationService conversations;
 
     String admin;
     String agent;
@@ -119,6 +127,31 @@ class AdminControllerTests {
             .hasStatus(HttpStatus.BAD_REQUEST);
         assertThat(call("PUT", admin, "/tenants/acme", ACME)).bodyJson()
             .extractingPath("$.openingHours").isNull();
+    }
+
+    @Test
+    void botCanBeEditedHereAndResetToTheFile() throws Exception {
+        String id = JsonPath.read(call("POST", admin, "/tenants", ACME).getResponse().getContentAsString(), "$.id");
+
+        MvcTestResult file = call("GET", admin, "/tenants/acme/bot", null);
+        assertThat(file).bodyJson().extractingPath("$.custom").isEqualTo(false);
+        assertThat(file).bodyJson().extractingPath("$.bot.greeting").isEqualTo("Hello from the test bot.");
+
+        Map<String, Object> fields = JsonPath.read(file.getResponse().getContentAsString(), "$.bot");
+        fields.put("greeting", " Hi there ");
+        MvcTestResult saved = call("PUT", admin, "/tenants/acme/bot", JSON.writeValueAsString(fields));
+        assertThat(saved).bodyJson().extractingPath("$.custom").isEqualTo(true);
+        assertThat(saved).bodyJson().extractingPath("$.bot.greeting").isEqualTo("Hi there");
+        UUID started = conversations.startOrResume(UUID.fromString(id), UUID.randomUUID()).conversation().getId();
+        assertThat(conversations.messages(started, null, 1).getFirst().getBody()).isEqualTo("Hi there");
+
+        fields.put("menu", List.of());
+        assertThat(call("PUT", admin, "/tenants/acme/bot", JSON.writeValueAsString(fields)))
+            .hasStatus(HttpStatus.BAD_REQUEST)
+            .bodyJson().extractingPath("$.error.message").isEqualTo("bot: menu needs at least one item");
+
+        assertThat(call("DELETE", admin, "/tenants/acme/bot", null)).bodyJson()
+            .extractingPath("$.custom").isEqualTo(false);
     }
 
     @Test

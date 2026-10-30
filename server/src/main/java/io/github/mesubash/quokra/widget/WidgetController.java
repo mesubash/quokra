@@ -1,7 +1,7 @@
 package io.github.mesubash.quokra.widget;
 
 import io.github.mesubash.quokra.bot.BotConfig;
-import io.github.mesubash.quokra.bot.BotConfigRegistry;
+import io.github.mesubash.quokra.bot.TenantBots;
 import io.github.mesubash.quokra.common.ApiException;
 import io.github.mesubash.quokra.common.RateLimiter;
 import jakarta.servlet.http.HttpServletRequest;
@@ -57,14 +57,14 @@ public class WidgetController {
 
     private final TenantRepository tenants;
     private final SessionTokens sessionTokens;
-    private final BotConfigRegistry bots;
+    private final TenantBots bots;
     private final TenantSecrets secrets;
     private final IdentityTokens identityTokens;
     private final ConversationService conversations;
     private final RateLimiter rateLimiter;
     private final Clock clock;
 
-    public WidgetController(TenantRepository tenants, SessionTokens sessionTokens, BotConfigRegistry bots,
+    public WidgetController(TenantRepository tenants, SessionTokens sessionTokens, TenantBots bots,
                             TenantSecrets secrets, IdentityTokens identityTokens, ConversationService conversations,
                             RateLimiter rateLimiter, Clock clock) {
         this.clock = clock;
@@ -80,7 +80,7 @@ public class WidgetController {
     @GetMapping("/tenants/{publishableKey}")
     public TenantView tenant(@PathVariable String publishableKey) {
         Tenant tenant = findTenant(publishableKey);
-        var bot = bots.find(tenant.getBotConfig());
+        var bot = bots.forTenant(tenant);
         return new TenantView(tenant.getSlug(), tenant.getDisplayName(),
             new TenantView.Branding(tenant.getLogoUrl(), tenant.getPrimaryColor()),
             bot.map(BotConfig::teaser).orElse(null),

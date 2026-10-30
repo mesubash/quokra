@@ -37,9 +37,16 @@ public class Tenant {
 
     private String botConfig;
 
+    // The bot as edited in the Admin tab (JSON); null means the bot file above is used.
+    private String botCustom;
+
     // Null means always open.
     @Convert(converter = OpeningHoursConverter.class)
     private OpeningHours openingHours;
+
+    public void useBot(String json) {
+        this.botCustom = json;
+    }
 
     public boolean isOpen(Instant at) {
         return openingHours == null || openingHours.isOpen(at);
