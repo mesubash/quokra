@@ -8,6 +8,8 @@ export interface PendingMessage {
   clientMessageId: string;
   body: string;
   optionId?: string;
+  // The message this answers, kept so a retry sends the same reply.
+  replyTo?: { id: string };
   status: "sending" | "failed";
 }
 
@@ -115,6 +117,7 @@ export function useChat(token: string | null, onUnauthorized?: () => void) {
         const { message: saved, conversation } = await widgetApi.send(token, {
           clientMessageId: item.clientMessageId,
           ...(item.optionId ? { optionId: item.optionId } : { body: item.body }),
+          replyTo: item.replyTo?.id,
         });
         setState((s) => ({
           ...s,
@@ -140,7 +143,7 @@ export function useChat(token: string | null, onUnauthorized?: () => void) {
 
   // body is what the customer sees in their bubble (for a menu button, its title).
   const send = useCallback(
-    (message: { body: string; optionId?: string }) =>
+    (message: { body: string; optionId?: string; replyTo?: { id: string } }) =>
       deliver({ clientMessageId: crypto.randomUUID(), status: "sending", ...message }),
     [deliver],
   );
@@ -155,11 +158,11 @@ export function useChat(token: string | null, onUnauthorized?: () => void) {
 
   // Returns what went wrong, for a short line above the input, or null once it's sent.
   const sendImage = useCallback(
-    async (file: File): Promise<string | null> => {
+    async (file: File, replyTo?: { id: string }): Promise<string | null> => {
       if (!token) return "Not connected yet.";
       if (file.size > MAX_IMAGE_BYTES) return "Images can be up to 5 MB.";
       try {
-        const { message, conversation } = await widgetApi.sendImage(token, file, crypto.randomUUID());
+        const { message, conversation } = await widgetApi.sendImage(token, file, crypto.randomUUID(), replyTo?.id);
         setState((s) => ({ ...s, conversation, messages: mergeMessages(s.messages, [message]) }));
         return null;
       } catch (e) {

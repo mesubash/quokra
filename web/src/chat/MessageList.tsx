@@ -1,7 +1,7 @@
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import type { Message, Option } from "../lib/api";
-import { CloseIcon } from "../lib/icons";
+import type { Message, Option, Quote } from "../lib/api";
+import { CloseIcon, ReplyIcon } from "../lib/icons";
 import { RobotAvatar } from "./RobotAvatar";
 import { dayKey, dayLabel } from "./messages";
 import type { PendingMessage } from "./useChat";
@@ -23,6 +23,39 @@ interface Props {
   customerName?: string;
   // Fetches an image message's file (with the token the page already has).
   loadImage?: (messageId: string) => Promise<Blob>;
+  // Shows a Reply button on customers' and agents' messages.
+  onReply?: (message: TimelineItem) => void;
+}
+
+// Who a quote is from, as the reader sees it.
+export function quoteLabel(quote: { senderType: string; senderName: string | null }, mine: string, customerName: string) {
+  if (quote.senderType === mine) return "You";
+  return quote.senderName ?? (quote.senderType === "CUSTOMER" ? customerName : "Agent");
+}
+
+// The one line a reply shows of a message: its first line, or "Image".
+export function previewOf(message: Pick<Message, "body" | "attachment">) {
+  if (message.attachment) return "Image";
+  const line = message.body.trim().split("\n")[0];
+  return line.length > 100 ? `${line.slice(0, 99)}…` : line;
+}
+
+// Brings the quoted message into view and marks it for a moment.
+function jumpTo(id: string) {
+  const el = document.getElementById(`m-${id}`);
+  if (!el) return;
+  el.scrollIntoView?.({ block: "center", behavior: "smooth" });
+  el.classList.add("flash");
+  setTimeout(() => el.classList.remove("flash"), 1200);
+}
+
+function QuoteLink({ quote, label }: { quote: Quote; label: string }) {
+  return (
+    <button type="button" className="bubble-quote" onClick={() => jumpTo(quote.id)}>
+      <strong>{label}</strong>
+      <span>{quote.preview}</span>
+    </button>
+  );
 }
 
 interface Group {
@@ -52,10 +85,19 @@ function time(iso: string) {
 }
 
 // Rendered as text, never as HTML. The time sits inside the bubble, bottom right.
-function Bubble({ message, loadImage }: { message: TimelineItem; loadImage?: Props["loadImage"] }) {
-  if (message.attachment && loadImage) return <ImageBubble message={message} load={loadImage} />;
+function Bubble({
+  message,
+  loadImage,
+  quote,
+}: {
+  message: TimelineItem;
+  loadImage?: Props["loadImage"];
+  quote?: ReactNode;
+}) {
+  if (message.attachment && loadImage) return <ImageBubble message={message} load={loadImage} quote={quote} />;
   return (
     <p className="bubble">
+      {quote}
       <span className="bubble-text">{message.body}</span>
       <time className="bubble-time" dateTime={message.createdAt}>
         {time(message.createdAt)}
@@ -65,7 +107,15 @@ function Bubble({ message, loadImage }: { message: TimelineItem; loadImage?: Pro
 }
 
 // Click shows the image full size over the chat; Escape, ✕ or a click outside closes it.
-function ImageBubble({ message, load }: { message: TimelineItem; load: (messageId: string) => Promise<Blob> }) {
+function ImageBubble({
+  message,
+  load,
+  quote,
+}: {
+  message: TimelineItem;
+  load: (messageId: string) => Promise<Blob>;
+  quote?: ReactNode;
+}) {
   const [url, setUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const [open, setOpen] = useState(false);
@@ -95,6 +145,7 @@ function ImageBubble({ message, load }: { message: TimelineItem; load: (messageI
 
   return (
     <p className="bubble bubble-image">
+      {quote}
       {url ? (
         <button type="button" className="image-open" onClick={() => setOpen(true)} aria-label="Show full size">
           <img src={url} alt={message.attachment?.name ?? "Image"} />
@@ -137,6 +188,7 @@ export function MessageList({
   mine = "CUSTOMER",
   customerName = "Customer",
   loadImage,
+  onReply,
 }: Props) {
   const end = useRef<HTMLDivElement>(null);
   const last = messages[messages.length - 1];
@@ -184,7 +236,18 @@ export function MessageList({
         <div className="group-body">
           {!isMine && <span className="sender">{name}</span>}
           {group.messages.map((m) => (
-            <Bubble key={m.id} message={m} loadImage={loadImage} />
+            <div key={m.id} id={`m-${m.id}`} className="bubble-row">
+              <Bubble
+                message={m}
+                loadImage={loadImage}
+                quote={m.replyTo && <QuoteLink quote={m.replyTo} label={quoteLabel(m.replyTo, mine, customerName)} />}
+              />
+              {onReply && (group.sender === "CUSTOMER" || group.sender === "AGENT") && (
+                <button type="button" className="reply-button" aria-label="Reply" title="Reply" onClick={() => onReply(m)}>
+                  <ReplyIcon size={15} />
+                </button>
+              )}
+            </div>
           ))}
           {sentId && group.messages.some((m) => m.id === sentId) && (
             <span className="delivery">Sent</span>

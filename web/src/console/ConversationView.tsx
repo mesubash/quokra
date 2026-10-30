@@ -15,7 +15,7 @@ import {
 import type { Socket } from "../lib/realtime";
 import { BackIcon, CheckIcon, CloseIcon, CopyIcon, ExpandIcon, MoreIcon, PanelIcon } from "../lib/icons";
 import { Composer } from "../chat/Composer";
-import { MessageList, type TimelineItem } from "../chat/MessageList";
+import { MessageList, previewOf, quoteLabel, type TimelineItem } from "../chat/MessageList";
 import { mergeMessages } from "../chat/messages";
 import { dateTime, eventLabel, eventTone, initials, priorityLabel, reasonLabel, shortTime } from "./format";
 
@@ -66,6 +66,7 @@ export function ConversationView({
   const [menu, setMenu] = useState(false);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [saved, setSaved] = useState<SavedReply[]>([]);
+  const [replyingTo, setReplyingTo] = useState<TimelineItem | null>(null);
 
   const load = useCallback(() => {
     api
@@ -138,9 +139,11 @@ export function ConversationView({
 
   // Replying to a waiting chat takes it first, so one click does both.
   async function reply(body: string) {
+    const quoted = replyingTo?.id;
+    setReplyingTo(null);
     if (conversation?.status === "WAITING" && !(await act(() => api.accept(id)))) return;
     try {
-      const { message } = await api.reply(id, crypto.randomUUID(), body);
+      const { message } = await api.reply(id, crypto.randomUUID(), body, quoted);
       setMessages((current) => mergeMessages(current, [message]));
     } catch (e) {
       setNotice("Couldn't send. Try again.");
@@ -156,7 +159,8 @@ export function ConversationView({
     if (file.size > MAX_IMAGE_BYTES) return setNotice("Images can be up to 5 MB.");
     if (conversation?.status === "WAITING" && !(await act(() => api.accept(id)))) return;
     try {
-      const { message } = await api.sendImage(id, file, crypto.randomUUID());
+      const { message } = await api.sendImage(id, file, crypto.randomUUID(), replyingTo?.id);
+      setReplyingTo(null);
       setMessages((current) => mergeMessages(current, [message]));
     } catch (e) {
       setNotice(e instanceof ApiError && e.status < 500 ? e.message : "Couldn't send the image. Try again.");
@@ -287,6 +291,14 @@ export function ConversationView({
           mine="AGENT"
           customerName={customer}
           loadImage={loadImage}
+          onReply={
+            canReply
+              ? (m) => {
+                  setMode("reply");
+                  setReplyingTo(m);
+                }
+              : undefined
+          }
         />
         <div className="console-composer">
           {canReply ? (
@@ -311,6 +323,12 @@ export function ConversationView({
             focus
             note={writing === "note"}
             replies={writing === "reply" ? fillName(saved, conversation.customer?.name) : []}
+            quote={
+              writing === "reply" && replyingTo
+                ? { label: quoteLabel(replyingTo, "AGENT", customer), preview: previewOf(replyingTo) }
+                : null
+            }
+            onCancelQuote={() => setReplyingTo(null)}
             onAttach={
               writing === "reply" && imagesAllowed(conversation.tenantSlug) ? (file) => void sendImage(file) : undefined
             }

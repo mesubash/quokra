@@ -35,6 +35,15 @@ export interface Message {
   createdAt: string;
   // An image; the file is fetched separately with the same token.
   attachment?: Attachment | null;
+  // The earlier message this one answers, as it was when sent.
+  replyTo?: Quote | null;
+}
+
+export interface Quote {
+  id: string;
+  senderType: SenderType;
+  senderName: string | null;
+  preview: string;
 }
 
 export interface Attachment {
@@ -104,10 +113,11 @@ async function authed<T>(
   }
 }
 
-function imageForm(file: File, clientMessageId: string) {
+function imageForm(file: File, clientMessageId: string, replyTo?: string) {
   const form = new FormData();
   form.append("file", file);
   form.append("clientMessageId", clientMessageId);
+  if (replyTo) form.append("replyTo", replyTo);
   return form;
 }
 
@@ -147,18 +157,18 @@ export const widgetApi = {
       { method: "POST", token, body: JSON.stringify({ identityToken }) },
     ),
 
-  send: (token: string, message: { clientMessageId: string; body?: string; optionId?: string }) =>
+  send: (token: string, message: { clientMessageId: string; body?: string; optionId?: string; replyTo?: string }) =>
     request<{ message: Message; conversation: Conversation }>("/widget/conversation/messages", {
       method: "POST",
       token,
       body: JSON.stringify(message),
     }),
 
-  sendImage: (token: string, file: File, clientMessageId: string) =>
+  sendImage: (token: string, file: File, clientMessageId: string, replyTo?: string) =>
     request<{ message: Message; conversation: Conversation }>("/widget/conversation/attachments", {
       method: "POST",
       token,
-      body: imageForm(file, clientMessageId),
+      body: imageForm(file, clientMessageId, replyTo),
     }),
 
   image: (token: string, messageId: string) => image(`/widget/conversation/messages/${messageId}/attachment`, token),
@@ -392,12 +402,12 @@ export function agentApi(getToken: () => string, refresh?: FreshToken) {
         `/conversations/${id}`,
       ),
     accept: (id: string) => post<One>(`/conversations/${id}/accept`),
-    reply: (id: string, clientMessageId: string, body: string) =>
-      post<{ message: Message }>(`/conversations/${id}/messages`, { clientMessageId, body }),
-    sendImage: (id: string, file: File, clientMessageId: string) =>
+    reply: (id: string, clientMessageId: string, body: string, replyTo?: string) =>
+      post<{ message: Message }>(`/conversations/${id}/messages`, { clientMessageId, body, replyTo }),
+    sendImage: (id: string, file: File, clientMessageId: string, replyTo?: string) =>
       authed<{ message: Message }>(
         `/agent/conversations/${id}/attachments`,
-        { method: "POST", body: imageForm(file, clientMessageId) },
+        { method: "POST", body: imageForm(file, clientMessageId, replyTo) },
         getToken,
         refresh,
       ),

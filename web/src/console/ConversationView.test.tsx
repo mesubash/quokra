@@ -112,7 +112,7 @@ describe("ConversationView", () => {
 
     send("Hi Pat");
 
-    await waitFor(() => expect(api.reply).toHaveBeenCalledWith("c1", expect.any(String), "Hi Pat"));
+    await waitFor(() => expect(api.reply).toHaveBeenCalledWith("c1", expect.any(String), "Hi Pat", undefined));
     expect(api.accept).toHaveBeenCalled();
     expect(await screen.findByText("Hi Pat")).toBeTruthy();
   });
@@ -129,6 +129,21 @@ describe("ConversationView", () => {
     expect(input.value).toBe("Hi Pat, refunds take 5 days.");
     expect(screen.queryByRole("listbox")).toBeNull();
     expect(api.reply).not.toHaveBeenCalled();
+  });
+
+  it("replies to one of the customer's messages", async () => {
+    const question = { id: "m1", senderType: "CUSTOMER", senderName: null, body: "Where is my order?", options: null, clientMessageId: null, createdAt: "2026-10-29T10:00:00Z" };
+    const api = fakeApi(taken(conversation()), {
+      detail: vi.fn(() => Promise.resolve({ conversation: taken(conversation()), messages: [question], events: [], notes: [] })),
+    } as Partial<AgentApi>);
+    renderView(api);
+
+    fireEvent.click(await screen.findByLabelText("Reply"));
+    expect(screen.getByText("Replying to Pat")).toBeTruthy();
+    send("On its way");
+
+    await waitFor(() => expect(api.reply).toHaveBeenCalledWith("c1", expect.any(String), "On its way", "m1"));
+    expect(screen.queryByText("Replying to Pat")).toBeNull();
   });
 
   it("puts resolve, transfer and block in the menu once it's mine", async () => {

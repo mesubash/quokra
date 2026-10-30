@@ -4,7 +4,7 @@ import { accent, applyColor } from "../lib/theme";
 import { CloseIcon, MoreIcon } from "../lib/icons";
 import { ApiError, widgetApi, type Conversation, type Tenant } from "../lib/api";
 import { Composer } from "./Composer";
-import { MessageList } from "./MessageList";
+import { MessageList, previewOf, quoteLabel, type TimelineItem } from "./MessageList";
 import { RobotAvatar } from "./RobotAvatar";
 import { activeOptions, countUnread } from "./messages";
 import { forgetSession, getSession, saveSession } from "./session";
@@ -142,6 +142,7 @@ function Chat({ tenant, token, visible, onUnauthorized }: ChatProps) {
   const [seenUpTo, setSeenUpTo] = useState<string | null>(null);
   const [awaitingBot, setAwaitingBot] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [replyingTo, setReplyingTo] = useState<TimelineItem | null>(null);
   const last = chat.messages[chat.messages.length - 1];
   const lastId = last?.id ?? null;
   const unread = visible ? 0 : countUnread(chat.messages, seenUpTo);
@@ -162,8 +163,10 @@ function Chat({ tenant, token, visible, onUnauthorized }: ChatProps) {
   }, [awaitingBot, lastId]);
 
   async function send(message: { body: string; optionId?: string }) {
+    const replyTo = message.optionId ? undefined : replyingTo ?? undefined;
+    setReplyingTo(null);
     setAwaitingBot(true);
-    if (!(await chat.send(message))) setAwaitingBot(false);
+    if (!(await chat.send({ ...message, replyTo }))) setAwaitingBot(false);
   }
 
   async function retry(clientMessageId: string) {
@@ -198,6 +201,7 @@ function Chat({ tenant, token, visible, onUnauthorized }: ChatProps) {
             pending={chat.pending}
             onRetry={(id) => void retry(id)}
             loadImage={chat.loadImage}
+            onReply={setReplyingTo}
           />
           {notice && (
             <p className="composer-notice" role="alert">
@@ -210,11 +214,19 @@ function Chat({ tenant, token, visible, onUnauthorized }: ChatProps) {
             focus={visible}
             asking={chat.conversation?.asking ?? null}
             placeholder={placeholder(chat.conversation, tenant)}
+            quote={
+              replyingTo && {
+                label: quoteLabel(replyingTo, "CUSTOMER", "you"),
+                preview: previewOf(replyingTo),
+              }
+            }
+            onCancelQuote={() => setReplyingTo(null)}
             onAttach={
               tenant.attachments
                 ? (file) => {
                     setNotice(null);
-                    void chat.sendImage(file).then(setNotice);
+                    void chat.sendImage(file, replyingTo ?? undefined).then(setNotice);
+                    setReplyingTo(null);
                   }
                 : undefined
             }

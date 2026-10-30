@@ -67,6 +67,15 @@ export function PaperclipIcon({ size = 20 }: { size?: number }) {
   );
 }
 
+export function ReplyIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg {...base} width={size} height={size}>
+      <polyline points="9 17 4 12 9 7" />
+      <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
+    </svg>
+  );
+}
+
 export function MoreIcon({ size = 20 }: { size?: number }) {
   return (
     <svg {...base} width={size} height={size}>

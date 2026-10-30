@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { IMAGE_TYPES } from "../lib/api";
-import { PaperclipIcon, SendIcon } from "../lib/icons";
+import { CloseIcon, PaperclipIcon, SendIcon } from "../lib/icons";
 
 const MAX_LENGTH = 2000;
 const MAX_HEIGHT = 120;
@@ -20,6 +20,9 @@ interface Props {
   replies?: { title: string; body: string }[];
   // Shows the 📎 button; called with the picked image.
   onAttach?: (file: File) => void;
+  // The message being replied to, shown above the input with a way to cancel.
+  quote?: { label: string; preview: string } | null;
+  onCancelQuote?: () => void;
 }
 
 // Replies whose title matches what's typed after "/". Only while the input is a single "/word".
@@ -38,6 +41,8 @@ export function Composer({
   note = false,
   replies = [],
   onAttach,
+  quote = null,
+  onCancelQuote,
 }: Props) {
   const input = useRef<HTMLTextAreaElement>(null);
   const picker = useRef<HTMLInputElement>(null);
@@ -49,6 +54,11 @@ export function Composer({
   useEffect(() => {
     if (focus && !disabled) input.current?.focus();
   }, [focus, disabled]);
+
+  // Picking Reply puts the cursor in the input.
+  useEffect(() => {
+    if (quote) input.current?.focus();
+  }, [quote]);
 
   // Grow with the text, up to a few lines.
   useEffect(() => {
@@ -102,6 +112,11 @@ export function Composer({
         return;
       }
     }
+    if (e.key === "Escape" && quote && onCancelQuote) {
+      e.preventDefault();
+      onCancelQuote();
+      return;
+    }
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       send();
@@ -129,6 +144,17 @@ export function Composer({
             </li>
           ))}
         </ul>
+      )}
+      {quote && (
+        <div className="composer-quote">
+          <span>
+            <strong>Replying to {quote.label}</strong>
+            <span>{quote.preview}</span>
+          </span>
+          <button type="button" className="icon-button quiet" aria-label="Cancel reply" onClick={onCancelQuote}>
+            <CloseIcon size={14} />
+          </button>
+        </div>
       )}
       <div className="composer-row">
         {onAttach && (
