@@ -131,6 +131,8 @@ Call `identify` after login, or on page load for users who are already logged in
 Quokra.chat.on("identifyfailed", (code) => console.warn("Support chat identify failed:", code));
 ```
 
+When the customer logs out, call `Quokra.chat.logout()`. Otherwise the next person on the same browser would see their chat.
+
 ---
 
 ## 5. Agent console in your dashboard

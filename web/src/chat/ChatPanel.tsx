@@ -46,14 +46,26 @@ export function ChatPanel({ slug }: { slug: string }) {
     [pk],
   );
 
+  // The customer logged out on the host site: forget their session and carry on as a new guest,
+  // so the next person on this browser doesn't see their chat.
+  const logout = useCallback(() => {
+    if (!pk) return;
+    forgetSession(pk);
+    renewed.current = false;
+    getSession(pk)
+      .then((session) => setSetup((s) => (s.status === "ready" ? { ...s, token: session.sessionToken } : s)))
+      .catch(() => setSetup({ status: "error", message: "Chat is unavailable right now." }));
+  }, [pk]);
+
   // Listen before telling the host we're ready, so its "open" reply isn't missed.
   useEffect(
     () =>
       onHostMessage((m) => {
         if (m.type === "chat.open" || m.type === "chat.close") setVisible(m.type === "chat.open");
         else if (m.type === "chat.identify") identify(m.token);
+        else if (m.type === "chat.logout") logout();
       }),
-    [identify],
+    [identify, logout],
   );
 
   // Escape closes a bubble or popup panel, like any dialog.

@@ -11,7 +11,7 @@
  *   <button data-quokra-chat-trigger="slug" data-quokra-pk="pk_...">Chat with us</button>
  *
  * JavaScript: Quokra.chat.init({ slug, pk, mode, container, position, teaserDelay }), open(), close(),
- *             identify(token), setTheme(theme), on(event, fn), destroy()
+ *             identify(token), logout(), setTheme(theme), on(event, fn), destroy()
  * Theme: { theme: "light" | "dark" | "auto" } (or data-quokra-theme), default "light".
  *
  * Agent console (in your dashboard; getToken returns the agent's access token or a Promise of it):
@@ -162,11 +162,19 @@
 
   // An identity token waits here until the panel is ready, so identify() can be called any time.
   var pendingIdentity = null;
+  // A logout waits the same way; it's sent before any identity that came after it.
+  var pendingLogout = false;
 
   function sendIdentity() {
-    if (!state || !state.ready || !pendingIdentity) return;
-    post("chat.identify", { token: pendingIdentity });
-    pendingIdentity = null;
+    if (!state || !state.ready) return;
+    if (pendingLogout) {
+      post("chat.logout");
+      pendingLogout = false;
+    }
+    if (pendingIdentity) {
+      post("chat.identify", { token: pendingIdentity });
+      pendingIdentity = null;
+    }
   }
 
   function setBadge(count) {
@@ -432,6 +440,13 @@
     identify: function (token) {
       if (typeof token !== "string" || !token) throw new Error("Quokra: identify needs a token");
       pendingIdentity = token;
+      sendIdentity();
+    },
+
+    // Call when the customer logs out of your site. The chat forgets them and starts over as a guest.
+    logout: function () {
+      pendingIdentity = null;
+      pendingLogout = true;
       sendIdentity();
     },
 

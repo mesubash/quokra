@@ -373,6 +373,7 @@ Every message: `{ "source": "quokra", "type": "...", ...fields }`. Receivers che
 | panel → host | `chat.unread` | `count` | Unread messages while closed |
 | host → panel | `chat.open` / `chat.close` | | Open or close from the host |
 | host → panel | `chat.identify` | `token` | Identity token from the host backend |
+| host → panel | `chat.logout` | | Forget the customer's session and start a new guest session |
 | host → panel | `theme.set` | `theme` | `light`, `dark` or `auto` (the console accepts it too) |
 | panel → host | `chat.identified` | | Identify worked |
 | panel → host | `chat.identify.failed` | `code` | Identify failed, e.g. `IDENTITY_TOKEN_EXPIRED` |
@@ -408,6 +409,7 @@ The host side (`sdk.js`) only accepts messages from the Quokra origin. The panel
 |---|---|
 | `Quokra.chat.init({ slug, pk, mode?, container?, position?, theme? })` | Mount the chat. `theme`: `"light"` (default), `"dark"` or `"auto"` (follows the visitor's system setting). `mode`: `"bubble"` (default), `"inline"`, `"popup"`. `container`: element or selector for inline. `position`: `"right"` (default) or `"left"` |
 | `Quokra.chat.open()` / `Quokra.chat.close()` | Open or close the panel |
+| `Quokra.chat.logout()` | The customer logged out of your site: the chat forgets them and starts over as a guest. Call it on logout, especially on shared computers |
 | `Quokra.chat.setTheme(theme)` | Change the theme, e.g. when your site's dark mode is toggled |
 | `Quokra.chat.identify(token)` | Identify the customer (token from the host backend). Can be called before the panel has loaded; it's sent once the panel is ready |
 | `Quokra.chat.on(event, handler)` | Events: `ready`, `open`, `close`, `unread` (count), `identified`, `identifyfailed` (error code) |

@@ -5,6 +5,7 @@ import code from "../public/sdk.js?raw";
 type Chat = {
   init: (o: Record<string, unknown>) => void;
   identify: (token: string) => void;
+  logout: () => void;
   open: () => void;
   close: () => void;
   on: (e: string, fn: (v?: unknown) => void) => void;
@@ -135,6 +136,21 @@ describe("sdk.js identify", () => {
     fromFrame({ source: "quokra", type: "chat.ready" });
 
     expect(post.mock.calls.filter(([m]) => (m as { type: string }).type === "chat.identify")).toHaveLength(1);
+  });
+
+  it("logs out before identifying the next customer", () => {
+    chat().identify("old-customer");
+    chat().logout();
+    chat().identify("new-customer");
+    const post = vi.spyOn(frame().contentWindow!, "postMessage");
+
+    fromFrame({ source: "quokra", type: "chat.ready" });
+
+    const types = post.mock.calls.map(([m]) => (m as { type: string; token?: string }));
+    expect(types.filter((m) => m.type !== "chat.open")).toEqual([
+      { source: "quokra", type: "chat.logout" },
+      { source: "quokra", type: "chat.identify", token: "new-customer" },
+    ]);
   });
 
   it("reports the result", () => {
