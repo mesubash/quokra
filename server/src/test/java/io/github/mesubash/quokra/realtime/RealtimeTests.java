@@ -141,6 +141,21 @@ class RealtimeTests {
     }
 
     @Test
+    void activityNamesTheAssigneeAndTheCustomer() throws Exception {
+        String customer = sessionTokens.issue(tenantId).token();
+        String conversationId = startConversation(customer);
+        jdbc.update("update conversations set customer_name = 'Pat' where id = ?::uuid", conversationId);
+        BlockingQueue<Object> queue = subscribeTo(connect(agentToken(agentSub)), queueTopic(tenantId));
+
+        send(customer, "hello there");
+
+        Object event = queue.poll(5, TimeUnit.SECONDS);
+        assertThat(JsonPath.<String>read(event, "$.type")).isEqualTo("conversation.activity");
+        assertThat(JsonPath.<String>read(event, "$.data.customerName")).isEqualTo("Pat");
+        assertThat((Object) JsonPath.read(event, "$.data.assigneeSub")).isNull();
+    }
+
+    @Test
     void agentSeesNewWaitingConversationsLive() throws Exception {
         String customer = sessionTokens.issue(tenantId).token();
         startConversation(customer);

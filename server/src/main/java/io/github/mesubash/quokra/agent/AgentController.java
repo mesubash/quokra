@@ -144,9 +144,14 @@ public class AgentController {
         return new Page<>(items, next);
     }
 
+    // waiting: the queue; mine: my open chats; myUnread: unread customer messages in them.
+    record CountsView(long waiting, long mine, long myUnread) {}
+
     @GetMapping("/conversations/counts")
-    public ConversationService.Counts counts(@AuthenticationPrincipal Jwt jwt) {
-        return service.counts(myTenants(jwt).keySet(), jwt.getSubject());
+    public CountsView counts(@AuthenticationPrincipal Jwt jwt) {
+        var tenantIds = myTenants(jwt).keySet();
+        var counts = service.counts(tenantIds, jwt.getSubject());
+        return new CountsView(counts.waiting(), counts.mine(), reads.unreadInMyChats(jwt.getSubject(), tenantIds));
     }
 
     @GetMapping("/conversations/{id}")

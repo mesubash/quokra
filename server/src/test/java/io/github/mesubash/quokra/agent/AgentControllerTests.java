@@ -22,13 +22,19 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
+import org.springframework.test.context.event.ApplicationEvents;
+import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest(properties = "quokra.dev.agent-tokens=true")
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
 @Transactional
+@RecordApplicationEvents
 class AgentControllerTests {
+
+    @Autowired
+    ApplicationEvents published;
 
     static final String BASE = "/api/v1/agent";
 
@@ -420,6 +426,18 @@ class AgentControllerTests {
     }
 
     @Test
+    void countsUnreadMessagesInMyChats() {
+        UUID id = taken(alice);
+        service.addCustomerMessage(id, "c-7", "still there?", null);
+        service.addCustomerMessage(id, "c-8", "hello?", null);
+
+        // Two from earlier (asking for a person, the email) plus these two: Alice hasn't opened it.
+        assertThat(get(alice, "/conversations/counts")).bodyJson().extractingPath("$.myUnread").asNumber()
+            .satisfies(n -> assertThat(n.intValue()).isGreaterThanOrEqualTo(2));
+        assertThat(get(bob, "/conversations/counts")).bodyJson().extractingPath("$.myUnread").isEqualTo(0);
+    }
+
+    @Test
     void unreadCountsCustomerMessagesUntilTheAgentHasReadThem() throws Exception {
         UUID id = waiting(tenant, HandoffReason.CUSTOMER_REQUEST);
         service.addCustomerMessage(id, "c-1", "are you there?", null);
@@ -525,5 +543,22 @@ class AgentControllerTests {
         String carol = devTokens.sign("carol", "Carol", List.of("SUPPORT_AGENT"));
 
         assertThat(get(carol, "/conversations/" + id + "/history")).hasStatus(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void transferAndNotesAnnounceThemselvesForNotifications() {
+        UUID id = taken(alice);
+        get(bob, "/me");
+
+        post(alice, "/conversations/" + id + "/transfer", "{\"agentSub\":\"bob\"}");
+        post(alice, "/conversations/" + id + "/notes", "{\"body\":\"Over to you\"}");
+
+        assertThat(published.stream(io.github.mesubash.quokra.conversation.ConversationTransferred.class))
+            .singleElement().satisfies(e -> {
+                assertThat(e.to().sub()).isEqualTo("bob");
+                assertThat(e.byName()).isEqualTo("Alice");
+            });
+        assertThat(published.stream(io.github.mesubash.quokra.conversation.NoteCreated.class))
+            .singleElement().satisfies(e -> assertThat(e.assigneeSub()).isEqualTo("bob"));
     }
 }

@@ -345,6 +345,8 @@ public class ConversationService {
         } else {
             conversation.assign(to.sub(), to.name());
             event.setReason(to.name());
+            publisher.publishEvent(new ConversationTransferred(conversationId, conversation.getTenantId(), to,
+                agent.name(), conversation.getCustomerName()));
             save(Message.create(conversationId, SenderType.SYSTEM, null, null, to.name() + " joined the chat", null,
                 null, now));
         }
@@ -357,9 +359,10 @@ public class ConversationService {
     // Any agent of the tenant can leave a note; customers never see them.
     @Transactional
     public ConversationNote addNote(UUID conversationId, AgentRef agent, String body) {
-        get(conversationId);
+        Conversation c = get(conversationId);
         ConversationNote note = notes.save(ConversationNote.create(conversationId, agent, checkBody(body), clock.instant()));
-        publisher.publishEvent(new NoteCreated(conversationId, NoteView.of(note)));
+        publisher.publishEvent(new NoteCreated(conversationId, c.getTenantId(), c.getAssigneeSub(), c.getCustomerName(),
+            NoteView.of(note)));
         return note;
     }
 
@@ -589,8 +592,9 @@ public class ConversationService {
     private Message save(Message message) {
         Message saved = messages.save(message);
         // Already loaded in this transaction, so this doesn't query again.
-        UUID tenantId = get(saved.getConversationId()).getTenantId();
-        publisher.publishEvent(new MessageCreated(saved.getConversationId(), tenantId, MessageView.of(saved)));
+        Conversation c = get(saved.getConversationId());
+        publisher.publishEvent(new MessageCreated(saved.getConversationId(), c.getTenantId(), c.getAssigneeSub(),
+            c.getCustomerName(), MessageView.of(saved)));
         return saved;
     }
 

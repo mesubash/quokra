@@ -28,6 +28,23 @@ class AgentReads {
             """, conversationId, agentSub, messageId);
     }
 
+    // Unread customer messages across the agent's own open chats, for the console badge.
+    long unreadInMyChats(String agentSub, Collection<UUID> tenantIds) {
+        if (tenantIds.isEmpty()) {
+            return 0;
+        }
+        Array ids = jdbc.execute((ConnectionCallback<Array>) c -> c.createArrayOf("uuid", tenantIds.toArray()));
+        Long count = jdbc.queryForObject("""
+            select count(*)
+            from conversations c
+            join messages m on m.conversation_id = c.id and m.sender_type = 'CUSTOMER'
+            left join conversation_reads r on r.conversation_id = c.id and r.agent_sub = ?
+            where c.tenant_id = any(?) and c.status = 'HUMAN' and c.assignee_sub = ?
+              and (r.last_read_message_id is null or m.id > r.last_read_message_id)
+            """, Long.class, agentSub, ids, agentSub);
+        return count == null ? 0 : count;
+    }
+
     // Customer messages the agent hasn't read yet, per conversation. Conversations with none are left out.
     Map<UUID, Integer> unreadCounts(String agentSub, Collection<UUID> conversationIds) {
         Map<UUID, Integer> counts = new HashMap<>();
