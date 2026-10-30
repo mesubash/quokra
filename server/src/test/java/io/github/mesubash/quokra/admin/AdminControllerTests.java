@@ -109,6 +109,27 @@ class AdminControllerTests {
     }
 
     @Test
+    void savedRepliesCanBeAddedEditedAndRemoved() throws Exception {
+        call("POST", admin, "/tenants", ACME);
+
+        MvcTestResult added = call("POST", admin, "/tenants/acme/replies", """
+            {"title":" Hours ","body":"Hi {name}, we're open 9-5."}""");
+        assertThat(added).hasStatus(HttpStatus.CREATED);
+        assertThat(added).bodyJson().extractingPath("$.title").isEqualTo("Hours");
+        String id = JsonPath.read(added.getResponse().getContentAsString(), "$.id");
+
+        assertThat(call("PUT", admin, "/tenants/acme/replies/" + id, """
+            {"title":"Opening hours","body":"9-5"}""")).hasStatusOk();
+        assertThat(call("GET", admin, "/tenants/acme/replies", null)).bodyJson()
+            .extractingPath("$.items[*].title").isEqualTo(List.of("Opening hours"));
+
+        assertThat(call("POST", admin, "/tenants/acme/replies", """
+            {"title":"","body":"x"}""")).hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(call("DELETE", admin, "/tenants/acme/replies/" + id, null)).hasStatus(HttpStatus.NO_CONTENT);
+        assertThat(call("DELETE", admin, "/tenants/acme/replies/" + id, null)).hasStatus(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
     void secretKeyIsShownOnce() {
         call("POST", admin, "/tenants", ACME);
 

@@ -3,7 +3,9 @@ package io.github.mesubash.quokra.admin;
 import io.github.mesubash.quokra.admin.TenantAdmin.TenantForm;
 import io.github.mesubash.quokra.admin.TenantAdmin.TenantView;
 import io.github.mesubash.quokra.bot.BotConfigRegistry;
+import io.github.mesubash.quokra.canned.CannedReplies;
 import io.github.mesubash.quokra.common.ApiException;
+import io.github.mesubash.quokra.conversation.Message;
 import io.github.mesubash.quokra.tenant.TenantAgents;
 import io.github.mesubash.quokra.tenant.TenantSecrets;
 import jakarta.validation.Valid;
@@ -11,6 +13,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -39,12 +42,18 @@ public class AdminController {
 
     record AddAgentResponse(TenantAgents.Added result) {}
 
+    record ReplyForm(@NotBlank @Size(max = CannedReplies.MAX_TITLE) String title,
+                     @NotBlank @Size(max = Message.MAX_BODY_LENGTH) String body) {}
+
     private final TenantAdmin tenants;
     private final TenantAgents agents;
     private final TenantSecrets secrets;
     private final BotConfigRegistry bots;
+    private final CannedReplies replies;
 
-    public AdminController(TenantAdmin tenants, TenantAgents agents, TenantSecrets secrets, BotConfigRegistry bots) {
+    public AdminController(TenantAdmin tenants, TenantAgents agents, TenantSecrets secrets, BotConfigRegistry bots,
+                           CannedReplies replies) {
+        this.replies = replies;
         this.tenants = tenants;
         this.agents = agents;
         this.secrets = secrets;
@@ -115,5 +124,39 @@ public class AdminController {
         if (!agents.removeInvite(tenants.get(slug).id(), email)) {
             throw ApiException.notFound("INVITE_NOT_FOUND", "No invite for that email");
         }
+    }
+
+    @GetMapping("/tenants/{slug}/replies")
+    public Items<CannedReplies.Reply> replies(@PathVariable String slug) {
+        return new Items<>(replies.list(tenants.get(slug).id()));
+    }
+
+    @PostMapping("/tenants/{slug}/replies")
+    @ResponseStatus(HttpStatus.CREATED)
+    public CannedReplies.Reply addReply(@PathVariable String slug, @Valid @RequestBody ReplyForm form) {
+        return replies.add(tenants.get(slug).id(), form.title().strip(), form.body().strip());
+    }
+
+    @PutMapping("/tenants/{slug}/replies/{id}")
+    public CannedReplies.Reply updateReply(@PathVariable String slug, @PathVariable UUID id,
+                                           @Valid @RequestBody ReplyForm form) {
+        String title = form.title().strip();
+        String body = form.body().strip();
+        if (!replies.update(tenants.get(slug).id(), id, title, body)) {
+            throw replyNotFound();
+        }
+        return new CannedReplies.Reply(id, title, body);
+    }
+
+    @DeleteMapping("/tenants/{slug}/replies/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void removeReply(@PathVariable String slug, @PathVariable UUID id) {
+        if (!replies.remove(tenants.get(slug).id(), id)) {
+            throw replyNotFound();
+        }
+    }
+
+    private static ApiException replyNotFound() {
+        return ApiException.notFound("REPLY_NOT_FOUND", "No saved reply with that id");
     }
 }

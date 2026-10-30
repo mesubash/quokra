@@ -368,6 +368,20 @@ class AgentControllerTests {
     }
 
     @Test
+    void savedRepliesComeFromTheConversationsTenant() throws Exception {
+        jdbc.update("""
+            insert into canned_replies (id, tenant_id, title, body)
+            values (?, ?, 'Refunds', 'Hi {name}'), (?, ?, 'Other', 'Not for acme')
+            """, UUID.randomUUID(), tenant, UUID.randomUUID(), otherTenant);
+        UUID id = taken(alice);
+
+        assertThat(get(alice, "/conversations/" + id + "/replies")).bodyJson()
+            .extractingPath("$.items[*].title").isEqualTo(List.of("Refunds"));
+        String carol = devTokens.sign("carol", "Carol", List.of("SUPPORT_AGENT"));
+        assertThat(get(carol, "/conversations/" + id + "/replies")).hasStatus(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
     void notesAreForAgentsOnly() {
         UUID id = taken(alice);
 

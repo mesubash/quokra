@@ -3,6 +3,7 @@ package io.github.mesubash.quokra.agent;
 import io.github.mesubash.quokra.agent.AgentViews.ConversationView;
 import io.github.mesubash.quokra.agent.AgentViews.EventView;
 import io.github.mesubash.quokra.agent.AgentViews.Summary;
+import io.github.mesubash.quokra.canned.CannedReplies;
 import io.github.mesubash.quokra.common.ApiException;
 import io.github.mesubash.quokra.conversation.AgentRef;
 import io.github.mesubash.quokra.conversation.Conversation;
@@ -79,9 +80,12 @@ public class AgentController {
     private final ContactRepository contacts;
     private final AgentReads reads;
     private final AgentJwtConverter agentTokens;
+    private final CannedReplies replies;
 
     public AgentController(ConversationService service, TenantRepository tenants, TenantAgents tenantAgents,
-                           ContactRepository contacts, AgentReads reads, AgentJwtConverter agentTokens) {
+                           ContactRepository contacts, AgentReads reads, AgentJwtConverter agentTokens,
+                           CannedReplies replies) {
+        this.replies = replies;
         this.reads = reads;
         this.agentTokens = agentTokens;
         this.service = service;
@@ -225,6 +229,12 @@ public class AgentController {
     @GetMapping("/conversations/{id}/agents")
     public Page<TenantAgents.Member> agents(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
         return new Page<>(tenantAgents.members(visible(jwt, id).getTenantId()), null);
+    }
+
+    // Saved replies of the conversation's tenant.
+    @GetMapping("/conversations/{id}/replies")
+    public Page<CannedReplies.Reply> replies(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
+        return new Page<>(replies.list(visible(jwt, id).getTenantId()), null);
     }
 
     @PostMapping("/conversations/{id}/transfer")
