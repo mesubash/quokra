@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { ApiError, type AdminAgents, type AdminApi, type AdminTenant, type TenantForm } from "../../lib/api";
+import {
+  ApiError,
+  type AdminAgents,
+  type AdminApi,
+  type AdminTenant,
+  type SavedReply,
+  type TenantForm,
+} from "../../lib/api";
 import { BackIcon, CheckIcon, CopyIcon } from "../../lib/icons";
 import { initials } from "../format";
 
@@ -114,6 +121,7 @@ export function AdminMain({ admin, api, onBack }: { admin: Admin; api: AdminApi;
       <EmbedCard tenant={tenant} />
       <SecretCard api={api} tenant={tenant} onChanged={admin.reload} />
       <AgentsCard api={api} tenant={tenant} onChanged={admin.reload} />
+      <RepliesCard api={api} tenant={tenant} />
       <section className="admin-card">
         <h3>Settings</h3>
         <TenantFormView api={api} bots={admin.bots} tenant={tenant} onSaved={admin.reload} />
@@ -355,6 +363,112 @@ function AgentsCard({ api, tenant, onChanged }: { api: AdminApi; tenant: AdminTe
         ))}
         {data && data.agents.length === 0 && data.invites.length === 0 && <li className="muted">No agents yet.</li>}
       </ul>
+    </section>
+  );
+}
+
+const NO_REPLY = { id: "", title: "", body: "" };
+
+// Saved replies agents pick by typing "/" in the reply box.
+function RepliesCard({ api, tenant }: { api: AdminApi; tenant: AdminTenant }) {
+  const [replies, setReplies] = useState<SavedReply[] | null>(null);
+  const [form, setForm] = useState<SavedReply>(NO_REPLY);
+  const [message, setMessage] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(() => {
+    api
+      .replies(tenant.slug)
+      .then((page) => setReplies(page.items))
+      .catch(() => setReplies([]));
+  }, [api, tenant.slug]);
+
+  useEffect(load, [load]);
+
+  async function save(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setMessage(null);
+    try {
+      await (form.id ? api.updateReply(tenant.slug, form) : api.addReply(tenant.slug, form));
+      setForm(NO_REPLY);
+      load();
+    } catch {
+      setMessage("Couldn't save it. A title up to 80 characters and a reply are needed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove(id: string) {
+    await api.removeReply(tenant.slug, id).catch(() => {});
+    if (form.id === id) setForm(NO_REPLY);
+    load();
+  }
+
+  return (
+    <section className="admin-card">
+      <h3>Saved replies</h3>
+      <p className="muted admin-help">
+        Agents type / in the reply box to pick one. {"{name}"} becomes the customer's name.
+      </p>
+      <ul className="admin-people">
+        {replies === null && <li className="muted">Loading…</li>}
+        {replies?.map((r) => (
+          <li key={r.id}>
+            <span className="admin-person">
+              <strong>{r.title}</strong>
+              <span className="muted">{r.body}</span>
+            </span>
+            <button type="button" className="link-button" onClick={() => setForm(r)}>
+              Edit
+            </button>
+            <button type="button" className="link-button" onClick={() => void remove(r.id)}>
+              Remove
+            </button>
+          </li>
+        ))}
+        {replies?.length === 0 && <li className="muted">No saved replies yet.</li>}
+      </ul>
+      <form className="admin-form" onSubmit={save}>
+        <label>
+          <span className="admin-label">Title</span>
+          <input
+            required
+            maxLength={80}
+            value={form.title}
+            onChange={(e) => setForm({ ...form, title: e.target.value })}
+            placeholder="Opening hours"
+          />
+        </label>
+        <label>
+          <span className="admin-label">Reply</span>
+          <textarea
+            required
+            rows={3}
+            maxLength={2000}
+            className="admin-reply-body"
+            value={form.body}
+            onChange={(e) => setForm({ ...form, body: e.target.value })}
+            placeholder="Hi {name}, we're open Monday to Friday, 9 to 5."
+          />
+        </label>
+        {message && (
+          <p className="admin-help" role="status">
+            {message}
+          </p>
+        )}
+        <div className="admin-actions">
+          {form.id && (
+            <button type="button" className="link-button" onClick={() => setForm(NO_REPLY)}>
+              Cancel
+            </button>
+          )}
+          <button type="submit" className="button" disabled={busy || !form.title.trim() || !form.body.trim()}>
+            {form.id ? "Save reply" : "Add reply"}
+          </button>
+        </div>
+      </form>
     </section>
   );
 }

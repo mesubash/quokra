@@ -9,6 +9,7 @@ import {
   type Message,
   type Note,
   type Person,
+  type SavedReply,
 } from "../lib/api";
 import type { Socket } from "../lib/realtime";
 import { BackIcon, CheckIcon, CloseIcon, CopyIcon, ExpandIcon, MoreIcon, PanelIcon } from "../lib/icons";
@@ -49,6 +50,7 @@ export function ConversationView({ id, api, me, socket, onBack, onClose, onExpan
   const [details, setDetails] = useState(false);
   const [menu, setMenu] = useState(false);
   const [dialog, setDialog] = useState<Dialog>(null);
+  const [saved, setSaved] = useState<SavedReply[]>([]);
 
   const load = useCallback(() => {
     api
@@ -63,6 +65,13 @@ export function ConversationView({ id, api, me, socket, onBack, onClose, onExpan
   }, [api, id, onError]);
 
   useEffect(load, [load]);
+
+  useEffect(() => {
+    api
+      .replies(id)
+      .then((page) => setSaved(page.items))
+      .catch(() => setSaved([]));
+  }, [api, id]);
 
   // Messages and notes arrive live; a status change reloads the agent's view of the conversation.
   useEffect(() => {
@@ -269,6 +278,7 @@ export function ConversationView({ id, api, me, socket, onBack, onClose, onExpan
             disabled={busy}
             focus
             note={writing === "note"}
+            replies={writing === "reply" ? fillName(saved, conversation.customer?.name) : []}
             placeholder={writing === "note" ? "Only your team sees this…" : `Reply to ${customer}…`}
           />
         </div>
@@ -304,6 +314,11 @@ export function ConversationView({ id, api, me, socket, onBack, onClose, onExpan
       )}
     </div>
   );
+}
+
+// {name} becomes the customer's name, or "there" for guests who didn't give one.
+export function fillName(replies: SavedReply[], name: string | null | undefined) {
+  return replies.map((r) => ({ title: r.title, body: r.body.replaceAll("{name}", name?.trim() || "there") }));
 }
 
 function readOnlyHint(c: AgentConversation, mine: boolean) {

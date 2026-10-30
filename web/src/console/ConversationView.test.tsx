@@ -39,6 +39,9 @@ function fakeApi(start: AgentConversation, extra: Partial<AgentApi> = {}) {
     detail: vi.fn(() => Promise.resolve({ conversation: current, messages: [], events: [], notes: [] })),
     accept: vi.fn(() => change(taken(current))),
     markRead: vi.fn(() => Promise.resolve()),
+    replies: vi.fn(() =>
+      Promise.resolve({ items: [{ id: "r1", title: "Refunds", body: "Hi {name}, refunds take 5 days." }], nextCursor: null }),
+    ),
     history: vi.fn(() =>
       Promise.resolve({
         items: [
@@ -112,6 +115,20 @@ describe("ConversationView", () => {
     await waitFor(() => expect(api.reply).toHaveBeenCalledWith("c1", expect.any(String), "Hi Pat"));
     expect(api.accept).toHaveBeenCalled();
     expect(await screen.findByText("Hi Pat")).toBeTruthy();
+  });
+
+  it("inserts a saved reply with the customer's name", async () => {
+    const api = fakeApi(taken(conversation()));
+    renderView(api);
+    const input = (await screen.findByLabelText("Message")) as HTMLTextAreaElement;
+
+    fireEvent.change(input, { target: { value: "/ref" } });
+    expect(await screen.findByRole("option", { name: /Refunds/ })).toBeTruthy();
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(input.value).toBe("Hi Pat, refunds take 5 days.");
+    expect(screen.queryByRole("listbox")).toBeNull();
+    expect(api.reply).not.toHaveBeenCalled();
   });
 
   it("puts resolve, transfer and block in the menu once it's mine", async () => {

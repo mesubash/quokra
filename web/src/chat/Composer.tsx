@@ -15,11 +15,31 @@ interface Props {
   asking?: "EMAIL" | "NAME" | null;
   // Agent-only note: styled differently so it's never mistaken for a reply.
   note?: boolean;
+  // Saved replies; typing "/" lists them, picking one puts its text in the input.
+  replies?: { title: string; body: string }[];
 }
 
-export function Composer({ onSend, disabled, placeholder = "Type your message…", focus = false, asking = null, note = false }: Props) {
+// Replies whose title matches what's typed after "/". Only while the input is a single "/word".
+export function matchReplies<T extends { title: string }>(text: string, replies: T[]): T[] {
+  if (!text.startsWith("/") || text.includes("\n")) return [];
+  const q = text.slice(1).trim().toLowerCase();
+  return replies.filter((r) => r.title.toLowerCase().includes(q));
+}
+
+export function Composer({
+  onSend,
+  disabled,
+  placeholder = "Type your message…",
+  focus = false,
+  asking = null,
+  note = false,
+  replies = [],
+}: Props) {
   const input = useRef<HTMLTextAreaElement>(null);
   const [text, setText] = useState("");
+  const [active, setActive] = useState(0);
+  const [hidden, setHidden] = useState(false);
+  const matches = hidden ? [] : matchReplies(text, replies);
 
   useEffect(() => {
     if (focus && !disabled) input.current?.focus();
@@ -46,8 +66,37 @@ export function Composer({ onSend, disabled, placeholder = "Type your message…
     send();
   }
 
-  // Enter sends; Shift+Enter adds a new line.
+  function pick(body: string) {
+    setText(body);
+    input.current?.focus();
+  }
+
+  function type(value: string) {
+    setText(value);
+    setActive(0);
+    setHidden(false);
+  }
+
+  // Enter sends; Shift+Enter adds a new line. While replies are listed, arrows move and Enter or Tab picks.
   function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
+    if (matches.length > 0) {
+      const move = { ArrowDown: 1, ArrowUp: -1 }[e.key];
+      if (move) {
+        e.preventDefault();
+        setActive((active + move + matches.length) % matches.length);
+        return;
+      }
+      if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault();
+        pick(matches[Math.min(active, matches.length - 1)].body);
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setHidden(true);
+        return;
+      }
+    }
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       send();
@@ -58,12 +107,30 @@ export function Composer({ onSend, disabled, placeholder = "Type your message…
 
   return (
     <form className={note ? "composer composer-note" : "composer"} onSubmit={submit}>
+      {matches.length > 0 && (
+        <ul className="saved-replies" role="listbox" aria-label="Saved replies">
+          {matches.map((r, i) => (
+            <li
+              key={r.title + i}
+              role="option"
+              aria-selected={i === active}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                pick(r.body);
+              }}
+            >
+              <strong>{r.title}</strong>
+              <span className="muted">{r.body}</span>
+            </li>
+          ))}
+        </ul>
+      )}
       <div className="composer-row">
         <textarea
           ref={input}
           rows={1}
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => type(e.target.value)}
           onKeyDown={onKeyDown}
           placeholder={placeholder}
           aria-label={asking === "EMAIL" ? "Your email" : asking === "NAME" ? "Your name" : "Message"}

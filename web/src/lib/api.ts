@@ -212,6 +212,13 @@ export interface AdminAgents {
   invites: { email: string; createdAt: string }[];
 }
 
+// A saved answer; {name} becomes the customer's name when it's inserted.
+export interface SavedReply {
+  id: string;
+  title: string;
+  body: string;
+}
+
 export function adminApi(getToken: () => string) {
   const call = <T,>(method: string, path: string, body?: unknown) =>
     request<T>(`/admin${path}`, {
@@ -232,6 +239,11 @@ export function adminApi(getToken: () => string) {
     removeAgent: (s: string, sub: string) => call<void>("DELETE", `/tenants/${slug(s)}/agents/${encodeURIComponent(sub)}`),
     removeInvite: (s: string, email: string) =>
       call<void>("DELETE", `/tenants/${slug(s)}/invites/${encodeURIComponent(email)}`),
+    replies: (s: string) => call<{ items: SavedReply[] }>("GET", `/tenants/${slug(s)}/replies`),
+    addReply: (s: string, reply: Omit<SavedReply, "id">) => call<SavedReply>("POST", `/tenants/${slug(s)}/replies`, reply),
+    updateReply: (s: string, { id, ...reply }: SavedReply) =>
+      call<SavedReply>("PUT", `/tenants/${slug(s)}/replies/${id}`, reply),
+    removeReply: (s: string, id: string) => call<void>("DELETE", `/tenants/${slug(s)}/replies/${id}`),
   };
 }
 
@@ -275,6 +287,7 @@ export function agentApi(getToken: () => string) {
     reopen: (id: string) => post<One>(`/conversations/${id}/reopen`),
     history: (id: string) => get<Page<ConversationSummary>>(`/conversations/${id}/history`),
     agents: (id: string) => get<Page<Person>>(`/conversations/${id}/agents`),
+    replies: (id: string) => get<Page<SavedReply>>(`/conversations/${id}/replies`),
     // agentSub null puts it back in the queue.
     transfer: (id: string, agentSub: string | null) => post<One>(`/conversations/${id}/transfer`, { agentSub }),
     block: (id: string) => post<One>(`/conversations/${id}/block`),

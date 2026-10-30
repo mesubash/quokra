@@ -471,8 +471,48 @@ button {
 /* Composer */
 
 .composer {
+  position: relative;
   padding: 10px 12px 12px;
   border-top: 1px solid var(--border);
+}
+
+/* Saved replies, listed above the input while typing "/". */
+.saved-replies {
+  position: absolute;
+  bottom: calc(100% - 4px);
+  left: 12px;
+  right: 12px;
+  z-index: 10;
+  max-height: 240px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  border: var(--pane-border);
+  border-radius: 10px;
+  background: var(--raised);
+  box-shadow: 0 10px 30px rgb(var(--shadow-rgb) / 0.12);
+}
+
+.saved-replies li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.saved-replies li span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.saved-replies li[aria-selected="true"],
+.saved-replies li:hover {
+  background: var(--hover);
 }
 
 .composer-row {
@@ -1679,6 +1719,11 @@ button {
   resize: vertical;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.82rem;
+}
+
+.admin-form textarea.admin-reply-body {
+  font-family: inherit;
+  font-size: 0.88rem;
 }
 
 .admin-form input:focus,
