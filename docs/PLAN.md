@@ -4,8 +4,8 @@ Quokra is an embeddable customer support platform. A FAQ bot answers first; when
 
 | | |
 |---|---|
-| **Status** | Plan v6 |
-| **Last updated** | 2026-10-29 |
+| **Status** | Plan v7: v1 steps 1–10 done; step 11 (ship it) next |
+| **Last updated** | 2026-10-30 |
 | **Current target** | v1: FAQ bot + human handoff on the web |
 | **Stack** | Spring Boot 4.1 (Java 21) + PostgreSQL · React + TypeScript (Vite), served by the server · one repository, one deployable |
 
@@ -60,12 +60,19 @@ AI answers · WhatsApp / Instagram / email · reports · automations · file att
 | Version | Theme | Contents | Rough size |
 |---|---|---|---|
 | **v1** | **FAQ bot + handoff** | Chat panel + console (full-page or bubble), both embeddable via `sdk.js`; FAQ bot; handoff; realtime; tenants by publishable key; guests + identified customers; agents via OIDC | 3–4 weeks |
-| v2 | Daily operations | Standalone console login (OIDC in the browser), canned replies, business hours + offline message, browser notifications, attachments, FAQ editing in the console, more languages, retention job | 2–3 weeks |
+| v2 | Daily operations | **Notifications** (see below), auto-resolve after silence, standalone console login (OIDC in the browser), canned replies, business hours + offline message, attachments, FAQ editing in the Admin tab, more languages, retention job | 2–3 weeks |
 | v3 | AI answers | Knowledge documents, search with sources, grounded LLM answers, evaluation set, AI summary on handoff | 3–4 weeks |
 | v4 | Channels + lookups | WhatsApp Cloud API, email; identity-verified lookups through backend-validated tools | 3–4 weeks |
 | v5 | Platform | Tenant self-service, per-tenant identity providers, analytics, CSAT, public release | later |
 
 A version starts only when the previous one is in real use and there's a clear need. Sizes are rough, for one developer.
+
+### v2 notifications, in order
+
+1. **In the console:** a chime and the button badge for new customer messages in *my* chats and for chats transferred to me (today only new queue items chime); the badge counts waiting + my unread; a short toast for what just arrived.
+2. **Browser notifications:** system notifications while the dashboard is in another tab or app ("Pat: Hello?"), clicking opens that chat. Shown by `sdk.js` on the host page (an embedded iframe can't ask for the permission), opt-in with `notifications: true` and a one-time "turn on notifications" prompt.
+3. **Email:** to the team when a chat has waited longer than X minutes with no agent online; to the customer when an agent replies after they've left. Needs an email provider.
+4. **Mobile push:** later, with a PWA or an app.
 
 ---
 
@@ -86,7 +93,11 @@ A version starts only when the previous one is in real use and there's a clear n
 
 ### Out (later versions)
 
-Standalone console login, canned replies, business hours, notifications, attachments, AI, other channels, reports.
+Standalone console login, canned replies, business hours, notifications, auto-resolve, attachments, AI, other channels, reports.
+
+### Built beyond the original v1 list
+
+Admin tab (companies, keys and embed snippets, allowed sites, agents by email invite), real agent login tested against a local Keycloak, unread counts per conversation, search, the customer's previous conversations, "open full view" from the console drawer, light/dark following the host page, per-company wording, logout for shared computers.
 
 ---
 
@@ -94,17 +105,18 @@ Standalone console login, canned replies, business hours, notifications, attachm
 
 | # | Step | Done when |
 |---|---|---|
-| 1 | **Skeleton:** Spring Boot app, PostgreSQL in compose, Flyway, health endpoint; Vite React app in `web/` with placeholder routes, served by the server; static test-host page | Server serves the placeholder UI; `test-host` loads it |
-| 2 | **Tenants + sessions:** `tenants` table, demo tenant via migration, public tenant endpoint, guest session tokens | Chat panel shows demo branding and gets a session |
-| 3 | **Conversations:** tables, state machine, widget endpoints | Tests cover every allowed and rejected transition; customer can chat via HTTP |
-| 4 | **FAQ bot:** YAML loading + validation, menu, keywords, urgent rule, fallback, error → handoff | Table-driven tests for every branch |
-| 5 | **Realtime:** STOMP, CONNECT auth, SUBSCRIBE checks, event publishing, catch-up | Two browsers see live messages; reconnect loses nothing |
-| 6 | **Chat panel + sdk.js (customer):** bubble, inline, popup, postMessage protocol, branding, unread badge, CSP `frame-ancestors` | Works embedded on the test-host page from another origin |
-| 7 | **Agent API:** OIDC validation, role + tenant membership, lists, accept (optimistic lock), reply, resolve, return to bot | Concurrent-accept test: exactly one winner |
-| 8 | **Console + sdk.js (agent):** `Quokra.console.mount` (full page) and bubble mode, token hand-over via postMessage, queue, chat view, actions | Full flow by hand: FAQ answer → handoff → accept → reply → resolve → return to bot |
-| 8b | **Contacts + agent tools:** email and name asked in the chat before handoff, contacts, block / unblock, reopen, transfer, private notes, paged lists, counts, console redesign, new-chat sound | Done by hand in the browser; tests for each endpoint |
-| 9 | **Identify:** host-signed identity token, guest → identified merge | Tests: valid, expired, wrong tenant, tampered |
-| 10 | **Hardening + docs:** rate limits, CORS, error format, embed guide checked against reality | [Security checklist](ARCHITECTURE.md#13-security) passes |
+| 1 | **Skeleton:** Spring Boot app, PostgreSQL in compose, Flyway, health endpoint; Vite React app in `web/` with placeholder routes, served by the server; static test-host page | Server serves the placeholder UI; `test-host` loads it ✅ |
+| 2 | **Tenants + sessions:** `tenants` table, demo tenant via migration, public tenant endpoint, guest session tokens | Chat panel shows demo branding and gets a session ✅ |
+| 3 | **Conversations:** tables, state machine, widget endpoints | Tests cover every allowed and rejected transition; customer can chat via HTTP ✅ |
+| 4 | **FAQ bot:** YAML loading + validation, menu, keywords, urgent rule, fallback, error → handoff | Table-driven tests for every branch ✅ |
+| 5 | **Realtime:** STOMP, CONNECT auth, SUBSCRIBE checks, event publishing, catch-up | Two browsers see live messages; reconnect loses nothing ✅ |
+| 6 | **Chat panel + sdk.js (customer):** bubble, inline, popup, postMessage protocol, branding, unread badge, CSP `frame-ancestors` | Works embedded on the test-host page from another origin ✅ |
+| 7 | **Agent API:** OIDC validation, role + tenant membership, lists, accept (optimistic lock), reply, resolve, return to bot | Concurrent-accept test: exactly one winner ✅ |
+| 8 | **Console + sdk.js (agent):** `Quokra.console.mount` (full page) and bubble mode, token hand-over via postMessage, queue, chat view, actions | Full flow by hand: FAQ answer → handoff → accept → reply → resolve → return to bot ✅ |
+| 8b | **Contacts + agent tools:** email and name asked in the chat before handoff, contacts, block / unblock, reopen, transfer, private notes, paged lists, counts, console redesign, new-chat sound | Done by hand in the browser; tests for each endpoint ✅ |
+| 9 | **Identify:** host-signed identity token, guest → identified merge ✅ | Tests: valid, expired, wrong tenant, tampered |
+| 10 | **Hardening + docs:** rate limits, CORS, error format, embed guide checked against reality ✅ | [Security checklist](ARCHITECTURE.md#13-security) passes |
+| 11 | **Ship it:** one Docker image (server + web UI), `docker compose up` for the whole stack (Quokra, PostgreSQL, Keycloak, demo data), structured JSON logs, CI running the tests on every push | Someone new runs it from the README in minutes |
 
 ---
 
