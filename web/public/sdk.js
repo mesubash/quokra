@@ -11,7 +11,8 @@
  *   <button data-quokra-chat-trigger="slug" data-quokra-pk="pk_...">Chat with us</button>
  *
  * JavaScript: Quokra.chat.init({ slug, pk, mode, container, position, teaserDelay }), open(), close(),
- *             identify(token), on(event, fn), destroy()
+ *             identify(token), setTheme(theme), on(event, fn), destroy()
+ * Theme: { theme: "light" | "dark" | "auto" } (or data-quokra-theme), default "light".
  *
  * Agent console (in your dashboard; getToken returns the agent's access token or a Promise of it):
  *   Quokra.console.mount("#console", { tenant: "slug", getToken })
@@ -100,6 +101,7 @@
       ".quokra-teaser{position:fixed;bottom:118px;max-width:260px;display:flex;align-items:flex-start;gap:4px;" +
       "background:#fff;color:#1f2328;border-radius:14px;box-shadow:0 8px 28px rgba(0,0,0,.18);z-index:2147483646;" +
       "font:14px/1.4 system-ui,sans-serif;animation:quokra-rise .35s ease}" +
+      ".quokra-teaser.dark{background:#18181b;color:#ececf0}.quokra-teaser.dark .quokra-teaser-close{color:#9b9ba4}" +
       ".quokra-teaser.right{right:20px}.quokra-teaser.left{left:20px}.quokra-button.fallback~.quokra-teaser{bottom:92px}" +
       ".quokra-teaser-text{flex:1;border:0;background:none;padding:12px 4px 12px 14px;text-align:left;font:inherit;" +
       "color:inherit;cursor:pointer}" +
@@ -130,8 +132,24 @@
     document.head.appendChild(style);
   }
 
-  function frameUrl(slug, pk, mode) {
-    return ORIGIN + "/w/" + encodeURIComponent(slug) + "?pk=" + encodeURIComponent(pk) + "&mode=" + mode;
+  function frameUrl(slug, pk, mode, theme) {
+    return ORIGIN + "/w/" + encodeURIComponent(slug) + "?pk=" + encodeURIComponent(pk) + "&mode=" + mode +
+      "&theme=" + theme;
+  }
+
+  // "light" (default), "dark", or "auto" (follow the visitor's system setting).
+  function themeOf(value) {
+    return value === "dark" || value === "auto" ? value : "light";
+  }
+
+  function isDark(theme) {
+    return theme === "dark" || (theme === "auto" && !!window.matchMedia &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches);
+  }
+
+  // The frame's own background shows while it loads, so it matches the theme too.
+  function paintFrame(frame, theme) {
+    frame.style.background = isDark(theme) ? "#0c0c0e" : "#fff";
   }
 
   function post(type, fields) {
@@ -226,7 +244,7 @@
   function showTeaser() {
     if (!state || state.open || state.teaser || storage(teaserKey())) return;
     var teaser = document.createElement("div");
-    teaser.className = "quokra-teaser " + state.position;
+    teaser.className = "quokra-teaser " + state.position + (isDark(state.theme) ? " dark" : "");
     var text = document.createElement("button");
     text.type = "button";
     text.className = "quokra-teaser-text";
@@ -307,7 +325,9 @@
       var frame = document.createElement("iframe");
       frame.id = FRAME_ID;
       frame.title = "Chat";
-      frame.src = frameUrl(options.slug, options.pk, mode);
+      var theme = themeOf(options.theme);
+      frame.src = frameUrl(options.slug, options.pk, mode, theme);
+      paintFrame(frame, theme);
       state = {
         frame: frame,
         button: null,
@@ -318,6 +338,7 @@
         open: mode === "inline",
         teaserText: null,
         ready: false,
+        theme: theme,
         animation: null,
         waveTimer: null,
         teaserDelay: options.teaserDelay === "off" ? -1 : isFinite(delay) && options.teaserDelay !== undefined ? delay : DEFAULT_TEASER_DELAY,
@@ -399,6 +420,14 @@
       emit("close");
     },
 
+    setTheme: function (value) {
+      if (!state) return;
+      state.theme = themeOf(value);
+      paintFrame(state.frame, state.theme);
+      if (state.teaser) state.teaser.classList.toggle("dark", isDark(state.theme));
+      post("theme.set", { theme: state.theme });
+    },
+
     // token: a short-lived identity token from your backend, signed with your secret key.
     identify: function (token) {
       if (typeof token !== "string" || !token) throw new Error("Quokra: identify needs a token");
@@ -472,8 +501,8 @@
     document.head.appendChild(style);
   }
 
-  function consoleUrl(tenant, mode) {
-    return ORIGIN + "/console?tenant=" + encodeURIComponent(tenant || "") + "&mode=" + mode;
+  function consoleUrl(tenant, mode, theme) {
+    return ORIGIN + "/console?tenant=" + encodeURIComponent(tenant || "") + "&mode=" + mode + "&theme=" + theme;
   }
 
   function postToConsole(message) {
@@ -539,8 +568,11 @@
     var frame = document.createElement("iframe");
     frame.id = "quokra-console-frame";
     frame.title = "Support console";
-    frame.src = consoleUrl(options.tenant, mode);
-    consoleState = { frame: frame, button: null, mode: mode, open: mode === "full", getToken: options.getToken };
+    var theme = themeOf(options.theme);
+    frame.src = consoleUrl(options.tenant, mode, theme);
+    paintFrame(frame, theme);
+    consoleState = { frame: frame, button: null, mode: mode, open: mode === "full", getToken: options.getToken,
+      theme: theme };
     window.addEventListener("message", onConsoleMessage);
     return frame;
   }
@@ -600,6 +632,13 @@
       (consoleListeners[event] = consoleListeners[event] || []).push(fn);
     },
 
+    setTheme: function (value) {
+      if (!consoleState) return;
+      consoleState.theme = themeOf(value);
+      paintFrame(consoleState.frame, consoleState.theme);
+      postToConsole({ type: "theme.set", theme: consoleState.theme });
+    },
+
     unmount: function () {
       if (!consoleState) return;
       window.removeEventListener("message", onConsoleMessage);
@@ -617,6 +656,7 @@
         slug: script.dataset.quokraChat,
         pk: script.dataset.quokraPk,
         position: script.dataset.quokraPosition,
+        theme: script.dataset.quokraTheme,
         teaserDelay: script.dataset.quokraTeaserDelay,
       });
       return;

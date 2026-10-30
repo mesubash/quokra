@@ -373,6 +373,7 @@ Every message: `{ "source": "quokra", "type": "...", ...fields }`. Receivers che
 | panel → host | `chat.unread` | `count` | Unread messages while closed |
 | host → panel | `chat.open` / `chat.close` | | Open or close from the host |
 | host → panel | `chat.identify` | `token` | Identity token from the host backend |
+| host → panel | `theme.set` | `theme` | `light`, `dark` or `auto` (the console accepts it too) |
 | panel → host | `chat.identified` | | Identify worked |
 | panel → host | `chat.identify.failed` | `code` | Identify failed, e.g. `IDENTITY_TOKEN_EXPIRED` |
 
@@ -404,8 +405,9 @@ The host side (`sdk.js`) only accepts messages from the Quokra origin. The panel
 
 | Call | Purpose |
 |---|---|
-| `Quokra.chat.init({ slug, pk, mode?, container?, position? })` | Mount the chat. `mode`: `"bubble"` (default), `"inline"`, `"popup"`. `container`: element or selector for inline. `position`: `"right"` (default) or `"left"` |
+| `Quokra.chat.init({ slug, pk, mode?, container?, position?, theme? })` | Mount the chat. `theme`: `"light"` (default), `"dark"` or `"auto"` (follows the visitor's system setting). `mode`: `"bubble"` (default), `"inline"`, `"popup"`. `container`: element or selector for inline. `position`: `"right"` (default) or `"left"` |
 | `Quokra.chat.open()` / `Quokra.chat.close()` | Open or close the panel |
+| `Quokra.chat.setTheme(theme)` | Change the theme, e.g. when your site's dark mode is toggled |
 | `Quokra.chat.identify(token)` | Identify the customer (token from the host backend). Can be called before the panel has loaded; it's sent once the panel is ready |
 | `Quokra.chat.on(event, handler)` | Events: `ready`, `open`, `close`, `unread` (count), `identified`, `identifyfailed` (error code) |
 | `Quokra.chat.destroy()` | Remove bubble and iframe |
@@ -422,9 +424,10 @@ Declarative alternatives, no JavaScript needed:
 
 | Call | Purpose |
 |---|---|
-| `Quokra.console.mount(target, { tenant, getToken, height? })` | **Full-page mode:** mount the console in `target`. `getToken`: function returning a fresh agent access token (or a Promise of one). `tenant`: slug, used to check which sites may frame the console |
-| `Quokra.console.init({ mode: "bubble", tenant, getToken, position? })` | **Bubble mode:** floating button with the waiting-chats badge; opens the console in a side drawer |
+| `Quokra.console.mount(target, { tenant, getToken, height?, theme? })` | **Full-page mode:** mount the console in `target`. `getToken`: function returning a fresh agent access token (or a Promise of one). `tenant`: slug, used to check which sites may frame the console |
+| `Quokra.console.init({ mode: "bubble", tenant, getToken, position?, theme? })` | **Bubble mode:** floating button with the waiting-chats badge; opens the console in a side drawer |
 | `Quokra.console.open()` / `Quokra.console.close()` | Open or close the drawer (bubble mode) |
+| `Quokra.console.setTheme(theme)` | Change the theme (`"light"`, `"dark"`, `"auto"`) |
 | `Quokra.console.on(event, handler)` | Events: `ready`, `unread` (waiting count), `open`, `close` |
 | `Quokra.console.unmount()` | Remove it |
 

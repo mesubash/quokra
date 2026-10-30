@@ -40,7 +40,7 @@ describe("sdk.js agent console", () => {
     agentConsole().mount("#console", { tenant: "demo", getToken: () => "t" });
 
     expect(frame().parentElement?.id).toBe("console");
-    expect(frame().src).toBe(`${window.location.origin}/console?tenant=demo&mode=full`);
+    expect(frame().src).toBe(`${window.location.origin}/console?tenant=demo&mode=full&theme=light`);
   });
 
   it("needs a token getter", () => {
@@ -90,5 +90,15 @@ describe("sdk.js agent console", () => {
 
     expect(onUnread).toHaveBeenCalledWith(3);
     expect(document.querySelector(".quokra-console-button .quokra-badge")?.textContent).toBe("3");
+  });
+
+  it("passes the theme and changes it later", () => {
+    agentConsole().init({ mode: "bubble", tenant: "demo", getToken: () => "t", theme: "dark" });
+    const post = vi.spyOn(frame().contentWindow!, "postMessage");
+
+    expect(frame().src).toContain("&theme=dark");
+    (agentConsole() as unknown as { setTheme: (t: string) => void }).setTheme("light");
+
+    expect(post).toHaveBeenCalledWith({ type: "theme.set", theme: "light", source: "quokra" }, window.location.origin);
   });
 });

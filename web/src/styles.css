@@ -1,15 +1,82 @@
 :root {
   --primary: #4c4fba;
   --on-primary: #fff;
+  --radius: 18px;
+  /* Light theme (default). Dark values are below. */
+  --bg: #fff;
+  --surface: #fbfbfd;
+  --raised: #fff;
+  --hover: #f1f2f6;
+  --track: #eef0f4;
+  --avatar: #eef2f5;
+  --system: #f6f8fa;
+  --bubble: #f2f3f5;
   --text: #1f2328;
   --muted: #6e7781;
+  --placeholder: #8c959f;
+  --typing: #9aa1a9;
   --border: #e5e7eb;
-  --bubble: #f2f3f5;
-  --radius: 18px;
+  --link: var(--primary);
+  --danger: #b42318;
+  --danger-bg: #fde8e8;
+  --danger-solid: #c4321f;
+  --warn-bg: #fff4e5;
+  --warn-text: #8a4500;
+  --success-bg: #e6f4ea;
+  --success-text: #1e6b34;
+  --accent-bg: #e7e9f6;
+  --accent-text: #3d3f8f;
+  --note-bg: #fff8db;
+  --note-border: #e6c35c;
+  --note-text: #5c4500;
+  --note-tab: #fff3c4;
+  --note-input: #fffbea;
+  --dot-online: #1f9d55;
+  --dot-waiting: #e08a00;
+  --dot-off: #9ca3af;
+  --shadow-rgb: 16 24 40;
+  color-scheme: light;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   font-size: 15px;
   color: var(--text);
-  background: #fff;
+  background: var(--bg);
+}
+
+/* Dark theme: the host picks it with theme "dark", or "auto" to follow the visitor's system setting. */
+:root[data-theme="dark"] {
+  --bg: #0c0c0e;
+  --surface: #111114;
+  --raised: #18181b;
+  --hover: #222227;
+  --track: #1c1c20;
+  --avatar: #27272a;
+  --system: #18181b;
+  --bubble: #232328;
+  --text: #ececf0;
+  --muted: #9b9ba4;
+  --placeholder: #71717a;
+  --typing: #71717a;
+  --border: #2a2a2f;
+  --link: color-mix(in srgb, var(--primary) 55%, #fff);
+  --danger: #f87171;
+  --danger-bg: #3a1717;
+  --danger-solid: #dc2626;
+  --warn-bg: #33250d;
+  --warn-text: #fbbf24;
+  --success-bg: #11291b;
+  --success-text: #4ade80;
+  --accent-bg: color-mix(in srgb, var(--primary) 28%, #0c0c0e);
+  --accent-text: color-mix(in srgb, var(--primary) 30%, #fff);
+  --note-bg: #2a2310;
+  --note-border: #7a611a;
+  --note-text: #f3d77d;
+  --note-tab: #342b10;
+  --note-input: #1f1a0c;
+  --dot-online: #3fb950;
+  --dot-waiting: #e3a008;
+  --dot-off: #71717a;
+  --shadow-rgb: 0 0 0;
+  color-scheme: dark;
 }
 
 * {
@@ -68,7 +135,7 @@ button {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: #fff;
+  background: var(--bg);
 }
 
 /* Header */
@@ -160,7 +227,7 @@ button {
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: #eef2f5;
+  background: var(--avatar);
   color: var(--muted);
   overflow: hidden;
   flex: none;
@@ -219,8 +286,8 @@ button {
 }
 
 .avatar-customer {
-  background: #e7e9f6;
-  color: #3d3f8f;
+  background: var(--accent-bg);
+  color: var(--accent-text);
 }
 
 /* Messages */
@@ -302,7 +369,7 @@ button {
   max-width: 85%;
   padding: 4px 10px;
   border-radius: 999px;
-  background: #f6f8fa;
+  background: var(--system);
   color: var(--muted);
   font-size: 0.8rem;
   text-align: center;
@@ -321,7 +388,7 @@ button {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #9aa1a9;
+  background: var(--typing);
   animation: blink 1.2s infinite ease-in-out;
 }
 
@@ -347,8 +414,8 @@ button {
   padding: 8px 16px;
   border: 1.5px solid var(--primary);
   border-radius: 999px;
-  background: #fff;
-  color: var(--primary);
+  background: var(--raised);
+  color: var(--link);
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
 }
@@ -377,7 +444,7 @@ button {
   padding: 6px 6px 6px 14px;
   border: 1px solid var(--border);
   border-radius: 24px;
-  background: #fff;
+  background: var(--raised);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -401,7 +468,7 @@ button {
 }
 
 .composer textarea::placeholder {
-  color: #8c959f;
+  color: var(--placeholder);
 }
 
 .send {
@@ -447,13 +514,13 @@ button {
 }
 
 .pending-failed .bubble {
-  background: #fff;
+  background: var(--raised);
   color: var(--text);
-  border: 1px solid #cf222e;
+  border: 1px solid var(--danger);
 }
 
 .delivery-failed {
-  color: #cf222e;
+  color: var(--danger);
 }
 
 .delivery-failed button {
@@ -519,7 +586,7 @@ button {
 }
 
 .button-quiet {
-  background: #fff;
+  background: var(--raised);
   color: var(--text);
   border: 1px solid var(--border);
   font-weight: 500;
@@ -536,7 +603,7 @@ button {
 }
 
 .error-text {
-  color: #cf222e;
+  color: var(--danger);
   font-size: 0.85rem;
 }
 
@@ -544,36 +611,36 @@ button {
   display: inline-block;
   padding: 2px 8px;
   border-radius: 999px;
-  background: #f1f2f6;
-  color: #4b5563;
+  background: var(--hover);
+  color: var(--muted);
   font-size: 0.72rem;
   font-weight: 500;
   white-space: nowrap;
 }
 
 .badge-urgent {
-  background: #fde8e8;
-  color: #b42318;
+  background: var(--danger-bg);
+  color: var(--danger);
 }
 
 .badge-high {
-  background: #fff4e5;
-  color: #9a4b00;
+  background: var(--warn-bg);
+  color: var(--warn-text);
 }
 
 .status-waiting {
-  background: #fff4e5;
-  color: #9a4b00;
+  background: var(--warn-bg);
+  color: var(--warn-text);
 }
 
 .status-human {
-  background: #e7e9f6;
-  color: #3d3f8f;
+  background: var(--accent-bg);
+  color: var(--accent-text);
 }
 
 .status-resolved {
-  background: #e6f4ea;
-  color: #1e6b34;
+  background: var(--success-bg);
+  color: var(--success-text);
 }
 
 .console-signin {
@@ -587,7 +654,7 @@ button {
 }
 
 .button-danger {
-  background: #c4321f;
+  background: var(--danger-solid);
   color: #fff;
 }
 
@@ -597,7 +664,7 @@ button {
 
 .icon-button.quiet:hover,
 .icon-button.quiet.on {
-  background: #f1f2f6;
+  background: var(--hover);
   color: var(--text);
 }
 
@@ -616,7 +683,7 @@ button {
   display: grid;
   grid-template-columns: minmax(280px, 340px) 1fr;
   height: 100%;
-  background: #fff;
+  background: var(--bg);
 }
 
 .console-list-pane {
@@ -624,7 +691,7 @@ button {
   flex-direction: column;
   min-height: 0;
   border-right: var(--pane-border);
-  background: #fbfbfd;
+  background: var(--surface);
 }
 
 .console-chat-pane {
@@ -659,7 +726,7 @@ button {
   margin: 4px 16px 10px;
   padding: 3px;
   border-radius: 10px;
-  background: #eef0f4;
+  background: var(--track);
 }
 
 .segmented button {
@@ -680,9 +747,9 @@ button {
 }
 
 .segmented button[aria-selected="true"] {
-  background: #fff;
+  background: var(--raised);
   color: var(--text);
-  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.08);
+  box-shadow: 0 1px 2px rgb(var(--shadow-rgb) / 0.08);
 }
 
 .count {
@@ -697,7 +764,7 @@ button {
 
 .console-error {
   margin: 0 16px 8px;
-  color: #b42318;
+  color: var(--danger);
   font-size: 0.82rem;
 }
 
@@ -730,11 +797,11 @@ button {
 }
 
 .console-item:hover {
-  background: #f1f2f6;
+  background: var(--hover);
 }
 
 .console-item.selected {
-  background: color-mix(in srgb, var(--primary) 10%, #fff);
+  background: color-mix(in srgb, var(--primary) 10%, var(--bg));
 }
 
 .item-body {
@@ -786,7 +853,7 @@ button {
   padding: 10px;
   border: 0;
   background: none;
-  color: var(--primary);
+  color: var(--link);
   font: inherit;
   font-size: 0.85rem;
   cursor: pointer;
@@ -869,19 +936,19 @@ button {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #9ca3af;
+  background: var(--dot-off);
 }
 
 .dot-status.status-waiting {
-  background: #e08a00;
+  background: var(--dot-waiting);
 }
 
 .dot-status.status-human {
-  background: #1f9d55;
+  background: var(--dot-online);
 }
 
 .dot-status.status-resolved {
-  background: #9ca3af;
+  background: var(--dot-off);
 }
 
 .conversation-actions {
@@ -898,8 +965,8 @@ button {
   margin: 10px 16px 0;
   padding: 8px 12px;
   border-radius: 8px;
-  background: #fff4e5;
-  color: #7a3e00;
+  background: var(--warn-bg);
+  color: var(--warn-text);
   font-size: 0.85rem;
 }
 
@@ -914,9 +981,9 @@ button {
 }
 
 .group-note .bubble {
-  border: 1px dashed #e6c35c;
-  background: #fff8db;
-  color: #5c4500;
+  border: 1px dashed var(--note-border);
+  background: var(--note-bg);
+  color: var(--note-text);
 }
 
 .console-composer {
@@ -947,14 +1014,14 @@ button {
 }
 
 .composer-modes button[aria-selected="true"] {
-  background: #f1f2f6;
+  background: var(--hover);
   color: var(--text);
   font-weight: 500;
 }
 
 .composer-modes button[aria-selected="true"]:last-of-type {
-  background: #fff3c4;
-  color: #5c4500;
+  background: var(--note-tab);
+  color: var(--note-text);
 }
 
 .composer-hint {
@@ -969,8 +1036,8 @@ button {
 }
 
 .composer-note .composer-row {
-  border-color: #e6c35c;
-  background: #fffbea;
+  border-color: var(--note-border);
+  background: var(--note-input);
 }
 
 /* More-actions menu */
@@ -988,8 +1055,8 @@ button {
   padding: 4px;
   border: var(--pane-border);
   border-radius: 10px;
-  background: #fff;
-  box-shadow: 0 10px 30px rgba(16, 24, 40, 0.12);
+  background: var(--raised);
+  box-shadow: 0 10px 30px rgb(var(--shadow-rgb) / 0.12);
 }
 
 .menu-list button {
@@ -1008,12 +1075,12 @@ button {
 
 .menu-list button:hover,
 .menu-list button:focus-visible {
-  background: #f1f2f6;
+  background: var(--hover);
   outline: none;
 }
 
 .menu-list .danger {
-  color: #b42318;
+  color: var(--danger);
 }
 
 /* Details panel */
@@ -1026,7 +1093,7 @@ button {
   padding: 0 16px 16px;
   overflow-y: auto;
   border-left: var(--pane-border);
-  background: #fff;
+  background: var(--bg);
   font-size: 0.86rem;
 }
 
@@ -1041,7 +1108,7 @@ button {
   justify-content: space-between;
   align-items: center;
   padding: 16px 0 4px;
-  background: #fff;
+  background: var(--bg);
 }
 
 .details-contact {
@@ -1058,7 +1125,7 @@ button {
 }
 
 .details-contact a {
-  color: var(--primary);
+  color: var(--link);
   word-break: break-all;
 }
 
@@ -1123,11 +1190,11 @@ button {
   padding: 20px;
   border: 0;
   border-radius: 14px;
-  box-shadow: 0 20px 50px rgba(16, 24, 40, 0.2);
+  box-shadow: 0 20px 50px rgb(var(--shadow-rgb) / 0.2);
 }
 
 .modal::backdrop {
-  background: rgba(16, 24, 40, 0.35);
+  background: rgb(var(--shadow-rgb) / 0.35);
 }
 
 .modal h2 {
@@ -1167,7 +1234,7 @@ button {
 }
 
 .pick-list button:hover {
-  background: #f1f2f6;
+  background: var(--hover);
 }
 
 .pick-text {
@@ -1200,7 +1267,7 @@ button {
     right: 0;
     bottom: 0;
     width: min(320px, 100%);
-    box-shadow: -10px 0 30px rgba(16, 24, 40, 0.1);
+    box-shadow: -10px 0 30px rgb(var(--shadow-rgb) / 0.1);
     z-index: 5;
   }
 }

@@ -2,7 +2,12 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { ChatPanel } from "./chat/ChatPanel";
 import { Console } from "./console/Console";
+import { onHostMessage } from "./lib/bridge";
+import { setTheme } from "./lib/theme";
 import "./styles.css";
+
+setTheme(new URLSearchParams(window.location.search).get("theme"));
+onHostMessage((m) => m.type === "theme.set" && setTheme(m.theme));
 
 function App() {
   const path = window.location.pathname;

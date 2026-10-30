@@ -34,7 +34,7 @@ Add one line before `</body>`:
 
 A chat bubble appears in the bottom-right corner. Branding (logo, colour, name) comes from your tenant settings; no code change is needed when it changes.
 
-Optional attributes: `data-quokra-position="left"` puts the bubble on the left; `data-quokra-teaser-delay` sets when the greeting card appears next to the bubble, in milliseconds (default `5000`, `off` to never show it). The card's text is the `teaser` in your bot file.
+Optional attributes: `data-quokra-theme` is `light` (default), `dark` or `auto` (follows the visitor's system setting); `data-quokra-position="left"` puts the bubble on the left; `data-quokra-teaser-delay` sets when the greeting card appears next to the bubble, in milliseconds (default `5000`, `off` to never show it). The card's text is the `teaser` in your bot file.
 
 ---
 
@@ -185,6 +185,8 @@ export function SupportPage() {
   return <div ref={ref} style={{ height: "calc(100vh - 64px)" }} />;
 }
 ```
+
+Pass `theme: "dark"` (or `"auto"`) to match a dark dashboard, and call `Quokra.console.setTheme(…)` when the user switches.
 
 `getToken` is called when the console starts and whenever its token expires. Return your current access token, refreshing it first if needed.
 

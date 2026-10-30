@@ -6,6 +6,7 @@ export type HostMessage =
   | { type: "chat.open" }
   | { type: "chat.close" }
   | { type: "chat.identify"; token: string }
+  | { type: "theme.set"; theme: string }
   | { type: "auth.token"; token: string };
 
 export const embedded = window.parent !== window;
@@ -21,6 +22,7 @@ export function onHostMessage(handler: (message: HostMessage) => void): () => vo
     if (event.source !== window.parent || event.data?.source !== SOURCE) return;
     const { type } = event.data;
     if (type === "chat.open" || type === "chat.close") handler(event.data as HostMessage);
+    else if (type === "theme.set" && typeof event.data.theme === "string") handler(event.data as HostMessage);
     // Only our parent can send a token, and frame-ancestors already limits who the parent can be.
     else if ((type === "auth.token" || type === "chat.identify") && typeof event.data.token === "string") {
       handler(event.data as HostMessage);
