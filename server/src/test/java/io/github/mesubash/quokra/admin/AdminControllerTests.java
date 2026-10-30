@@ -131,6 +131,20 @@ class AdminControllerTests {
     }
 
     @Test
+    void emailSettingsAndWhetherEmailIsSetUp() {
+        assertThat(call("GET", admin, "/mail", null)).bodyJson().extractingPath("$.configured").isEqualTo(false);
+        assertThat(call("POST", admin, "/tenants", ACME)).bodyJson().extractingPath("$.waitingAlertMinutes").isEqualTo(10);
+
+        String withEmail = ACME.replace("\"botConfig\":\"test\"",
+            "\"botConfig\":\"test\",\"alertEmail\":\"team@acme.test,  boss@acme.test\",\"emailCustomers\":true");
+        MvcTestResult saved = call("PUT", admin, "/tenants/acme", withEmail);
+        assertThat(saved).bodyJson().extractingPath("$.alertEmail").isEqualTo("team@acme.test, boss@acme.test");
+        assertThat(saved).bodyJson().extractingPath("$.emailCustomers").isEqualTo(true);
+        assertThat(call("PUT", admin, "/tenants/acme", withEmail.replace("boss@acme.test", "not an email")))
+            .hasStatus(HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
     void savesOpeningHours() {
         String withHours = ACME.replace("\"botConfig\":\"test\"",
             "\"botConfig\":\"test\",\"openingHours\":{\"timezone\":\"Europe/Berlin\",\"days\":{\"MON\":\"09:00-17:00\"}}");

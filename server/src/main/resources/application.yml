@@ -12,6 +12,16 @@ spring:
       ddl-auto: validate
   flyway:
     locations: classpath:db/migration
+  mail:
+    # Email is off until SMTP_HOST and QUOKRA_MAIL_FROM are set (see MailCheck).
+    host: ${SMTP_HOST:}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail.smtp.starttls.enable: ${SMTP_STARTTLS:true}
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 10000
 
 quokra:
   bots:
@@ -50,6 +60,9 @@ quokra:
     max-months: ${QUOKRA_RETENTION_MAX_MONTHS:60}
     # When old chats are deleted (server time).
     cron: ${QUOKRA_RETENTION_CRON:0 0 3 * * *}
+  mail:
+    # The sender of Quokra's emails, e.g. "Support <support@example.com>".
+    from: ${QUOKRA_MAIL_FROM:}
   ws:
     # Origins allowed to open the WebSocket: where the chat panel and console are served.
     allowed-origins: ${PUBLIC_BASE_URL:http://localhost:8080}
@@ -72,3 +85,7 @@ management:
     health:
       probes:
         enabled: true
+  health:
+    # Our own check is "email": not configured is fine, configured but unreachable is not.
+    mail:
+      enabled: false
