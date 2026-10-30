@@ -1,16 +1,16 @@
 # 2. Set up a company
 
 Each website or product that uses Quokra is a **company** (a tenant) with its own keys, sites, bot and
-agents. Admins set them up in the console's **Admin** tab.
+agents. Admins set them up in the console's **Settings** (the gear icon).
 
 **You need:** the `QUOKRA_ADMIN` role in your identity provider (in the demo, `sam` has it).
 
-1. Open the agent console and choose **Admin**, then **New company**.
+1. Open the agent console, click the gear icon (**Settings**) and choose **New company**.
 2. Fill in:
    - **Slug:** a short id like `acme-shop`. It's used in the embed code and can't change later.
    - **Name:** shown in the chat header.
    - **Brand colour** and **logo** (optional).
-   - **Bot file:** which FAQ the bot starts from. You can edit the questions afterwards in the **Bot** card
+   - **Bot file:** which FAQ the bot starts from. You can edit the questions afterwards in the **Bot** section
      (see [Write the bot](07-write-the-bot.md)).
    - **Close quiet chats:** when chats without replies close by themselves (default after 24 hours).
    - **Opening hours** (optional): a time zone and hours per day. Outside them the bot still answers,

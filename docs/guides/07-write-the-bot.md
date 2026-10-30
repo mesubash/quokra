@@ -3,7 +3,7 @@
 Each company's bot has a greeting, a menu of common questions, keywords for typed questions, and rules
 for when to hand over to a person.
 
-**The quick way:** in the console's **Admin** tab, open the company and edit its **Bot** card: questions,
+**The quick way:** in the console's **Settings** (the gear icon), pick the company and open **Bot**: questions,
 keywords and answers, reordered with Up and Down. Saving makes the company's own copy and applies to new
 messages straight away; **Go back to the bot file** drops the copy. Wording in `texts` (below) stays as in
 the file it was copied from.
@@ -42,7 +42,7 @@ the file it was copied from.
      offline_handoff: "We're away right now and back {opens}. Leave your message here and we'll reply then."
    ```
 
-3. In the **Admin** tab, pick the file for the company (**Bot file**), and set **Close quiet chats**.
+3. In **Settings** → **General**, pick the file for the company (**Bot file**), and set **Close quiet chats**.
 
 **Tips**
 - Keywords match whole words and phrases, ignoring case and accents; the menu item with most matches wins.

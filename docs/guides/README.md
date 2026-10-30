@@ -6,7 +6,7 @@ Step-by-step guides for the common tasks. For every option and endpoint, see the
 | Guide | You'll |
 |---|---|
 | [1. Get started](01-get-started.md) | Run Quokra with Docker and try both sides of a chat |
-| [2. Set up a company](02-set-up-a-company.md) | Create a company in the Admin tab and get its keys and embed code |
+| [2. Set up a company](02-set-up-a-company.md) | Create a company in Settings and get its keys and embed code |
 | [3. Add the chat to a website](03-add-the-chat.md) | Put the chat on your site, as a bubble, inline or a popup |
 | [4. Add the console to a dashboard](04-add-the-console.md) | Give your team the agent console inside your own dashboard |
 | [5. Identify logged-in customers](05-identify-customers.md) | Tell Quokra who your signed-in customers are |

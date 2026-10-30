@@ -60,7 +60,7 @@ AI answers · WhatsApp / Instagram / email · reports · automations · file att
 | Version | Theme | Contents | Rough size |
 |---|---|---|---|
 | **v1** | **FAQ bot + handoff** | Chat panel + console (full-page or bubble), both embeddable via `sdk.js`; FAQ bot; handoff; realtime; tenants by publishable key; guests + identified customers; agents via OIDC | 3–4 weeks |
-| v2 | Daily operations | **Notifications** (see below, 1–2 done), auto-resolve after silence (done), canned replies (done), business hours + offline message (done), FAQ editing in the Admin tab (done), retention job, more languages, attachments; standalone console login (OIDC in the browser) when someone needs it | 2–3 weeks |
+| v2 | Daily operations | **Notifications** (see below, 1–2 done), auto-resolve after silence (done), canned replies (done), business hours + offline message (done), FAQ editing in Settings (done), retention job, more languages, attachments; standalone console login (OIDC in the browser) when someone needs it | 2–3 weeks |
 | v3 | AI answers | Knowledge documents, search with sources, grounded LLM answers, evaluation set, AI summary on handoff | 3–4 weeks |
 | v4 | Channels + lookups | WhatsApp Cloud API, email; identity-verified lookups through backend-validated tools | 3–4 weeks |
 | v5 | Platform | Tenant self-service, per-tenant identity providers, analytics, CSAT, public release | later |

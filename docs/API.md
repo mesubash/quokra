@@ -316,7 +316,7 @@ Saved replies of the conversation's tenant, by title. The console fills in `{nam
 
 ## 4b. Admin endpoints
 
-For people with the admin role (`QUOKRA_ADMIN`, set with `QUOKRA_ADMIN_ROLE`, in the same roles claim as the agent role). Same token as the agent API; everything else gets `403`. The console shows these as its **Admin** tab.
+For people with the admin role (`QUOKRA_ADMIN`, set with `QUOKRA_ADMIN_ROLE`, in the same roles claim as the agent role). Same token as the agent API; everything else gets `403`. The console shows these under **Settings** (the gear icon in its header).
 
 ```ts
 interface Tenant {
@@ -358,7 +358,7 @@ Validation (`400 VALIDATION_ERROR`, the message names the field): slug of 2–40
 
 **Invites:** an invited agent joins on their first `GET /agent/me` whose token has that `email` with `email_verified: true`. Unverified emails never match.
 
-`GET /agent/me` also says what the caller may use: `{ …, "agent": true, "admin": true }`. Admins without the agent role only get the Admin tab.
+`GET /agent/me` also says what the caller may use: `{ …, "agent": true, "admin": true }`. Admins without the agent role only get Settings.
 
 ---
 
