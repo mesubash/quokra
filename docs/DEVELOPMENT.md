@@ -53,7 +53,7 @@ Agents log in through an OIDC provider. Locally there are two ways, and both wor
 
 | User | Password | Role |
 |---|---|---|
-| `sam` | `sam` | `SUPPORT_AGENT`, member of the demo tenant |
+| `sam` | `sam` | `SUPPORT_AGENT` and `QUOKRA_ADMIN` (sees the Admin tab), member of the demo tenant |
 | `alex` | `alex` | `SUPPORT_AGENT`, member of the demo tenant |
 | `riley` | `riley` | none (refused by Quokra) |
 

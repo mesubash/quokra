@@ -293,6 +293,43 @@ Per agent. Marking an older message changes nothing. `ConversationSummary.unread
 
 ---
 
+## 4b. Admin endpoints
+
+For people with the admin role (`QUOKRA_ADMIN`, set with `QUOKRA_ADMIN_ROLE`, in the same roles claim as the agent role). Same token as the agent API; everything else gets `403`. The console shows these as its **Admin** tab.
+
+```ts
+interface Tenant {
+  id: string; slug: string; displayName: string;
+  publishableKey: string;                // pk_live_…, public
+  widgetOrigins: string[];               // sites that may show the chat
+  consoleOrigins: string[];              // dashboards that may show the console
+  logoUrl: string | null; primaryColor: string | null; botConfig: string;
+  hasSecret: boolean;                    // the secret itself is never returned again
+  agentCount: number; inviteCount: number; createdAt: string;
+}
+```
+
+| Endpoint | What it does |
+|---|---|
+| `GET /admin/bots` | Bot files the server has: `{ "items": ["demo", …] }` |
+| `GET /admin/tenants` | All tenants: `{ "items": [Tenant, …] }` |
+| `POST /admin/tenants` | Create one: `{ slug, displayName, widgetOrigins, consoleOrigins, logoUrl?, primaryColor?, botConfig }` → `201 Tenant` with a new publishable key. `409 SLUG_TAKEN` |
+| `GET /admin/tenants/{slug}` | One tenant |
+| `PUT /admin/tenants/{slug}` | Replace its settings (same body; the slug can't change) |
+| `POST /admin/tenants/{slug}/secret` | New secret key for identifying customers: `{ "secretKey": "sk_…" }`, shown only this once; the old one stops working. `409 SECRETS_DISABLED` without `TENANT_SECRET_ENCRYPTION_KEY` |
+| `GET /admin/tenants/{slug}/agents` | `{ "agents": [{ sub, name, email }], "invites": [{ email, createdAt }] }` |
+| `POST /admin/tenants/{slug}/agents` | `{ "email": "…" }` → `{ "result": "ADDED" }` if someone already signed in with that verified email, else `"INVITED"` |
+| `DELETE /admin/tenants/{slug}/agents/{sub}` | Remove an agent (`204`) |
+| `DELETE /admin/tenants/{slug}/invites/{email}` | Cancel an invite (`204`) |
+
+Validation (`400 VALIDATION_ERROR`, the message names the field): slug of 2–40 lowercase letters, digits or dashes; sites as plain origins (`https://www.example.com`, no path); colour `#rrggbb`; logo `https://`; an existing bot file.
+
+**Invites:** an invited agent joins on their first `GET /agent/me` whose token has that `email` with `email_verified: true`. Unverified emails never match.
+
+`GET /agent/me` also says what the caller may use: `{ …, "agent": true, "admin": true }`. Admins without the agent role only get the Admin tab.
+
+---
+
 ## 5. Realtime events
 
 STOMP over WebSocket at `wss://chat.<domain>/ws`.

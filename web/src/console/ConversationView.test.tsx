@@ -6,7 +6,7 @@ import { ConversationView } from "./ConversationView";
 
 afterEach(cleanup);
 
-const me = { sub: "sam", name: "Sam", tenants: ["acme"] };
+const me = { sub: "sam", name: "Sam", tenants: ["acme"], agent: true, admin: false };
 const socket: Socket = { subscribe: () => () => {}, close: () => {} };
 
 function conversation(overrides: Partial<AgentConversation> = {}): AgentConversation {

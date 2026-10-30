@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { agentApi, ApiError, type ConversationSummary, type Me, type TenantItem } from "../lib/api";
+import { adminApi, agentApi, ApiError, type ConversationSummary, type Me, type TenantItem } from "../lib/api";
 import { postToHost } from "../lib/bridge";
 import { BellIcon, CloseIcon, ExpandIcon } from "../lib/icons";
 import { chime, setSoundEnabled, soundEnabled } from "../lib/sound";
 import { openSocket, type QueueSnapshot, type Socket } from "../lib/realtime";
 import { ConversationView } from "./ConversationView";
+import { AdminList, AdminMain, useAdmin } from "./admin/AdminArea";
 import { ago, initials, priorityLabel, reasonLabel } from "./format";
 import { useConversationList, type Tab } from "./useConversationList";
 
@@ -30,6 +31,9 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose, onExpand, initialConversation }: Props) {
   const api = useMemo(() => agentApi(getToken), [getToken]);
+  const admins = useMemo(() => adminApi(getToken), [getToken]);
+  // "admin" shows the Admin tab's company list instead of conversations.
+  const [view, setView] = useState<"chats" | "admin">("chats");
   const [me, setMe] = useState<Me | null>(null);
   const [tenants, setTenants] = useState<TenantItem[]>([]);
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -43,6 +47,10 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose, onExp
   const [query, setQuery] = useState("");
   const search = useDebounced(query.trim(), 300);
   const list = useConversationList(api, tab, me?.sub ?? null, tenants, search);
+  const admin = useAdmin(admins, me?.admin ?? false);
+  // Admins without the agent role only get the Admin tab.
+  const adminOnly = me !== null && me.admin && !me.agent;
+  const showAdmin = view === "admin" || adminOnly;
 
   const failed = useCallback(
     (e: unknown) => {
@@ -60,7 +68,14 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose, onExp
   const countTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const refreshCounts = useCallback(() => {
     clearTimeout(countTimer.current);
-    countTimer.current = setTimeout(() => api.counts().then(setCounts).catch(() => {}), 300);
+    countTimer.current = setTimeout(
+      () =>
+        api
+          .counts()
+          .then(setCounts)
+          .catch(() => {}),
+      300,
+    );
   }, [api]);
 
   useEffect(() => {
@@ -136,7 +151,7 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose, onExp
   }
 
   return (
-    <main className={`console ${selected ? "has-selection" : ""}`}>
+    <main className={`console ${(showAdmin ? admin.selected : selected) ? "has-selection" : ""}`}>
       <aside className="console-list-pane" aria-label="Conversations">
         <header className="pane-header">
           <span className="avatar avatar-agent">{initials(me?.name ?? null)}</span>
@@ -180,61 +195,76 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose, onExp
           )}
         </header>
         <nav className="segmented" role="tablist" aria-label="Lists">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              role="tab"
-              aria-selected={tab === t.id}
-              onClick={() => {
-                setError(null);
-                setTab(t.id);
-              }}
-            >
-              {t.label}
-              {badge(t.id)}
-            </button>
-          ))}
-        </nav>
-        <div className="console-search">
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search name, email or message"
-            aria-label="Search conversations"
-            maxLength={100}
-          />
-        </div>
-        {error && (
-          <p className="console-error" role="alert">
-            {error}{" "}
-            <button type="button" className="link-button" onClick={() => (setError(null), list.refresh())}>
-              Retry
-            </button>
-          </p>
-        )}
-        <ul className="console-list">
-          {list.items.length === 0 && !list.loading && (
-            <li className="empty muted">{search ? "No conversations match your search." : emptyText(tab)}</li>
-          )}
-          {list.items.map((c) => (
-            <li key={c.id}>
-              <Row conversation={c} selected={selected === c.id} showTenant={tenants.length > 1} onSelect={open} />
-            </li>
-          ))}
-          {list.loading && <li className="empty muted">Loading…</li>}
-          {list.hasMore && !list.loading && (
-            <li ref={sentinel}>
-              <button type="button" className="load-more" onClick={list.loadMore}>
-                Load more
+          {!adminOnly &&
+            TABS.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                role="tab"
+                aria-selected={!showAdmin && tab === t.id}
+                onClick={() => {
+                  setError(null);
+                  setView("chats");
+                  setTab(t.id);
+                }}
+              >
+                {t.label}
+                {badge(t.id)}
               </button>
-            </li>
+            ))}
+          {me?.admin && (
+            <button type="button" role="tab" aria-selected={showAdmin} onClick={() => setView("admin")}>
+              Admin
+            </button>
           )}
-        </ul>
+        </nav>
+        {showAdmin ? (
+          <AdminList admin={admin} />
+        ) : (
+          <>
+            <div className="console-search">
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search name, email or message"
+                aria-label="Search conversations"
+                maxLength={100}
+              />
+            </div>
+            {error && (
+              <p className="console-error" role="alert">
+                {error}{" "}
+                <button type="button" className="link-button" onClick={() => (setError(null), list.refresh())}>
+                  Retry
+                </button>
+              </p>
+            )}
+            <ul className="console-list">
+              {list.items.length === 0 && !list.loading && (
+                <li className="empty muted">{search ? "No conversations match your search." : emptyText(tab)}</li>
+              )}
+              {list.items.map((c) => (
+                <li key={c.id}>
+                  <Row conversation={c} selected={selected === c.id} showTenant={tenants.length > 1} onSelect={open} />
+                </li>
+              ))}
+              {list.loading && <li className="empty muted">Loading…</li>}
+              {list.hasMore && !list.loading && (
+                <li ref={sentinel}>
+                  <button type="button" className="load-more" onClick={list.loadMore}>
+                    Load more
+                  </button>
+                </li>
+              )}
+            </ul>
+          </>
+        )}
       </aside>
       <section className="console-chat-pane">
-        {selected && me && socket ? (
+        {showAdmin ? (
+          <AdminMain admin={admin} api={admins} onBack={() => admin.select(null)} />
+        ) : selected && me && socket ? (
           <ConversationView
             key={selected}
             id={selected}

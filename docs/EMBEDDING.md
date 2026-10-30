@@ -143,13 +143,10 @@ The console runs in an iframe and uses **your dashboard's login**. Your dashboar
 
 - Agents log in to your dashboard through an OIDC provider that the Quokra server trusts (see "Connect your identity provider" below).
 - Their access token includes the audience `quokra-api` and the role `SUPPORT_AGENT`. Where the role sits in the token is configurable (`QUOKRA_AGENT_ROLES_CLAIM`, e.g. `roles` or `realm_access.roles`).
-- Each agent is a member of the tenant. In v1 the support admin adds them with SQL, using the agent's `sub` from the identity provider:
+- Each agent is a member of the tenant: a Quokra admin adds them by work email in the console's **Admin** tab, and they join on their first sign-in with that (verified) email.
+- Your dashboard's origin is registered as a **console origin**, also in the Admin tab.
 
-  ```sql
-  insert into tenant_agents (tenant_id, agent_sub)
-  select id, 'the-agent-sub' from tenants where slug = 'your-slug';
-  ```
-- Your dashboard's origin is registered as a **console origin**.
+**Where the keys come from:** a Quokra admin (someone with the `QUOKRA_ADMIN` role) creates your company in the Admin tab and gives you the publishable key, the ready-made embed snippets and, if you identify customers, the secret key (shown once).
 
 ### Connect your identity provider
 

@@ -11,7 +11,9 @@ services:
       - '5432'
 
   # A real identity provider for agent logins, with the dev realm from keycloak/quokra-realm.json:
-  # agents sam/sam and alex/alex (SUPPORT_AGENT), riley/riley (no role). Admin console: admin/admin.
+  # agents sam/sam (also QUOKRA_ADMIN) and alex/alex (SUPPORT_AGENT), riley/riley (no role).
+  # Keycloak's own admin console: admin/admin. After changing the realm file, recreate the container
+  # (docker compose rm -sf keycloak) so it's imported again.
   # Dev only: these passwords are public.
   keycloak:
     image: 'keycloak/keycloak:26.0'

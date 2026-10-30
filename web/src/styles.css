@@ -1435,6 +1435,259 @@ button {
   white-space: nowrap;
 }
 
+/* Admin tab */
+
+.button-small {
+  padding: 5px 10px;
+  font-size: 0.8rem;
+}
+
+.admin-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px 10px;
+  font-size: 0.85rem;
+}
+
+.avatar.admin-swatch {
+  width: 32px;
+  height: 32px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.admin-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.admin-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 760px;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.admin-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  border: var(--pane-border);
+  border-radius: 12px;
+  background: var(--bg);
+}
+
+.admin-card h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.admin-label {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.admin-help {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.admin-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admin-value {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.admin-value code,
+.admin-snippet pre {
+  overflow-x: auto;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--system);
+  font-size: 0.8rem;
+}
+
+.admin-value code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-snippet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.admin-snippet pre {
+  margin: 4px 0 0;
+  padding: 10px 12px;
+  line-height: 1.5;
+}
+
+.admin-secret {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--note-border);
+  border-radius: 10px;
+  background: var(--note-bg);
+  color: var(--note-text);
+  font-size: 0.85rem;
+}
+
+.admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.admin-actions .muted {
+  margin-right: auto;
+  font-size: 0.82rem;
+}
+
+.admin-notice {
+  margin: 0;
+}
+
+.admin-inline-form {
+  display: flex;
+  gap: 8px;
+}
+
+.admin-inline-form input {
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-people {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.86rem;
+}
+
+.admin-people li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-person {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.admin-person .muted,
+.admin-person strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-person .badge {
+  align-self: flex-start;
+  margin-top: 2px;
+}
+
+.admin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.admin-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admin-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.admin-form input,
+.admin-form select,
+.admin-form textarea,
+.admin-inline-form input {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--raised);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.88rem;
+}
+
+.admin-form textarea {
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.82rem;
+}
+
+.admin-form input:focus,
+.admin-form select:focus,
+.admin-form textarea:focus,
+.admin-inline-form input:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: -1px;
+  border-color: transparent;
+}
+
+.admin-color {
+  display: flex;
+  gap: 6px;
+}
+
+.admin-color input[type="color"] {
+  width: 40px;
+  padding: 2px;
+  cursor: pointer;
+}
+
+.admin-color input:not([type]) {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 560px) {
+  .admin-row {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-body {
+    padding: 14px;
+  }
+}
+
 /* Dialogs */
 
 .modal {

@@ -171,7 +171,68 @@ export interface Me {
   sub: string;
   name: string;
   tenants: string[];
+  // Which parts of the console this person may use.
+  agent: boolean;
+  admin: boolean;
 }
+
+// ---- Admin ----
+
+export interface AdminTenant {
+  id: string;
+  slug: string;
+  displayName: string;
+  publishableKey: string;
+  widgetOrigins: string[];
+  consoleOrigins: string[];
+  logoUrl: string | null;
+  primaryColor: string | null;
+  botConfig: string;
+  hasSecret: boolean;
+  agentCount: number;
+  inviteCount: number;
+  createdAt: string;
+}
+
+export interface TenantForm {
+  slug?: string;
+  displayName: string;
+  widgetOrigins: string[];
+  consoleOrigins: string[];
+  logoUrl: string | null;
+  primaryColor: string | null;
+  botConfig: string;
+}
+
+export interface AdminAgents {
+  agents: { sub: string; name: string; email: string | null }[];
+  invites: { email: string; createdAt: string }[];
+}
+
+export function adminApi(getToken: () => string) {
+  const call = <T,>(method: string, path: string, body?: unknown) =>
+    request<T>(`/admin${path}`, {
+      method,
+      token: getToken(),
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  const slug = (s: string) => encodeURIComponent(s);
+  return {
+    bots: () => call<{ items: string[] }>("GET", "/bots"),
+    tenants: () => call<{ items: AdminTenant[] }>("GET", "/tenants"),
+    create: (form: TenantForm) => call<AdminTenant>("POST", "/tenants", form),
+    update: (s: string, form: TenantForm) => call<AdminTenant>("PUT", `/tenants/${slug(s)}`, form),
+    rotateSecret: (s: string) => call<{ secretKey: string }>("POST", `/tenants/${slug(s)}/secret`),
+    agents: (s: string) => call<AdminAgents>("GET", `/tenants/${slug(s)}/agents`),
+    addAgent: (s: string, email: string) =>
+      call<{ result: "ADDED" | "INVITED" }>("POST", `/tenants/${slug(s)}/agents`, { email }),
+    removeAgent: (s: string, sub: string) => call<void>("DELETE", `/tenants/${slug(s)}/agents/${encodeURIComponent(sub)}`),
+    removeInvite: (s: string, email: string) =>
+      call<void>("DELETE", `/tenants/${slug(s)}/invites/${encodeURIComponent(email)}`),
+  };
+}
+
+export type AdminApi = ReturnType<typeof adminApi>;
 
 export interface TenantItem {
   id: string;
@@ -227,5 +288,5 @@ export type AgentApi = ReturnType<typeof agentApi>;
 // Local development only: the server signs agent tokens itself (dev profile).
 export const devApi = {
   agentToken: (sub: string, name: string) =>
-    request<{ accessToken: string }>("/dev/agent-token", { method: "POST", base: "", body: JSON.stringify({ sub, name }) }),
+    request<{ accessToken: string }>("/dev/agent-token", { method: "POST", base: "", body: JSON.stringify({ sub, name, admin: true }) }),
 };
