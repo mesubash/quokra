@@ -3,6 +3,8 @@ export interface Tenant {
   displayName: string;
   branding: { logoUrl: string | null; primaryColor: string | null };
   teaser: string | null;
+  // The tenant's wording for the header and input; placeholder may contain {name}.
+  texts: { online: string; waiting: string; closed: string; placeholder: string };
 }
 
 export interface Session {

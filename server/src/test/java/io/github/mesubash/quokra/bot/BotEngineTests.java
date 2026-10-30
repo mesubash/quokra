@@ -27,7 +27,8 @@ class BotEngineTests {
         new Urgent(List.of("urgent", "payment failed"), "Urgent answer"),
         "Fallback answer",
         2,
-        "Handoff answer");
+        "Handoff answer",
+        BotConfig.Texts.DEFAULT);
 
     @ParameterizedTest(name = "\"{0}\" / option {1} -> {2}")
     @CsvSource(nullValues = "-", textBlock = """

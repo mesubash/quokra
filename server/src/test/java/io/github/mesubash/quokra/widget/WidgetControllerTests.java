@@ -51,6 +51,8 @@ class WidgetControllerTests {
         assertThat(result).hasStatusOk();
         assertThat(result).bodyJson().extractingPath("$.slug").isEqualTo("acme");
         assertThat(result).bodyJson().extractingPath("$.displayName").isEqualTo("Acme Inc");
+        assertThat(result).bodyJson().extractingPath("$.texts.online").isEqualTo("Online · replies instantly");
+        assertThat(result).bodyJson().extractingPath("$.texts.placeholder").isEqualTo("Reply to {name}…");
         assertThat(result).bodyJson().extractingPath("$.branding.primaryColor").isEqualTo("#123456");
         assertThat(result).bodyJson().extractingPath("$.branding.logoUrl").isEqualTo("https://acme.test/logo.png");
     }

@@ -178,7 +178,7 @@ function Chat({ tenant, token, visible, onUnauthorized }: ChatProps) {
         </span>
         <div className="header-text">
           <h1>{tenant.displayName}</h1>
-          <HeaderStatus conversation={chat.conversation} online={chat.online} />
+          <HeaderStatus conversation={chat.conversation} online={chat.online} texts={tenant.texts} />
         </div>
         <CloseButton />
       </header>
@@ -212,8 +212,8 @@ function Chat({ tenant, token, visible, onUnauthorized }: ChatProps) {
 function placeholder(conversation: Conversation | null, tenant: Tenant) {
   if (conversation?.asking === "EMAIL") return "Your email address…";
   if (conversation?.asking === "NAME") return "Your name…";
-  if (conversation?.status === "HUMAN" && conversation.assignee) return `Reply to ${conversation.assignee.name}…`;
-  return `Reply to ${tenant.displayName}…`;
+  const name = conversation?.status === "HUMAN" && conversation.assignee ? conversation.assignee.name : tenant.displayName;
+  return tenant.texts.placeholder.replace("{name}", name);
 }
 
 function CloseButton() {
@@ -257,11 +257,11 @@ function StateBody({ message, onRetry }: { message: string; onRetry?: () => void
   );
 }
 
-function HeaderStatus({ conversation, online }: { conversation: Conversation | null; online: boolean }) {
+function HeaderStatus({ conversation, online, texts }: { conversation: Conversation | null; online: boolean; texts: Tenant["texts"] }) {
   if (conversation && !online) return <p className="header-status">Reconnecting…</p>;
   switch (conversation?.status) {
     case "WAITING":
-      return <p className="header-status"><span className="dot dot-waiting" />Connecting you with our team…</p>;
+      return <p className="header-status"><span className="dot dot-waiting" />{texts.waiting}</p>;
     case "HUMAN":
       return (
         <p className="header-status">
@@ -270,8 +270,8 @@ function HeaderStatus({ conversation, online }: { conversation: Conversation | n
         </p>
       );
     case "RESOLVED":
-      return <p className="header-status">Conversation closed · write again any time</p>;
+      return <p className="header-status">{texts.closed}</p>;
     default:
-      return <p className="header-status"><span className="dot" />Online · replies instantly</p>;
+      return <p className="header-status"><span className="dot" />{texts.online}</p>;
   }
 }

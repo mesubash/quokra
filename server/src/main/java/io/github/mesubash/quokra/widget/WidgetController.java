@@ -33,8 +33,15 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/widget")
 public class WidgetController {
 
-    public record TenantView(String slug, String displayName, Branding branding, String teaser) {
+    public record TenantView(String slug, String displayName, Branding branding, String teaser, Texts texts) {
         public record Branding(String logoUrl, String primaryColor) {}
+
+        // The wording the chat panel shows itself; the bot's own lines stay on the server.
+        public record Texts(String online, String waiting, String closed, String placeholder) {
+            static Texts of(BotConfig.Texts t) {
+                return new Texts(t.online(), t.waiting(), t.closed(), t.placeholder());
+            }
+        }
     }
 
     public record SessionRequest(@NotBlank String publishableKey) {}
@@ -68,9 +75,11 @@ public class WidgetController {
     @GetMapping("/tenants/{publishableKey}")
     public TenantView tenant(@PathVariable String publishableKey) {
         Tenant tenant = findTenant(publishableKey);
+        var bot = bots.find(tenant.getBotConfig());
         return new TenantView(tenant.getSlug(), tenant.getDisplayName(),
             new TenantView.Branding(tenant.getLogoUrl(), tenant.getPrimaryColor()),
-            bots.find(tenant.getBotConfig()).map(BotConfig::teaser).orElse(null));
+            bot.map(BotConfig::teaser).orElse(null),
+            TenantView.Texts.of(bot.map(BotConfig::texts).orElse(BotConfig.Texts.DEFAULT)));
     }
 
     @PostMapping("/sessions")

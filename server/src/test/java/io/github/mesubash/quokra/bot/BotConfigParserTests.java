@@ -51,6 +51,24 @@ class BotConfigParserTests {
     }
 
     @Test
+    void textsKeepTheirDefaultsUnlessChanged() {
+        assertThat(BotConfigParser.parse("valid.yaml", VALID).texts()).isEqualTo(BotConfig.Texts.DEFAULT);
+
+        BotConfig.Texts texts = BotConfigParser.parse("valid.yaml",
+            "texts:\n  online: We answer within an hour\n  ask_email: Your email, please?\n" + VALID).texts();
+
+        assertThat(texts.online()).isEqualTo("We answer within an hour");
+        assertThat(texts.askEmail()).isEqualTo("Your email, please?");
+        assertThat(texts.closed()).isEqualTo(BotConfig.Texts.DEFAULT.closed());
+    }
+
+    @Test
+    void unknownTextIsRejected() {
+        assertThatThrownBy(() -> BotConfigParser.parse("bad.yaml", "texts:\n  onlin: typo\n" + VALID))
+            .hasMessageStartingWith("bad.yaml: texts.onlin isn't a known text");
+    }
+
+    @Test
     void builtInDemoBotIsValid() throws IOException {
         String yaml = new ClassPathResource("bots/demo.yml").getContentAsString(StandardCharsets.UTF_8);
 

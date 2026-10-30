@@ -37,12 +37,11 @@ public class ConversationService {
     static final String RESOLVED_MESSAGE = "This conversation is closed. Write again any time.";
     static final String BACK_TO_BOT_MESSAGE = "Anything else I can help with?";
     // Before a guest reaches the team, the bot asks for their email, then their name (which they can skip).
-    static final String ASK_EMAIL = "Before I connect you, what's your email? Our team will use it to follow up "
-        + "if you step away.";
-    static final String BAD_EMAIL = "That doesn't look like an email address. Could you check it?";
-    static final String ASK_NAME = "Thanks! And what's your name?";
+    // Tenants can change these wording in their bot file (texts); these are the defaults.
+    static final String ASK_EMAIL = BotConfig.Texts.DEFAULT.askEmail();
+    static final String BAD_EMAIL = BotConfig.Texts.DEFAULT.badEmail();
+    static final String ASK_NAME = BotConfig.Texts.DEFAULT.askName();
     static final String SKIP_OPTION = "skip";
-    static final List<BotConfig.Option> SKIP = List.of(new BotConfig.Option(SKIP_OPTION, "Skip"));
     static final int MAX_NAME_LENGTH = 100;
     static final int MAX_EMAIL_LENGTH = 254;
     private static final Pattern EMAIL = Pattern.compile("[^\\s@]+@[^\\s@]+\\.[^\\s@]+");
@@ -115,7 +114,7 @@ public class ConversationService {
 
         requireNotBlocked(conversation);
         boolean collecting = conversation.getPendingHandoff() != null;
-        String text = collecting && SKIP_OPTION.equals(optionId) ? SKIP.getFirst().title()
+        String text = collecting && SKIP_OPTION.equals(optionId) ? textsFor(conversation).skip()
             : optionId != null ? optionTitle(conversation.getTenantId(), optionId) : checkBody(body);
 
         Instant now = clock.instant();
@@ -183,14 +182,15 @@ public class ConversationService {
         if (conversation.getCustomerEmail() == null) {
             String email = text.strip();
             if (email.length() > MAX_EMAIL_LENGTH || !EMAIL.matcher(email).matches()) {
-                botMessage(conversation, BAD_EMAIL, null, now);
+                botMessage(conversation, textsFor(conversation).badEmail(), null, now);
                 return;
             }
             if (contacts.findByEmail(conversation.getTenantId(), email).map(Contact::isBlocked).orElse(false)) {
                 throw blocked();
             }
             conversation.rememberEmail(email, now);
-            botMessage(conversation, ASK_NAME, SKIP, now);
+            BotConfig.Texts texts = textsFor(conversation);
+            botMessage(conversation, texts.askName(), List.of(new BotConfig.Option(SKIP_OPTION, texts.skip())), now);
             publishUpdate(conversation);
             return;
         }
@@ -520,7 +520,7 @@ public class ConversationService {
             if (conversation.getPendingHandoff() == null) {
                 conversation.awaitContact(reason, now);
                 conversation.touch(now);
-                botMessage(conversation, ASK_EMAIL, null, now);
+                botMessage(conversation, textsFor(conversation).askEmail(), null, now);
                 publishUpdate(conversation);
             }
             return;
@@ -544,6 +544,10 @@ public class ConversationService {
     private void publishUpdate(Conversation conversation) {
         publisher.publishEvent(new ConversationUpdated(conversation.getId(), conversation.getTenantId(),
             CustomerConversationView.of(conversation), ConversationSnapshot.of(conversation)));
+    }
+
+    private BotConfig.Texts textsFor(Conversation conversation) {
+        return botFor(conversation.getTenantId()).map(BotConfig::texts).orElse(BotConfig.Texts.DEFAULT);
     }
 
     private String handoffText(Conversation conversation) {

@@ -68,7 +68,38 @@ final class BotConfigParser {
             new Urgent(keywords(urgent.get("keywords"), "urgent.keywords"), text(urgent, "urgent.message")),
             text(map, "fallback"),
             maxFallbacks,
-            text(map, "handoff_message"));
+            text(map, "handoff_message"),
+            texts(map.get("texts")));
+    }
+
+    private static final java.util.Set<String> TEXT_KEYS =
+        java.util.Set.of("online", "waiting", "closed", "placeholder", "ask_email", "bad_email", "ask_name", "skip");
+
+    // Optional; unknown keys are an error so a typo doesn't silently keep the default.
+    private BotConfig.Texts texts(Object value) {
+        if (value == null) {
+            return BotConfig.Texts.DEFAULT;
+        }
+        Map<String, Object> map = map(value, "texts");
+        for (String key : map.keySet()) {
+            if (!TEXT_KEYS.contains(key)) {
+                throw error("texts." + key + " isn't a known text (known: " + String.join(", ", TEXT_KEYS.stream().sorted().toList()) + ")");
+            }
+        }
+        BotConfig.Texts d = BotConfig.Texts.DEFAULT;
+        return new BotConfig.Texts(
+            or(optionalText(map, "online"), d.online()),
+            or(optionalText(map, "waiting"), d.waiting()),
+            or(optionalText(map, "closed"), d.closed()),
+            or(optionalText(map, "placeholder"), d.placeholder()),
+            or(optionalText(map, "ask_email"), d.askEmail()),
+            or(optionalText(map, "bad_email"), d.badEmail()),
+            or(optionalText(map, "ask_name"), d.askName()),
+            or(optionalText(map, "skip"), d.skip()));
+    }
+
+    private static String or(String value, String fallback) {
+        return value != null ? value : fallback;
     }
 
     private MenuItem menuItem(Object item) {

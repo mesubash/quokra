@@ -55,11 +55,18 @@ WebSocket: send the same bearer token in the STOMP `CONNECT` frame header `Autho
 {
   "slug": "demo",
   "displayName": "Demo Company",
-  "branding": { "logoUrl": "https://…/logo.png", "primaryColor": "#0A7C66" }
+  "branding": { "logoUrl": "https://…/logo.png", "primaryColor": "#0A7C66" },
+  "teaser": "Hi 👋 Need any help? We're here.",
+  "texts": {
+    "online": "Online · replies instantly",
+    "waiting": "Connecting you with our team…",
+    "closed": "Conversation closed · write again any time",
+    "placeholder": "Reply to {name}…"
+  }
 }
 ```
 
-`404 TENANT_NOT_FOUND` for unknown keys.
+`teaser` and `texts` come from the tenant's bot file (see ARCHITECTURE.md §6); `texts` always has every field, with defaults for any the file leaves out. `404 TENANT_NOT_FOUND` for unknown keys.
 
 ### 3.2 `POST /widget/sessions`: start a guest session
 

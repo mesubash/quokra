@@ -208,6 +208,17 @@ urgent:
 fallback: "Sorry, I didn't get that. Pick a topic below or choose 'Talk to a person'."
 max_fallbacks: 2
 handoff_message: "Connecting you with our team. Someone will reply shortly."
+
+# Optional: the chat's own wording. Leave any out to keep the default shown here.
+texts:
+  online: "Online · replies instantly"           # header, while with the bot
+  waiting: "Connecting you with our team…"       # header, while waiting for a person
+  closed: "Conversation closed · write again any time"
+  placeholder: "Reply to {name}…"                # {name}: the company, or the agent once one joins
+  ask_email: "Before I connect you, what's your email? Our team will use it to follow up if you step away."
+  bad_email: "That doesn't look like an email address. Could you check it?"
+  ask_name: "Thanks! And what's your name?"
+  skip: "Skip"                                   # the button under ask_name
 ```
 
 - Urgent keywords are checked **first**, so they always win: the conversation gets priority `URGENT` and the tenant's urgent message, even if the text also matches a menu option or asks for a person. Each tenant chooses its own urgent keywords (e.g. "outage", "payment failed", or real emergencies).
