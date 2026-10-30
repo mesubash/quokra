@@ -1,5 +1,8 @@
 package io.github.mesubash.quokra.conversation;
 
+import io.github.mesubash.quokra.attachment.FileStore;
+import io.github.mesubash.quokra.attachment.Images;
+import io.github.mesubash.quokra.attachment.StorageCheck;
 import io.github.mesubash.quokra.bot.BotConfig;
 import io.github.mesubash.quokra.bot.TenantBots;
 import io.github.mesubash.quokra.bot.BotEngine;
@@ -9,6 +12,7 @@ import io.github.mesubash.quokra.contact.ContactRepository;
 import io.github.mesubash.quokra.conversation.Enums.EventType;
 import io.github.mesubash.quokra.conversation.Enums.HandoffReason;
 import io.github.mesubash.quokra.conversation.Enums.SenderType;
+import io.github.mesubash.quokra.tenant.Tenant;
 import io.github.mesubash.quokra.tenant.TenantRepository;
 import java.time.Clock;
 import java.time.Instant;
@@ -57,11 +61,16 @@ public class ConversationService {
     private final TenantBots bots;
     private final ApplicationEventPublisher publisher;
     private final Clock clock;
+    private final FileStore files;
+    private final StorageCheck storage;
 
     public ConversationService(ConversationRepository conversations, MessageRepository messages,
                                ConversationEventRepository events, TenantRepository tenants,
                                ContactRepository contacts, NoteRepository notes, TenantBots bots,
-                               ApplicationEventPublisher publisher, Clock clock) {
+                               ApplicationEventPublisher publisher, Clock clock, FileStore files,
+                               StorageCheck storage) {
+        this.files = files;
+        this.storage = storage;
         this.conversations = conversations;
         this.messages = messages;
         this.events = events;
@@ -149,12 +158,7 @@ public class ConversationService {
             : optionId != null ? optionTitle(conversation.getTenantId(), optionId) : checkBody(body);
 
         Instant now = clock.instant();
-        if (conversation.getStatus() == Status.RESOLVED) {
-            conversation.moveTo(StateMachine.next(conversation.getStatus(), Transition.REOPEN), now);
-            conversation.reopen(now);
-            events.save(ConversationEvent.of(conversationId, EventType.REOPENED, SenderType.CUSTOMER, null, null, now));
-            publishUpdate(conversation);
-        }
+        reopenForCustomer(conversation, now);
         conversation.touch(now);
         Message message = save(
             Message.create(conversationId, SenderType.CUSTOMER, null, null, text, clientMessageId, null, now));
@@ -247,6 +251,100 @@ public class ConversationService {
         save(Message.create(conversationId, SenderType.SYSTEM, null, null, agent.name() + " joined the chat", null, null, now));
         publishUpdate(conversation);
         return conversation;
+    }
+
+    // An image from the customer. A closed chat reopens as with a message; the bot doesn't answer images.
+    @Transactional
+    public Message addCustomerImage(UUID conversationId, String clientMessageId, String name, byte[] bytes) {
+        Conversation conversation = get(conversationId);
+        Optional<Message> existing = alreadySent(conversationId, clientMessageId);
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+        requireNotBlocked(conversation);
+        Message.Attachment attachment = storeImage(conversation, name, bytes);
+        Instant now = clock.instant();
+        reopenForCustomer(conversation, now);
+        conversation.touch(now);
+        return save(Message.image(conversationId, SenderType.CUSTOMER, null, null, clientMessageId, attachment, now));
+    }
+
+    // An image from the agent who has the chat, like a reply.
+    @Transactional
+    public Message addAgentImage(UUID conversationId, AgentRef agent, String clientMessageId, String name,
+                                 byte[] bytes) {
+        Conversation conversation = get(conversationId);
+        Optional<Message> existing = alreadySent(conversationId, clientMessageId);
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+        if (conversation.getStatus() != Status.HUMAN) {
+            throw new ApiException(HttpStatus.CONFLICT, "INVALID_TRANSITION", "Accept the conversation before replying");
+        }
+        requireAssignee(conversation, agent);
+        Message.Attachment attachment = storeImage(conversation, name, bytes);
+        Instant now = clock.instant();
+        conversation.touch(now);
+        return save(Message.image(conversationId, SenderType.AGENT, agent.sub(), agent.name(), clientMessageId,
+            attachment, now));
+    }
+
+    // Whether the 📎 button shows: the tenant allows images and the file store works.
+    public boolean imagesAllowed(Tenant tenant) {
+        return tenant.isAttachmentsEnabled() && storage.ok();
+    }
+
+    public record Image(byte[] bytes, String contentType, String name) {}
+
+    // The image of a message in this conversation; not found unless both match.
+    @Transactional(readOnly = true)
+    public Image image(UUID conversationId, UUID messageId) {
+        Message m = messages.findById(messageId)
+            .filter(found -> found.getConversationId().equals(conversationId) && found.getAttachmentKey() != null)
+            .orElseThrow(() -> ApiException.notFound("ATTACHMENT_NOT_FOUND", "Image not found"));
+        return new Image(files.get(m.getAttachmentKey()), m.getAttachmentType(), m.getAttachmentName());
+    }
+
+    // ponytail: the file is written before the message row commits, so a failed save leaves an unused file.
+    // Harmless; a clean-up job can remove files without a message if it ever matters.
+    private Message.Attachment storeImage(Conversation conversation, String name, byte[] bytes) {
+        Tenant tenant = tenants.findById(conversation.getTenantId()).orElseThrow();
+        if (!tenant.isAttachmentsEnabled()) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "ATTACHMENTS_OFF", "Images are turned off for this chat");
+        }
+        if (!storage.ok()) {
+            throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "STORAGE_UNAVAILABLE",
+                "Images can't be sent right now");
+        }
+        String type = Images.typeOf(bytes);
+        String key = conversation.getTenantId() + "/" + conversation.getId() + "/" + UUID.randomUUID();
+        files.put(key, bytes, type);
+        return new Message.Attachment(key, type, bytes.length, cleanFileName(name));
+    }
+
+    // Just the file's own name, without folders or odd characters, and not too long.
+    static String cleanFileName(String name) {
+        String clean = name == null ? "" : name.replaceAll(".*[/\\\\]", "").replaceAll("[\\p{Cntrl}\"]", "").strip();
+        if (clean.length() > 100) {
+            clean = clean.substring(clean.length() - 100);
+        }
+        return clean.isEmpty() ? "image" : clean;
+    }
+
+    private Optional<Message> alreadySent(UUID conversationId, String clientMessageId) {
+        return clientMessageId == null ? Optional.empty()
+            : messages.findByConversationIdAndClientMessageId(conversationId, clientMessageId);
+    }
+
+    // The customer writes (or sends an image) to a closed chat: the bot picks it up again.
+    private void reopenForCustomer(Conversation conversation, Instant now) {
+        if (conversation.getStatus() == Status.RESOLVED) {
+            conversation.moveTo(StateMachine.next(conversation.getStatus(), Transition.REOPEN), now);
+            conversation.reopen(now);
+            events.save(ConversationEvent.of(conversation.getId(), EventType.REOPENED, SenderType.CUSTOMER, null, null,
+                now));
+            publishUpdate(conversation);
+        }
     }
 
     @Transactional

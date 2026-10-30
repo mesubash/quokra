@@ -30,7 +30,7 @@ public class TenantAdmin {
     public record TenantView(UUID id, String slug, String displayName, String publishableKey,
                              List<String> widgetOrigins, List<String> consoleOrigins, String logoUrl,
                              String primaryColor, String botConfig, int autoResolveMinutes,
-                             OpeningHours openingHours, boolean hasSecret, int agentCount, int inviteCount,
+                             OpeningHours openingHours, boolean attachmentsEnabled, boolean hasSecret, int agentCount, int inviteCount,
                              Instant createdAt) {}
 
     // Everything an admin can set. The slug is only used when creating; it can't change later.
@@ -38,7 +38,7 @@ public class TenantAdmin {
     // openingHours: null means always open.
     public record TenantForm(String slug, String displayName, List<String> widgetOrigins, List<String> consoleOrigins,
                              String logoUrl, String primaryColor, String botConfig, Integer autoResolveMinutes,
-                             OpeningHours openingHours) {}
+                             OpeningHours openingHours, Boolean attachmentsEnabled) {}
 
     static final Pattern SLUG = Pattern.compile("[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?");
     static final Pattern ORIGIN = Pattern.compile("https?://[A-Za-z0-9.-]+(:\\d{1,5})?");
@@ -51,7 +51,7 @@ public class TenantAdmin {
 
     private static final String SELECT = """
         select t.id, t.slug, t.display_name, t.publishable_key, t.widget_origins, t.console_origins, t.logo_url,
-               t.primary_color, t.bot_config, t.auto_resolve_minutes, t.opening_hours, t.secret_key_enc is not null as has_secret,
+               t.primary_color, t.bot_config, t.auto_resolve_minutes, t.opening_hours, t.attachments_enabled, t.secret_key_enc is not null as has_secret,
                t.created_at,
                (select count(*) from tenant_agents a where a.tenant_id = t.id) as agents,
                (select count(*) from agent_invites i where i.tenant_id = t.id) as invites
@@ -92,11 +92,12 @@ public class TenantAdmin {
         try {
             jdbc.update("""
                 insert into tenants (id, slug, display_name, publishable_key, widget_origins, console_origins,
-                                     logo_url, primary_color, bot_config, auto_resolve_minutes, opening_hours)
-                values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                     logo_url, primary_color, bot_config, auto_resolve_minutes, opening_hours,
+                                     attachments_enabled)
+                values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, UUID.randomUUID(), slug, c.displayName(), newPublishableKey(), array(c.widgetOrigins()),
                 array(c.consoleOrigins()), c.logoUrl(), c.primaryColor(), c.botConfig(), c.autoResolveMinutes(),
-                c.openingHours());
+                c.openingHours(), c.attachmentsEnabled());
         } catch (DuplicateKeyException e) {
             throw new ApiException(HttpStatus.CONFLICT, "SLUG_TAKEN", "That slug is already used");
         }
@@ -109,10 +110,11 @@ public class TenantAdmin {
         Clean c = clean(form);
         jdbc.update("""
             update tenants set display_name = ?, widget_origins = ?, console_origins = ?, logo_url = ?,
-                               primary_color = ?, bot_config = ?, auto_resolve_minutes = ?, opening_hours = ?
+                               primary_color = ?, bot_config = ?, auto_resolve_minutes = ?, opening_hours = ?,
+                               attachments_enabled = ?
             where slug = ?
             """, c.displayName(), array(c.widgetOrigins()), array(c.consoleOrigins()), c.logoUrl(), c.primaryColor(),
-            c.botConfig(), c.autoResolveMinutes(), c.openingHours(), slug);
+            c.botConfig(), c.autoResolveMinutes(), c.openingHours(), c.attachmentsEnabled(), slug);
         return get(slug);
     }
 
@@ -125,7 +127,8 @@ public class TenantAdmin {
     }
 
     private record Clean(String displayName, List<String> widgetOrigins, List<String> consoleOrigins, String logoUrl,
-                         String primaryColor, String botConfig, int autoResolveMinutes, String openingHours) {}
+                         String primaryColor, String botConfig, int autoResolveMinutes, String openingHours,
+                         boolean attachmentsEnabled) {}
 
     private Clean clean(TenantForm form) {
         String name = form.displayName() == null ? "" : form.displayName().strip();
@@ -155,7 +158,8 @@ public class TenantAdmin {
             throw invalid("openingHours", e.getMessage());
         }
         return new Clean(name, origins(form.widgetOrigins(), "widgetOrigins"),
-            origins(form.consoleOrigins(), "consoleOrigins"), logo, color, bot, autoResolve, hours);
+            origins(form.consoleOrigins(), "consoleOrigins"), logo, color, bot, autoResolve, hours,
+            Boolean.TRUE.equals(form.attachmentsEnabled()));
     }
 
     // Plain origins only (scheme, host, optional port), no paths; trailing slashes are forgiven.
@@ -192,7 +196,8 @@ public class TenantAdmin {
             rs.getString("publishable_key"), strings(rs.getArray("widget_origins")),
             strings(rs.getArray("console_origins")), rs.getString("logo_url"), rs.getString("primary_color"),
             rs.getString("bot_config"), rs.getInt("auto_resolve_minutes"),
-            HOURS.convertToEntityAttribute(rs.getString("opening_hours")), rs.getBoolean("has_secret"),
+            HOURS.convertToEntityAttribute(rs.getString("opening_hours")), rs.getBoolean("attachments_enabled"),
+            rs.getBoolean("has_secret"),
             rs.getInt("agents"), rs.getInt("invites"),
             rs.getTimestamp("created_at").toInstant());
     }

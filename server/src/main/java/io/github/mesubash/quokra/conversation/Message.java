@@ -24,6 +24,8 @@ import org.hibernate.annotations.UuidGenerator;
 public class Message {
 
     public static final int MAX_BODY_LENGTH = 2000;
+    // The text of an image message, so previews, notifications and searches read sensibly.
+    public static final String IMAGE_TEXT = "Sent an image";
 
     // UUIDv7 ids sort by time, so "messages after X" is a plain id comparison.
     @Id
@@ -46,6 +48,12 @@ public class Message {
 
     private Instant createdAt;
 
+    // Set for an image message; the file is in the FileStore under attachmentKey.
+    private String attachmentKey;
+    private String attachmentType;
+    private Integer attachmentSize;
+    private String attachmentName;
+
     static Message create(UUID conversationId, SenderType senderType, String senderSub, String senderName,
                           String body, String clientMessageId, List<Option> options, Instant now) {
         Message m = new Message();
@@ -59,4 +67,17 @@ public class Message {
         m.createdAt = now;
         return m;
     }
+
+    static Message image(UUID conversationId, SenderType senderType, String senderSub, String senderName,
+                         String clientMessageId, Attachment attachment, Instant now) {
+        Message m = create(conversationId, senderType, senderSub, senderName, IMAGE_TEXT, clientMessageId, null, now);
+        m.attachmentKey = attachment.key();
+        m.attachmentType = attachment.contentType();
+        m.attachmentSize = attachment.size();
+        m.attachmentName = attachment.name();
+        return m;
+    }
+
+    // An image already in the file store.
+    public record Attachment(String key, String contentType, int size, String name) {}
 }

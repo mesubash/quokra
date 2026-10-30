@@ -37,6 +37,9 @@ public class Tenant {
 
     private String botConfig;
 
+    // Customers and agents may send images (and only while the file store works, see StorageCheck).
+    private boolean attachmentsEnabled;
+
     // The bot as edited in the Admin tab (JSON); null means the bot file above is used.
     private String botCustom;
 

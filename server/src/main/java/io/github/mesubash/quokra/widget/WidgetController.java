@@ -34,9 +34,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/widget")
 public class WidgetController {
 
-    // open: inside the tenant's opening hours (always, when it has none).
+    // open: inside the tenant's opening hours (always, when it has none). attachments: images can be sent.
     public record TenantView(String slug, String displayName, Branding branding, String teaser, Texts texts,
-                             boolean open) {
+                             boolean open, boolean attachments) {
         public record Branding(String logoUrl, String primaryColor) {}
 
         // The wording the chat panel shows itself; the bot's own lines stay on the server.
@@ -85,7 +85,7 @@ public class WidgetController {
             new TenantView.Branding(tenant.getLogoUrl(), tenant.getPrimaryColor()),
             bot.map(BotConfig::teaser).orElse(null),
             TenantView.Texts.of(bot.map(BotConfig::texts).orElse(BotConfig.Texts.DEFAULT)),
-            tenant.isOpen(clock.instant()));
+            tenant.isOpen(clock.instant()), conversations.imagesAllowed(tenant));
     }
 
     @PostMapping("/sessions")

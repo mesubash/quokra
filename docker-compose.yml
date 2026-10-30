@@ -26,6 +26,9 @@ services:
       # container reaches it as keycloak:8080, so its keys are fetched from there.
       OIDC_ISSUER_URI: http://localhost:8180/realms/quokra
       OIDC_JWKS_URI: http://keycloak:8080/realms/quokra/protocol/openid-connect/certs
+    volumes:
+      # Images sent in chats (QUOKRA_ATTACHMENTS_STORE=disk, the default).
+      - quokra-files:/data
     depends_on:
       postgres:
         condition: service_healthy
@@ -57,3 +60,4 @@ services:
 
 volumes:
   quokra-data:
+  quokra-files:

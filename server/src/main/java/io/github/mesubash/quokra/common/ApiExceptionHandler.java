@@ -14,6 +14,7 @@ import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 // Every error leaves the API in the same shape: { "error": { "code", "message", "details" } }.
 @Slf4j
@@ -50,6 +51,12 @@ public class ApiExceptionHandler {
     ResponseEntity<ErrorBody> handle(TypeMismatchException e) {
         String name = e.getPropertyName() == null ? "A parameter" : e.getPropertyName();
         return ResponseEntity.badRequest().body(body("VALIDATION_ERROR", name + " has an invalid value", null));
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    ResponseEntity<ErrorBody> handle(MaxUploadSizeExceededException e) {
+        return ResponseEntity.status(HttpStatus.CONTENT_TOO_LARGE)
+            .body(body("FILE_TOO_LARGE", "Images can be up to 5 MB", null));
     }
 
     // Someone else changed the same row at the same moment (e.g. two agents acting on one chat).

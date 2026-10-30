@@ -26,13 +26,17 @@ RUN ./mvnw -q -B -DskipTests package && cp target/*.jar /app/quokra.jar
 
 # 3. What runs: a JRE and the jar, as a non-root user.
 FROM eclipse-temurin:21-jre-alpine
-RUN addgroup -S quokra && adduser -S quokra -G quokra
+RUN addgroup -S quokra && adduser -S quokra -G quokra \
+  && mkdir -p /data/attachments && chown -R quokra:quokra /data
 WORKDIR /app
 COPY --from=server /app/quokra.jar quokra.jar
 USER quokra
 EXPOSE 8080
 # Logs as JSON lines (Elastic Common Schema), one per event; set to empty for plain text.
 ENV LOGGING_STRUCTURED_FORMAT_CONSOLE=ecs
+# Images sent in chats, when stored on disk. Mount a volume here to keep them.
+ENV QUOKRA_ATTACHMENTS_DIR=/data/attachments
+VOLUME /data
 HEALTHCHECK --interval=15s --timeout=3s --start-period=60s \
   CMD wget -qO- http://localhost:8080/actuator/health/liveness || exit 1
 ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-jar", "/app/quokra.jar"]

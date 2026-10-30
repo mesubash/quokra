@@ -34,3 +34,6 @@ build/
 
 # Built web UI (from web/)
 src/main/resources/static/
+
+### Attachments written by local runs and tests ###
+data/

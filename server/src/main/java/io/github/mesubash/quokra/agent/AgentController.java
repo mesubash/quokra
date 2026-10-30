@@ -3,6 +3,7 @@ package io.github.mesubash.quokra.agent;
 import io.github.mesubash.quokra.agent.AgentViews.ConversationView;
 import io.github.mesubash.quokra.agent.AgentViews.EventView;
 import io.github.mesubash.quokra.agent.AgentViews.Summary;
+import io.github.mesubash.quokra.attachment.Images;
 import io.github.mesubash.quokra.canned.CannedReplies;
 import io.github.mesubash.quokra.common.ApiException;
 import io.github.mesubash.quokra.conversation.AgentRef;
@@ -21,12 +22,15 @@ import io.github.mesubash.quokra.tenant.TenantRepository;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -39,6 +43,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 // Agent endpoints. An agent only sees tenants they're a member of; anything else looks like it doesn't exist.
 @RestController
@@ -53,7 +58,8 @@ public class AgentController {
     // agent / admin: which parts of the console this person may use.
     record Me(String sub, String name, List<String> tenants, boolean agent, boolean admin) {}
 
-    record TenantItem(UUID id, String slug, String displayName) {}
+    // attachments: agents can send images in this tenant's chats.
+    record TenantItem(UUID id, String slug, String displayName, boolean attachments) {}
 
     record Page<T>(List<T> items, String nextCursor) {}
 
@@ -114,7 +120,7 @@ public class AgentController {
     @GetMapping("/tenants")
     public Page<TenantItem> tenants(@AuthenticationPrincipal Jwt jwt) {
         return new Page<>(myTenants(jwt).values().stream()
-            .map(t -> new TenantItem(t.getId(), t.getSlug(), t.getDisplayName()))
+            .map(t -> new TenantItem(t.getId(), t.getSlug(), t.getDisplayName(), service.imagesAllowed(t)))
             .sorted((a, b) -> a.slug().compareTo(b.slug()))
             .toList(), null);
     }
@@ -185,6 +191,26 @@ public class AgentController {
         visible(jwt, id);
         return new ReplyResponse(MessageView.of(
             service.addAgentMessage(id, agent(jwt), request.clientMessageId(), request.body())));
+    }
+
+    // An image (multipart field "file") from the agent who has the chat.
+    @PostMapping(path = "/conversations/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @ResponseStatus(HttpStatus.CREATED)
+    public ReplyResponse sendImage(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id,
+                                   @RequestParam MultipartFile file,
+                                   @RequestParam(required = false) @Size(max = 64) String clientMessageId)
+            throws IOException {
+        visible(jwt, id);
+        return new ReplyResponse(MessageView.of(
+            service.addAgentImage(id, agent(jwt), clientMessageId, file.getOriginalFilename(), file.getBytes())));
+    }
+
+    @GetMapping("/conversations/{id}/messages/{messageId}/attachment")
+    public ResponseEntity<byte[]> image(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id,
+                                        @PathVariable UUID messageId) {
+        visible(jwt, id);
+        var image = service.image(id, messageId);
+        return Images.response(image.bytes(), image.contentType(), image.name());
     }
 
     @PostMapping("/conversations/{id}/resolve")

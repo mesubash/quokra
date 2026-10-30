@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.jayway.jsonpath.JsonPath;
 import io.github.mesubash.quokra.TestcontainersConfiguration;
+import io.github.mesubash.quokra.attachment.ImagesTests;
 import io.github.mesubash.quokra.session.SessionTokens;
 import java.util.List;
 import java.util.UUID;
@@ -16,6 +17,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
@@ -79,6 +81,49 @@ class WidgetConversationControllerTests {
         MvcTestResult again = post(BASE, null);
         assertThat(again).hasStatusOk();
         assertThat(id(again, "$.conversation.id")).isEqualTo(id(first, "$.conversation.id"));
+    }
+
+    @Test
+    void sendsAnImageThatOnlyThisVisitorCanFetch() {
+        jdbc.update("update tenants set attachments_enabled = true");
+        post(BASE, null);
+        MvcTestResult sent = mvc.post().uri(BASE + "/attachments").header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+            .multipart().file(new MockMultipartFile("file", "../shot.png", "image/png", ImagesTests.PNG))
+            .param("clientMessageId", "img-1").exchange();
+
+        assertThat(sent).hasStatus(HttpStatus.CREATED);
+        assertThat(sent).bodyJson().extractingPath("$.message.attachment.name").isEqualTo("shot.png");
+        assertThat(sent).bodyJson().extractingPath("$.message.attachment.contentType").isEqualTo("image/png");
+        String messageId = id(sent, "$.message.id");
+
+        MvcTestResult image = get(BASE + "/messages/" + messageId + "/attachment");
+        assertThat(image).hasStatusOk().hasContentType("image/png");
+        assertThat(image.getResponse().getContentAsByteArray()).isEqualTo(ImagesTests.PNG);
+
+        String otherToken = sessionTokens.issue(TENANT_ID).token();
+        assertThat(mvc.get().uri(BASE + "/messages/" + messageId + "/attachment")
+            .header(HttpHeaders.AUTHORIZATION, "Bearer " + otherToken)).hasStatus(HttpStatus.CONFLICT);
+    }
+
+    @Test
+    void imagesAreOffUntilTheCompanyTurnsThemOn() {
+        post(BASE, null);
+        MvcTestResult sent = mvc.post().uri(BASE + "/attachments").header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+            .multipart().file(new MockMultipartFile("file", "shot.png", "image/png", ImagesTests.PNG)).exchange();
+
+        assertThat(sent).hasStatus(HttpStatus.FORBIDDEN)
+            .bodyJson().extractingPath("$.error.code").isEqualTo("ATTACHMENTS_OFF");
+    }
+
+    @Test
+    void refusesFilesThatArentImages() {
+        jdbc.update("update tenants set attachments_enabled = true");
+        post(BASE, null);
+        MvcTestResult sent = mvc.post().uri(BASE + "/attachments").header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+            .multipart().file(new MockMultipartFile("file", "x.png", "image/png", "<svg/>".getBytes())).exchange();
+
+        assertThat(sent).hasStatus(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
+            .bodyJson().extractingPath("$.error.code").isEqualTo("UNSUPPORTED_FILE");
     }
 
     @Test

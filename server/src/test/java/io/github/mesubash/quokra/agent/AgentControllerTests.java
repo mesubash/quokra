@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.jayway.jsonpath.JsonPath;
 import io.github.mesubash.quokra.TestcontainersConfiguration;
+import io.github.mesubash.quokra.attachment.ImagesTests;
 import io.github.mesubash.quokra.conversation.ConversationService;
 import io.github.mesubash.quokra.conversation.Enums.HandoffReason;
 import io.github.mesubash.quokra.conversation.Enums.SenderType;
@@ -20,6 +21,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 import org.springframework.test.context.event.ApplicationEvents;
@@ -365,6 +367,26 @@ class AgentControllerTests {
 
         assertThat(get(alice, "/conversations/" + id + "/agents")).bodyJson()
             .extractingPath("$.items[*].sub").isEqualTo(List.of("alice", "bob"));
+    }
+
+    @Test
+    void assigneeSendsAnImageAndOtherAgentsOfTheTenantCanSeeIt() throws Exception {
+        jdbc.update("update tenants set attachments_enabled = true");
+        UUID id = taken(alice);
+        var file = new MockMultipartFile("file", "steps.png", "image/png", ImagesTests.PNG);
+
+        assertThat(mvc.post().uri(BASE + "/conversations/" + id + "/attachments")
+            .header(HttpHeaders.AUTHORIZATION, "Bearer " + bob).multipart().file(file).exchange())
+            .hasStatus(HttpStatus.FORBIDDEN);
+        MvcTestResult sent = mvc.post().uri(BASE + "/conversations/" + id + "/attachments")
+            .header(HttpHeaders.AUTHORIZATION, "Bearer " + alice).multipart().file(file).exchange();
+        assertThat(sent).hasStatus(HttpStatus.CREATED);
+        String messageId = JsonPath.read(sent.getResponse().getContentAsString(), "$.message.id");
+
+        assertThat(get(bob, "/conversations/" + id + "/messages/" + messageId + "/attachment")).hasStatusOk();
+        String carol = devTokens.sign("carol", "Carol", List.of("SUPPORT_AGENT"));
+        assertThat(get(carol, "/conversations/" + id + "/messages/" + messageId + "/attachment"))
+            .hasStatus(HttpStatus.NOT_FOUND);
     }
 
     @Test

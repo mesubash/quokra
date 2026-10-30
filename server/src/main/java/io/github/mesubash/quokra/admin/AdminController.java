@@ -2,6 +2,7 @@ package io.github.mesubash.quokra.admin;
 
 import io.github.mesubash.quokra.admin.TenantAdmin.TenantForm;
 import io.github.mesubash.quokra.admin.TenantAdmin.TenantView;
+import io.github.mesubash.quokra.attachment.StorageCheck;
 import io.github.mesubash.quokra.bot.BotConfigRegistry;
 import io.github.mesubash.quokra.bot.TenantBots;
 import io.github.mesubash.quokra.canned.CannedReplies;
@@ -59,9 +60,12 @@ public class AdminController {
     private final CannedReplies replies;
     private final TenantBots tenantBots;
     private final TenantRepository tenantRepository;
+    private final StorageCheck storage;
 
     public AdminController(TenantAdmin tenants, TenantAgents agents, TenantSecrets secrets, BotConfigRegistry bots,
-                           CannedReplies replies, TenantBots tenantBots, TenantRepository tenantRepository) {
+                           CannedReplies replies, TenantBots tenantBots, TenantRepository tenantRepository,
+                           StorageCheck storage) {
+        this.storage = storage;
         this.tenantBots = tenantBots;
         this.tenantRepository = tenantRepository;
         this.replies = replies;
@@ -74,6 +78,12 @@ public class AdminController {
     @GetMapping("/bots")
     public Items<String> bots() {
         return new Items<>(bots.names());
+    }
+
+    // Whether image storage works, for the "Allow images" setting.
+    @GetMapping("/storage")
+    public StorageCheck.Status storage() {
+        return storage.status();
     }
 
     @GetMapping("/tenants")

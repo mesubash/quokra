@@ -1,6 +1,11 @@
 spring:
   application:
     name: quokra-server
+  servlet:
+    multipart:
+      # Images up to 5 MB (checked again when stored).
+      max-file-size: 5MB
+      max-request-size: 6MB
   jpa:
     open-in-view: false
     hibernate:
@@ -29,6 +34,15 @@ quokra:
   tenant-secrets:
     # 32 random bytes, base64. Encrypts tenant secret keys in the database. Empty: identify is off.
     encryption-key: ${TENANT_SECRET_ENCRYPTION_KEY:}
+  attachments:
+    # disk (a folder, e.g. a Docker volume) or s3 (AWS S3, Cloudflare R2, MinIO).
+    store: ${QUOKRA_ATTACHMENTS_STORE:disk}
+    dir: ${QUOKRA_ATTACHMENTS_DIR:./data/attachments}
+    s3:
+      bucket: ${QUOKRA_ATTACHMENTS_S3_BUCKET:}
+      region: ${QUOKRA_ATTACHMENTS_S3_REGION:us-east-1}
+      # Only for R2 or MinIO, e.g. https://<account>.r2.cloudflarestorage.com
+      endpoint: ${QUOKRA_ATTACHMENTS_S3_ENDPOINT:}
   ws:
     # Origins allowed to open the WebSocket: where the chat panel and console are served.
     allowed-origins: ${PUBLIC_BASE_URL:http://localhost:8080}
