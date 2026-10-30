@@ -12,6 +12,9 @@ agents. Admins set them up in the console's **Admin** tab.
    - **Brand colour** and **logo** (optional).
    - **Bot file:** which FAQ the bot answers from (see [Write the bot](07-write-the-bot.md)).
    - **Close quiet chats:** when chats without replies close by themselves (default after 24 hours).
+   - **Opening hours** (optional): a time zone and hours per day. Outside them the bot still answers,
+     and "Talk to a person" still reaches the queue, but the customer is told the team is away and when
+     it's back. Off means always open.
    - **Websites that show the chat:** e.g. `https://www.acme.com`, one per line.
    - **Dashboards that show the agent console:** e.g. `https://admin.acme.com`.
 3. **Create company.** You now get:

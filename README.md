@@ -25,6 +25,7 @@
 - Reply (which also accepts the chat), saved replies picked with `/`, private notes, transfer to a colleague or back to the queue, return to the bot, resolve, reopen, block a contact.
 - Notifications: sounds, toasts and browser notifications for new chats, replies in my chats, transfers and notes.
 - Quiet chats close by themselves after a time each company sets.
+- Opening hours: outside them, customers are told when the team is back.
 
 **For the site embedding it**
 - Follows your page's light or dark mode by itself, or a theme you choose, and your own accent colour.
@@ -82,7 +83,7 @@ The dev profile starts PostgreSQL with Docker Compose and loads a demo tenant. M
 
 ## Status
 
-v1 (FAQ bot + human handoff on the web) is complete: real agent login, an Admin tab for companies and keys, and a Docker image. v2 (daily operations) is in progress: notifications, auto-resolve and saved replies are done; business hours and more come next. See the [plan](docs/PLAN.md).
+v1 (FAQ bot + human handoff on the web) is complete: real agent login, an Admin tab for companies and keys, and a Docker image. v2 (daily operations) is in progress: notifications, auto-resolve, saved replies and opening hours are done; FAQ editing in the Admin tab and more come next. See the [plan](docs/PLAN.md).
 
 ## Docs
 

@@ -61,12 +61,14 @@ WebSocket: send the same bearer token in the STOMP `CONNECT` frame header `Autho
     "online": "Online · replies instantly",
     "waiting": "Connecting you with our team…",
     "closed": "Conversation closed · write again any time",
-    "placeholder": "Reply to {name}…"
-  }
+    "placeholder": "Reply to {name}…",
+    "offline": "Away now · we'll reply when we're back"
+  },
+  "open": true
 }
 ```
 
-`teaser` and `texts` come from the tenant's bot file (see ARCHITECTURE.md §6); `texts` always has every field, with defaults for any the file leaves out. `404 TENANT_NOT_FOUND` for unknown keys.
+`open` is false outside the tenant's opening hours (always true without any); the chat then shows `texts.offline` in its header. `teaser` and `texts` come from the tenant's bot file (see ARCHITECTURE.md §6); `texts` always has every field, with defaults for any the file leaves out. `404 TENANT_NOT_FOUND` for unknown keys.
 
 ### 3.2 `POST /widget/sessions`: start a guest session
 
@@ -313,6 +315,9 @@ interface Tenant {
   consoleOrigins: string[];              // dashboards that may show the console
   logoUrl: string | null; primaryColor: string | null; botConfig: string;
   autoResolveMinutes: number;            // close quiet chats after this long; 0 = never (default 1440)
+  openingHours: { timezone: string; days: { [day: string]: string } } | null;
+                                         // e.g. { "timezone": "Europe/Berlin", "days": { "MON": "09:00-17:00" } };
+                                         // days MON..SUN, left out = closed; null = always open
   hasSecret: boolean;                    // the secret itself is never returned again
   agentCount: number; inviteCount: number; createdAt: string;
 }
@@ -322,7 +327,7 @@ interface Tenant {
 |---|---|
 | `GET /admin/bots` | Bot files the server has: `{ "items": ["demo", …] }` |
 | `GET /admin/tenants` | All tenants: `{ "items": [Tenant, …] }` |
-| `POST /admin/tenants` | Create one: `{ slug, displayName, widgetOrigins, consoleOrigins, logoUrl?, primaryColor?, botConfig, autoResolveMinutes? }` → `201 Tenant` with a new publishable key. `409 SLUG_TAKEN` |
+| `POST /admin/tenants` | Create one: `{ slug, displayName, widgetOrigins, consoleOrigins, logoUrl?, primaryColor?, botConfig, autoResolveMinutes?, openingHours? }` → `201 Tenant` with a new publishable key. `409 SLUG_TAKEN` |
 | `GET /admin/tenants/{slug}` | One tenant |
 | `PUT /admin/tenants/{slug}` | Replace its settings (same body; the slug can't change) |
 | `POST /admin/tenants/{slug}/secret` | New secret key for identifying customers: `{ "secretKey": "sk_…" }`, shown only this once; the old one stops working. `409 SECRETS_DISABLED` without `TENANT_SECRET_ENCRYPTION_KEY` |
@@ -335,7 +340,7 @@ interface Tenant {
 | `PUT /admin/tenants/{slug}/replies/{id}` | Change one (same body). `404 REPLY_NOT_FOUND` |
 | `DELETE /admin/tenants/{slug}/replies/{id}` | Remove one (`204`). `404 REPLY_NOT_FOUND` |
 
-Validation (`400 VALIDATION_ERROR`, the message names the field): slug of 2–40 lowercase letters, digits or dashes; sites as plain origins (`https://www.example.com`, no path); colour `#rrggbb`; logo `https://`; an existing bot file.
+Validation (`400 VALIDATION_ERROR`, the message names the field): slug of 2–40 lowercase letters, digits or dashes; sites as plain origins (`https://www.example.com`, no path); colour `#rrggbb`; logo `https://`; an existing bot file; opening hours with a real time zone (`Europe/Berlin`), `HH:mm-HH:mm` ranges that close after they open, and at least one day.
 
 **Invites:** an invited agent joins on their first `GET /agent/me` whose token has that `email` with `email_verified: true`. Unverified emails never match.
 

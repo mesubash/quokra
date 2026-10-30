@@ -220,7 +220,11 @@ texts:
   ask_name: "Thanks! And what's your name?"
   skip: "Skip"                                   # the button under ask_name
   auto_closed: "We've closed this chat since we haven't heard back. Write again any time."
+  offline: "Away now · we'll reply when we're back"   # header, outside opening hours
+  offline_handoff: "We're away right now and back {opens}. Leave your message here and we'll reply then."
 ```
+
+- **Opening hours:** optional per tenant (Admin tab; a time zone and a range per weekday, stored as JSON in `tenants.opening_hours`; none = always open). Outside them the bot answers as usual and handoffs still go to the queue, but the customer sees `offline_handoff` instead of the handoff or urgent message, with `{opens}` like "tomorrow at 09:00 (Europe/Berlin)", and the header shows `offline`.
 
 - **Auto-resolve:** every 5 minutes (`quokra.auto-resolve.every`), quiet conversations close by themselves after the tenant's `auto_resolve_minutes` (default 24 hours, 0 = never, set in the Admin tab): chats **with the bot** where the customer wrote something and then left, and chats **with an agent** where the agent wrote last. Waiting chats and chats where the customer wrote last stay open. The customer sees `auto_closed`; the activity shows "Closed automatically" (event `RESOLVED`, reason `AUTO`); writing again reopens the chat as usual.
 - Urgent keywords are checked **first**, so they always win: the conversation gets priority `URGENT` and the tenant's urgent message, even if the text also matches a menu option or asks for a person. Each tenant chooses its own urgent keywords (e.g. "outage", "payment failed", or real emergencies).

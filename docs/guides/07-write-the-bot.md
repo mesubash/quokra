@@ -32,6 +32,7 @@ questions, and when to hand over to a person.
    texts:                                        # optional: the chat's own wording
      online: "Online · we usually reply within minutes"
      auto_closed: "We've closed this chat since we haven't heard back. Write again any time."
+     offline_handoff: "We're away right now and back {opens}. Leave your message here and we'll reply then."
    ```
 
 3. In the **Admin** tab, pick the file for the company (**Bot file**), and set **Close quiet chats**.
@@ -41,5 +42,6 @@ questions, and when to hand over to a person.
 - Avoid broad keywords ("about", your product name) that would match many questions.
 - A mistake in the file is reported at startup with the file and field name.
 
-All `texts` keys (header lines, input placeholder, the email/name questions, the closing message) are
+All `texts` keys (header lines, input placeholder, the email/name questions, the closing message, the
+away messages used outside [opening hours](02-set-up-a-company.md)) are
 listed in [Architecture §6](../ARCHITECTURE.md).
