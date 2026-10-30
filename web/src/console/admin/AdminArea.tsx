@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import {
   ApiError,
   type AdminAgents,
@@ -8,11 +8,11 @@ import {
   type SavedReply,
   type TenantForm,
 } from "../../lib/api";
-import { BackIcon, CheckIcon, CopyIcon } from "../../lib/icons";
+import { CheckIcon, CloseIcon, CopyIcon } from "../../lib/icons";
 import { initials } from "../format";
 import { BotCard } from "./BotCard";
 
-// The Admin tab: companies (tenants) on the left, the selected one on the right.
+// Settings for admins: the companies (tenants) that use Quokra and everything about each one.
 // Only shown to people with the admin role; the server checks that role on every call anyway.
 
 export type AdminSelection = string | "new" | null;
@@ -47,15 +47,58 @@ export function useAdmin(api: AdminApi, enabled: boolean) {
 
 type Admin = ReturnType<typeof useAdmin>;
 
-export function AdminList({ admin }: { admin: Admin }) {
+type Section = "general" | "bot" | "replies" | "agents" | "embed";
+
+const SECTIONS: { id: Section; label: string }[] = [
+  { id: "general", label: "General" },
+  { id: "bot", label: "Bot" },
+  { id: "replies", label: "Saved replies" },
+  { id: "agents", label: "Agents" },
+  { id: "embed", label: "Embed & keys" },
+];
+
+// Settings, opened from the gear in the console header: pick a company, then one section at a time.
+// onClose is missing for admins without the agent role, who only have settings.
+export function Settings({ admin, api, onClose }: { admin: Admin; api: AdminApi; onClose?: () => void }) {
+  const [section, setSection] = useState<Section>("general");
+
+  useEffect(() => {
+    if (!onClose) return;
+    const close = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    document.addEventListener("keydown", close);
+    return () => document.removeEventListener("keydown", close);
+  }, [onClose]);
+
+  const tenants = admin.tenants ?? [];
+  const selected = admin.selected ?? tenants[0]?.slug ?? null;
+  const tenant = tenants.find((t) => t.slug === selected);
+
   return (
-    <>
-      <div className="admin-list-head">
-        <span className="muted">Companies</span>
+    <div className="settings" role="dialog" aria-modal="true" aria-label="Settings">
+      <header className="settings-header">
+        <h2>Settings</h2>
+        {tenants.length > 0 && (
+          <label className="settings-company">
+            <span className="muted">Company</span>
+            <select value={selected ?? ""} onChange={(e) => admin.select(e.target.value)}>
+              {selected === "new" && <option value="new">New company</option>}
+              {tenants.map((t) => (
+                <option key={t.slug} value={t.slug}>
+                  {t.displayName}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <button type="button" className="button button-small" onClick={() => admin.select("new")}>
           New company
         </button>
-      </div>
+        {onClose && (
+          <button type="button" className="icon-button quiet" aria-label="Close settings" onClick={onClose}>
+            <CloseIcon size={18} />
+          </button>
+        )}
+      </header>
       {admin.error && (
         <p className="console-error" role="alert">
           {admin.error}{" "}
@@ -64,98 +107,60 @@ export function AdminList({ admin }: { admin: Admin }) {
           </button>
         </p>
       )}
-      <ul className="console-list">
-        {admin.tenants === null && <li className="empty muted">Loading…</li>}
-        {admin.tenants?.length === 0 && <li className="empty muted">No companies yet.</li>}
-        {admin.tenants?.map((t) => (
-          <li key={t.slug}>
-            <button
-              type="button"
-              className={`console-item ${admin.selected === t.slug ? "selected" : ""}`}
-              aria-current={admin.selected === t.slug || undefined}
-              onClick={() => admin.select(t.slug)}
-            >
-              <span className="avatar admin-swatch" style={{ background: t.primaryColor ?? undefined }}>
-                {initials(t.displayName)}
-              </span>
-              <span className="item-body">
-                <span className="item-top">
-                  <strong>{t.displayName}</strong>
-                </span>
-                <span className="item-preview">
-                  {t.slug} · {t.agentCount} {t.agentCount === 1 ? "agent" : "agents"}
-                  {t.inviteCount > 0 && ` · ${t.inviteCount} invited`}
-                </span>
-              </span>
-            </button>
-          </li>
-        ))}
-      </ul>
-    </>
-  );
-}
-
-export function AdminMain({ admin, api, onBack }: { admin: Admin; api: AdminApi; onBack: () => void }) {
-  if (admin.selected === "new") {
-    return (
-      <AdminPage title="New company" onBack={onBack}>
-        <TenantFormView
-          api={api}
-          bots={admin.bots}
-          onSaved={(t) => {
-            admin.reload();
-            admin.select(t.slug);
-          }}
-        />
-      </AdminPage>
-    );
-  }
-  const tenant = admin.tenants?.find((t) => t.slug === admin.selected);
-  if (!tenant) {
-    return (
-      <div className="console-empty">
-        <p className="muted">Pick a company, or create a new one.</p>
+      <div className="settings-body">
+        {selected === "new" ? (
+          <div className="settings-content">
+            <section className="admin-card">
+              <h3>New company</h3>
+              <TenantFormView
+                api={api}
+                bots={admin.bots}
+                onSaved={(t) => {
+                  admin.reload();
+                  admin.select(t.slug);
+                  setSection("embed");
+                }}
+              />
+            </section>
+          </div>
+        ) : tenant ? (
+          <>
+            <nav className="settings-nav" aria-label="Settings sections">
+              {SECTIONS.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  aria-current={section === s.id ? "page" : undefined}
+                  onClick={() => setSection(s.id)}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </nav>
+            <div className="settings-content" key={`${tenant.slug} ${section}`}>
+              {section === "general" && (
+                <section className="admin-card">
+                  <h3>General</h3>
+                  <TenantFormView api={api} bots={admin.bots} tenant={tenant} onSaved={admin.reload} />
+                </section>
+              )}
+              {section === "bot" && <BotCard api={api} tenant={tenant} />}
+              {section === "replies" && <RepliesCard api={api} tenant={tenant} />}
+              {section === "agents" && <AgentsCard api={api} tenant={tenant} onChanged={admin.reload} />}
+              {section === "embed" && (
+                <>
+                  <EmbedCard tenant={tenant} />
+                  <SecretCard api={api} tenant={tenant} onChanged={admin.reload} />
+                </>
+              )}
+            </div>
+          </>
+        ) : (
+          <p className="muted settings-empty">
+            {admin.tenants === null ? "Loading…" : "No companies yet. Create one to get started."}
+          </p>
+        )}
       </div>
-    );
-  }
-  return (
-    <AdminPage title={tenant.displayName} subtitle={tenant.slug} onBack={onBack} key={tenant.slug}>
-      <EmbedCard tenant={tenant} />
-      <SecretCard api={api} tenant={tenant} onChanged={admin.reload} />
-      <AgentsCard api={api} tenant={tenant} onChanged={admin.reload} />
-      <BotCard api={api} tenant={tenant} />
-      <RepliesCard api={api} tenant={tenant} />
-      <section className="admin-card">
-        <h3>Settings</h3>
-        <TenantFormView api={api} bots={admin.bots} tenant={tenant} onSaved={admin.reload} />
-      </section>
-    </AdminPage>
-  );
-}
-
-function AdminPage({
-  title,
-  subtitle,
-  onBack,
-  children,
-}: {
-  title: string;
-  subtitle?: string;
-  onBack: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <div className="admin-page">
-      <header className="conversation-header">
-        <button type="button" className="icon-button quiet back" aria-label="Back to the list" onClick={onBack}>
-          <BackIcon size={20} />
-        </button>
-        <div className="conversation-title">
-          <span className="conversation-name">{title}</span>
-          {subtitle && <span className="conversation-sub muted">{subtitle}</span>}
-        </div>
-      </header>
-      <div className="admin-body">{children}</div>
     </div>
   );
 }

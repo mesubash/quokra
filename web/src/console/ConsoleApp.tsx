@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { adminApi, agentApi, ApiError, type ConversationSummary, type Me, type TenantItem } from "../lib/api";
 import { onHostMessage, postToHost } from "../lib/bridge";
-import { CloseIcon, ExpandIcon, SearchIcon } from "../lib/icons";
+import { CloseIcon, ExpandIcon, SearchIcon, SettingsIcon } from "../lib/icons";
 import { loadPrefs, savePrefs, type NotifyPrefs } from "../lib/notifyPrefs";
 import { chime } from "../lib/sound";
 import { NotifyMenu, type HostNotifications } from "./NotifyMenu";
 import { noticeFor, type Notice } from "./notifications";
 import { openSocket, type QueueSnapshot, type Socket } from "../lib/realtime";
 import { ConversationView } from "./ConversationView";
-import { AdminList, AdminMain, useAdmin } from "./admin/AdminArea";
+import { Settings, useAdmin } from "./admin/AdminArea";
 import { ago, initials, listTime, priorityLabel, reasonLabel } from "./format";
 import { useConversationList, type Tab } from "./useConversationList";
 
@@ -35,8 +35,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose, onExpand, initialConversation }: Props) {
   const api = useMemo(() => agentApi(getToken), [getToken]);
   const admins = useMemo(() => adminApi(getToken), [getToken]);
-  // "admin" shows the Admin tab's company list instead of conversations.
-  const [view, setView] = useState<"chats" | "admin">("chats");
+  // Settings (admins only) open over the whole console.
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [me, setMe] = useState<Me | null>(null);
   const [tenants, setTenants] = useState<TenantItem[]>([]);
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -65,9 +65,9 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose, onExp
   const search = useDebounced(query.trim(), 300);
   const list = useConversationList(api, tab, me?.sub ?? null, tenants, search);
   const admin = useAdmin(admins, me?.admin ?? false);
-  // Admins without the agent role only get the Admin tab.
+  // Admins without the agent role only get settings.
   const adminOnly = me !== null && me.admin && !me.agent;
-  const showAdmin = view === "admin" || adminOnly;
+  const showSettings = settingsOpen || adminOnly;
 
   const failed = useCallback(
     (e: unknown) => {
@@ -176,7 +176,7 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose, onExp
       onHostMessage((m) => {
         if (m.type === "console.notifications") setHostNotify({ available: m.available, permission: m.permission });
         else if (m.type === "console.open" && UUID.test(m.conversationId)) {
-          setView("chats");
+          setSettingsOpen(false);
           setSelected(m.conversationId);
         }
       }),
@@ -217,7 +217,7 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose, onExp
   }
 
   return (
-    <main className={`console ${(showAdmin ? admin.selected : selected) ? "has-selection" : ""}`}>
+    <main className={`console ${selected ? "has-selection" : ""}`}>
       <aside className="console-list-pane" aria-label="Conversations">
         <header className="pane-header">
           <span className="avatar avatar-agent">{initials(me?.name ?? null)}</span>
@@ -226,6 +226,17 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose, onExp
             <span className="muted">Support</span>
           </div>
           <NotifyMenu prefs={prefs} onChange={setPrefs} host={hostNotify} onTurnOn={askPermission} />
+          {me?.admin && (
+            <button
+              type="button"
+              className="icon-button quiet"
+              aria-label="Settings"
+              title="Settings"
+              onClick={() => setSettingsOpen(true)}
+            >
+              <SettingsIcon size={17} />
+            </button>
+          )}
           {onSignOut && (
             <button type="button" className="link-button" onClick={onSignOut}>
               Sign out
@@ -260,77 +271,62 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose, onExp
           </div>
         )}
         <nav className="segmented" role="tablist" aria-label="Lists">
-          {!adminOnly &&
-            TABS.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                role="tab"
-                aria-selected={!showAdmin && tab === t.id}
-                onClick={() => {
-                  setError(null);
-                  setView("chats");
-                  setTab(t.id);
-                }}
-              >
-                {t.label}
-                {badge(t.id)}
-              </button>
-            ))}
-          {me?.admin && (
-            <button type="button" role="tab" aria-selected={showAdmin} onClick={() => setView("admin")}>
-              Admin
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={tab === t.id}
+              onClick={() => {
+                setError(null);
+                setTab(t.id);
+              }}
+            >
+              {t.label}
+              {badge(t.id)}
             </button>
-          )}
+          ))}
         </nav>
-        {showAdmin ? (
-          <AdminList admin={admin} />
-        ) : (
-          <>
-            <div className="console-search">
-              <SearchIcon size={15} />
-              <input
-                type="search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search name, email or message"
-                aria-label="Search conversations"
-                maxLength={100}
-              />
-            </div>
-            {error && (
-              <p className="console-error" role="alert">
-                {error}{" "}
-                <button type="button" className="link-button" onClick={() => (setError(null), list.refresh())}>
-                  Retry
-                </button>
-              </p>
-            )}
-            <ul className="console-list">
-              {list.items.length === 0 && !list.loading && (
-                <li className="empty muted">{search ? "No conversations match your search." : emptyText(tab)}</li>
-              )}
-              {list.items.map((c) => (
-                <li key={c.id}>
-                  <Row conversation={c} selected={selected === c.id} showTenant={tenants.length > 1} onSelect={open} />
-                </li>
-              ))}
-              {list.loading && <li className="empty muted">Loading…</li>}
-              {list.hasMore && !list.loading && (
-                <li ref={sentinel}>
-                  <button type="button" className="load-more" onClick={list.loadMore}>
-                    Load more
-                  </button>
-                </li>
-              )}
-            </ul>
-          </>
+        <div className="console-search">
+          <SearchIcon size={15} />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search name, email or message"
+            aria-label="Search conversations"
+            maxLength={100}
+          />
+        </div>
+        {error && (
+          <p className="console-error" role="alert">
+            {error}{" "}
+            <button type="button" className="link-button" onClick={() => (setError(null), list.refresh())}>
+              Retry
+            </button>
+          </p>
         )}
+        <ul className="console-list">
+          {list.items.length === 0 && !list.loading && (
+            <li className="empty muted">{search ? "No conversations match your search." : emptyText(tab)}</li>
+          )}
+          {list.items.map((c) => (
+            <li key={c.id}>
+              <Row conversation={c} selected={selected === c.id} showTenant={tenants.length > 1} onSelect={open} />
+            </li>
+          ))}
+          {list.loading && <li className="empty muted">Loading…</li>}
+          {list.hasMore && !list.loading && (
+            <li ref={sentinel}>
+              <button type="button" className="load-more" onClick={list.loadMore}>
+                Load more
+              </button>
+            </li>
+          )}
+        </ul>
       </aside>
       <section className="console-chat-pane">
-        {showAdmin ? (
-          <AdminMain admin={admin} api={admins} onBack={() => admin.select(null)} />
-        ) : selected && me && socket ? (
+        {selected && me && socket ? (
           <ConversationView
             key={selected}
             id={selected}
@@ -350,6 +346,9 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose, onExp
           </div>
         )}
       </section>
+      {showSettings && (
+        <Settings admin={admin} api={admins} onClose={adminOnly ? undefined : () => setSettingsOpen(false)} />
+      )}
       <div className="toasts" aria-live="polite">
         {toasts.map((t) => (
           <button
@@ -358,7 +357,7 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose, onExp
             className={`toast toast-${t.kind}`}
             onClick={() => {
               setToasts((current) => current.filter((x) => x.key !== t.key));
-              setView("chats");
+              setSettingsOpen(false);
               open(t.conversationId);
             }}
           >

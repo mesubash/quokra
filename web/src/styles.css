@@ -825,6 +825,7 @@ button {
 
 .console {
   --pane-border: 1px solid var(--border);
+  position: relative;
   display: grid;
   grid-template-columns: minmax(280px, 340px) 1fr;
   height: 100%;
@@ -1577,38 +1578,121 @@ button {
   font-size: 0.8rem;
 }
 
-.admin-list-head {
+/* Settings: over the whole console. Sections on the left, or along the top when narrow. */
+.settings {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+.settings-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: var(--pane-border);
+}
+
+.settings-header h2 {
+  margin: 0 auto 0 0;
+  font-size: 1rem;
+}
+
+.settings-company {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0 16px 10px;
+  gap: 8px;
   font-size: 0.85rem;
 }
 
-.avatar.admin-swatch {
-  width: 32px;
-  height: 32px;
-  background: var(--primary);
-  color: #fff;
-  font-size: 0.75rem;
+.settings-company select {
+  max-width: 200px;
+  padding: 5px 8px;
+  border: var(--pane-border);
+  border-radius: 8px;
+  background: var(--raised);
+  color: var(--text);
+  font: inherit;
+}
+
+.settings-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 190px 1fr;
+}
+
+.settings-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 8px;
+  border-right: var(--pane-border);
+}
+
+.settings-nav button {
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.88rem;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.settings-nav button:hover {
+  background: var(--hover);
+}
+
+.settings-nav button[aria-current="page"] {
+  background: var(--hover);
   font-weight: 600;
 }
 
-.admin-page {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  min-height: 0;
-}
-
-.admin-body {
+.settings-content {
+  grid-column: -2;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  width: 100%;
-  max-width: 760px;
+  min-width: 0;
   padding: 20px;
   overflow-y: auto;
+}
+
+.settings-content > * {
+  width: 100%;
+  max-width: 760px;
+}
+
+.settings-empty {
+  grid-column: 1 / -1;
+  padding: 24px;
+}
+
+@media (max-width: 760px) {
+  .settings-body {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+
+  .settings-nav {
+    flex-direction: row;
+    overflow-x: auto;
+    border-right: 0;
+    border-bottom: var(--pane-border);
+  }
+
+  .settings-content {
+    grid-column: 1;
+    padding: 16px;
+  }
 }
 
 .admin-card {
@@ -1882,10 +1966,6 @@ button {
 @media (max-width: 560px) {
   .admin-row {
     grid-template-columns: 1fr;
-  }
-
-  .admin-body {
-    padding: 14px;
   }
 }
 
