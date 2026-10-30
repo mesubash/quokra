@@ -4,7 +4,7 @@ Quokra is an embeddable customer support platform. A FAQ bot answers first; when
 
 | | |
 |---|---|
-| **Status** | Plan v7: v1 steps 1–10 done; step 11 (ship it) next |
+| **Status** | Plan v7: v1 done (steps 1–11); v2 next |
 | **Last updated** | 2026-10-30 |
 | **Current target** | v1: FAQ bot + human handoff on the web |
 | **Stack** | Spring Boot 4.1 (Java 21) + PostgreSQL · React + TypeScript (Vite), served by the server · one repository, one deployable |
@@ -116,7 +116,7 @@ Admin tab (companies, keys and embed snippets, allowed sites, agents by email in
 | 8b | **Contacts + agent tools:** email and name asked in the chat before handoff, contacts, block / unblock, reopen, transfer, private notes, paged lists, counts, console redesign, new-chat sound | Done by hand in the browser; tests for each endpoint ✅ |
 | 9 | **Identify:** host-signed identity token, guest → identified merge ✅ | Tests: valid, expired, wrong tenant, tampered |
 | 10 | **Hardening + docs:** rate limits, CORS, error format, embed guide checked against reality ✅ | [Security checklist](ARCHITECTURE.md#13-security) passes |
-| 11 | **Ship it:** one Docker image (server + web UI), `docker compose up` for the whole stack (Quokra, PostgreSQL, Keycloak, demo data), structured JSON logs, CI running the tests on every push | Someone new runs it from the README in minutes |
+| 11 | **Ship it:** one Docker image (server + web UI), `docker compose up` for the whole stack (Quokra, PostgreSQL, Keycloak, demo data), structured JSON logs, a deploy guide ✅ | Someone new runs it from the README in minutes |
 
 ---
 

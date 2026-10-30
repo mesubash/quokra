@@ -53,9 +53,19 @@ Agent console, in your dashboard (your login provides the agent's token):
 
 Everything else (bubble mode, identifying customers, themes, events) is in the [embedding guide](docs/EMBEDDING.md).
 
-## Run it locally
+## Try it with Docker
 
-Needs Java 21+, Docker (for PostgreSQL) and pnpm.
+Nothing to install but Docker:
+
+```bash
+docker compose up --build
+```
+
+Quokra, PostgreSQL and Keycloak start with a demo company and two demo agents (`sam` / `sam`, also an admin, and `alex` / `alex`). The customer chat is at http://localhost:8080/w/demo?pk=pk_test_demo; for the agent console, run the [playground](https://github.com/mesubash/quokra-playground) and sign in as an agent. To run it for real, see [Deploying](docs/DEPLOY.md).
+
+## Run it for development
+
+Needs Java 21+, Docker (for PostgreSQL and Keycloak) and pnpm.
 
 ```bash
 cd web && pnpm install && pnpm build    # builds the chat and console into the server
@@ -71,7 +81,7 @@ The dev profile starts PostgreSQL with Docker Compose and loads a demo tenant. M
 
 ## Status
 
-v1 (FAQ bot + human handoff on the web) is feature complete and being tried in the playground. Left for v1: real agent login against an identity provider, tenant setup tooling, and the Docker image. See the [plan](docs/PLAN.md).
+v1 (FAQ bot + human handoff on the web) is complete: real agent login, an Admin tab for companies and keys, and a Docker image. Next (v2): notifications, auto-resolve and other daily-operations features. See the [plan](docs/PLAN.md).
 
 ## Docs
 
@@ -82,6 +92,7 @@ v1 (FAQ bot + human handoff on the web) is feature complete and being tried in t
 | [API](docs/API.md) | REST endpoints, realtime events, postMessage protocol, `sdk.js` API, errors |
 | [Embedding guide](docs/EMBEDDING.md) | How sites add the chat and the console |
 | [Development](docs/DEVELOPMENT.md) | Setup, conventions, testing, definition of done |
+| [Deploying](docs/DEPLOY.md) | The Docker image, settings, first steps after it runs |
 
 ## Stack
 

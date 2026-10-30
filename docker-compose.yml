@@ -1,0 +1,59 @@
+# Try Quokra in one command, with nothing installed but Docker:
+#
+#   docker compose up --build
+#
+#   http://localhost:8080/w/demo?pk=pk_test_demo   the customer chat on its own page
+#   http://localhost:8180/admin                     Keycloak (admin / admin)
+#   Agent console: run the playground (github.com/mesubash/quokra-playground, pnpm dev) and sign in
+#   as an agent there: sam / sam (also an admin) or alex / alex.
+#
+# DEMO ONLY: every password and key below is public. For a real deployment see docs/DEPLOY.md.
+services:
+  quokra:
+    build: .
+    ports:
+      - '8080:8080'
+    environment:
+      SPRING_PROFILES_ACTIVE: demo
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/quokra
+      SPRING_DATASOURCE_USERNAME: quokra
+      SPRING_DATASOURCE_PASSWORD: quokra
+      PUBLIC_BASE_URL: http://localhost:8080
+      QUOKRA_SESSION_SIGNING_KEY: demo-only-session-signing-key-change-me-0123456789
+      # The demo tenant's secret key (db/dev) is encrypted with this; dev only.
+      TENANT_SECRET_ENCRYPTION_KEY: ZGV2LW9ubHktdGVuYW50LXNlY3JldC1rZXktMzJieXQ=
+      # Browsers reach Keycloak at localhost:8180, so that's the issuer in every token. This
+      # container reaches it as keycloak:8080, so its keys are fetched from there.
+      OIDC_ISSUER_URI: http://localhost:8180/realms/quokra
+      OIDC_JWKS_URI: http://keycloak:8080/realms/quokra/protocol/openid-connect/certs
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: 'postgres:17-alpine'
+    environment:
+      POSTGRES_DB: quokra
+      POSTGRES_USER: quokra
+      POSTGRES_PASSWORD: quokra
+    volumes:
+      - quokra-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-U', 'quokra']
+      interval: 5s
+      retries: 20
+
+  # Agents sam/sam (also admin) and alex/alex; riley/riley has no agent role.
+  keycloak:
+    image: 'keycloak/keycloak:26.0'
+    command: ['start-dev', '--import-realm', '--hostname=http://localhost:8180']
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+    ports:
+      - '8180:8080'
+    volumes:
+      - './server/keycloak:/opt/keycloak/data/import:ro'
+
+volumes:
+  quokra-data:

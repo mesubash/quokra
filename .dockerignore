@@ -1,0 +1,9 @@
+# Keep the build context small and free of local state.
+**/node_modules
+**/target
+server/src/main/resources/static
+notes
+.git
+.idea
+.env
+**/.DS_Store

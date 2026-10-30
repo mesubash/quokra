@@ -43,6 +43,8 @@ cd web && pnpm dev   # optional: UI with hot reload on http://localhost:5173 (pr
 cd test-host && python3 -m http.server 5500   # host pages on http://localhost:5500
 ```
 
+The dev server and the Docker demo stack (`docker compose up` at the repo root, see [Deploying](DEPLOY.md)) use the same ports (8080, 8180): stop one before starting the other (`docker compose down` at the root).
+
 Then open `http://localhost:5500/` (a page from a different origin that embeds the chat and the console).
 
 ### Local agent login

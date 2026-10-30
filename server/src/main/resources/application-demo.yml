@@ -1,0 +1,6 @@
+# The demo stack (docker-compose.yml at the repo root): loads the demo tenant, the demo agents and the
+# demo bot from db/dev. Everything else comes from environment variables, as in production.
+# Never use this profile for real customers: its demo data and keys are public.
+spring:
+  flyway:
+    locations: classpath:db/migration,classpath:db/dev
