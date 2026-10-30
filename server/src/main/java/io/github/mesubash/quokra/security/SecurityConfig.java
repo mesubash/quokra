@@ -58,7 +58,7 @@ public class SecurityConfig {
                 .requestMatchers("/error").permitAll()
                 // The socket checks its own token on CONNECT.
                 .requestMatchers("/ws", "/ws/**").permitAll()
-                .requestMatchers("/", "/index.html", "/sdk.js", "/robot.svg", "/assets/**", "/vendor/**", "/animations/**", "/w/**", "/console",
+                .requestMatchers("/", "/index.html", "/sdk.js", "/robot.svg", "/logo.png", "/favicon-32.png", "/assets/**", "/vendor/**", "/animations/**", "/w/**", "/console",
                     "/console/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/widget/tenants/*").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/widget/sessions").permitAll()

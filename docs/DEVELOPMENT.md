@@ -34,12 +34,12 @@ support-agent-platform/
 
 ---
 
-## 3. Running locally *(planned)*
+## 3. Running locally
 
 ```bash
 cd web && pnpm install && pnpm build   # builds the UI into the server
 cd server && ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev   # starts PostgreSQL, loads the demo tenant, http://localhost:8080
-cd web && pnpm dev   # optional: UI with hot reload on http://localhost:5173 (proxies /api, /ws to :8080)
+cd web && pnpm dev   # optional: UI with hot reload on http://localhost:5173 (proxies /api, /ws to :8080); stop the playground first, it uses the same port
 cd test-host && python3 -m http.server 5500   # host pages on http://localhost:5500
 ```
 
