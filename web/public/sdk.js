@@ -34,7 +34,7 @@
   var SOURCE = "quokra";
   var STYLE_ID = "quokra-chat-style";
   var FRAME_ID = "quokra-chat-frame";
-  var DEFAULT_COLOR = "#4c4fba";
+  var DEFAULT_COLOR = "#0051fb";
   var WAVE_EVERY_MS = 15000;
   var DEFAULT_TEASER_DELAY = 5000;
   var ROBOT_URL = ORIGIN + "/robot.svg";
