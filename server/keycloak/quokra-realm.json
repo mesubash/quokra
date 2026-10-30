@@ -1,0 +1,87 @@
+{
+  "realm": "quokra",
+  "displayName": "Quokra (dev)",
+  "enabled": true,
+  "accessTokenLifespan": 300,
+  "roles": {
+    "realm": [
+      { "name": "SUPPORT_AGENT", "description": "Can use the Quokra agent console" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "quokra-dashboard",
+      "name": "Dashboard (dev)",
+      "description": "A dashboard that embeds the Quokra console: the playground and the test host.",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "redirectUris": ["http://localhost:5173/*", "http://localhost:5500/*"],
+      "webOrigins": ["http://localhost:5173", "http://localhost:5500"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:5173/*##http://localhost:5500/*"
+      },
+      "protocolMappers": [
+        {
+          "name": "audience quokra-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "quokra-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        },
+        {
+          "name": "realm roles as roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "roles",
+            "multivalued": "true",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "id": "0b9e8a3c-0001-4000-8000-00000000a001",
+      "username": "sam",
+      "firstName": "Sam",
+      "lastName": "Lee",
+      "email": "sam@example.test",
+      "emailVerified": true,
+      "enabled": true,
+      "credentials": [{ "type": "password", "value": "sam", "temporary": false }],
+      "realmRoles": ["SUPPORT_AGENT", "default-roles-quokra"]
+    },
+    {
+      "id": "0b9e8a3c-0001-4000-8000-00000000a002",
+      "username": "alex",
+      "firstName": "Alex",
+      "lastName": "Kim",
+      "email": "alex@example.test",
+      "emailVerified": true,
+      "enabled": true,
+      "credentials": [{ "type": "password", "value": "alex", "temporary": false }],
+      "realmRoles": ["SUPPORT_AGENT", "default-roles-quokra"]
+    },
+    {
+      "id": "0b9e8a3c-0001-4000-8000-00000000a003",
+      "username": "riley",
+      "firstName": "Riley",
+      "lastName": "Moore",
+      "email": "riley@example.test",
+      "emailVerified": true,
+      "enabled": true,
+      "credentials": [{ "type": "password", "value": "riley", "temporary": false }],
+      "realmRoles": ["default-roles-quokra"]
+    }
+  ]
+}

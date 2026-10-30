@@ -9,6 +9,9 @@ quokra:
   tenant-secrets:
     # Fixed dev-only key, so the demo tenant's secret (db/dev V8_1) can be read. Never use it elsewhere.
     encryption-key: ZGV2LW9ubHktdGVuYW50LXNlY3JldC1rZXktMzJieXQ=
+  agents:
+    # The local Keycloak from compose.yaml. Its access tokens put realm roles in "roles".
+    issuer-uri: ${OIDC_ISSUER_URI:http://localhost:8180/realms/quokra}
   dev:
     # Local agent login: POST /dev/agent-token. Never in production.
     agent-tokens: true

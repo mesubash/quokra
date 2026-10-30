@@ -1,4 +1,4 @@
-# Local development database. Started automatically by spring-boot-docker-compose
+# Local development services. Started automatically by spring-boot-docker-compose
 # when running the server from this directory.
 services:
   postgres:
@@ -9,3 +9,17 @@ services:
       - 'POSTGRES_PASSWORD=quokra'
     ports:
       - '5432'
+
+  # A real identity provider for agent logins, with the dev realm from keycloak/quokra-realm.json:
+  # agents sam/sam and alex/alex (SUPPORT_AGENT), riley/riley (no role). Admin console: admin/admin.
+  # Dev only: these passwords are public.
+  keycloak:
+    image: 'keycloak/keycloak:26.0'
+    command: ['start-dev', '--import-realm']
+    environment:
+      - 'KC_BOOTSTRAP_ADMIN_USERNAME=admin'
+      - 'KC_BOOTSTRAP_ADMIN_PASSWORD=admin'
+    ports:
+      - '8180:8080'
+    volumes:
+      - './keycloak:/opt/keycloak/data/import:ro'
