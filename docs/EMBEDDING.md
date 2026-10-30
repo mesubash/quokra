@@ -34,6 +34,8 @@ Add one line before `</body>`:
 
 A chat bubble appears in the bottom-right corner. Branding (logo, colour, name) comes from your tenant settings; no code change is needed when it changes.
 
+Optional attributes: `data-quokra-position="left"` puts the bubble on the left; `data-quokra-teaser-delay` sets when the greeting card appears next to the bubble, in milliseconds (default `5000`, `off` to never show it). The card's text is the `teaser` in your bot file.
+
 ---
 
 ## 3. Customer chat: other modes
@@ -205,7 +207,7 @@ Put it in your dashboard's main layout so it appears on every page. A page holds
 
 | Approach | How |
 |---|---|
-| **WebView** (quick) | Open `https://chat.example.com/w/demo?pk=pk_live_XXXX&mode=full`. To identify, post `{ source: "quokra", type: "chat.identify", token }` into the page through the WebView's JavaScript bridge. Don't put tokens in the URL; URLs end up in logs |
+| **WebView** (quick) | Open `https://chat.example.com/w/demo?pk=pk_live_XXXX&mode=full`. To identify, post `{ source: "quokra", type: "chat.identify", token }` into the page through the WebView's JavaScript bridge once the page has finished loading. Don't put tokens in the URL; URLs end up in logs |
 | **Native screen** (later) | Build your own UI against the widget API ([API.md](API.md#3-widget-endpoints)) |
 
 ---
@@ -216,7 +218,8 @@ Put it in your dashboard's main layout so it appears on every page. A page holds
 |---|---|
 | Blank frame, console error "refused to frame" | Your origin isn't in the tenant's allowed origins |
 | Bubble never appears | Wrong `pk`, or the script is blocked by your Content Security Policy (allow `chat.example.com` in `script-src` and `frame-src`) |
-| `identify` has no effect | Token signed with the wrong key, expired, or `sub` missing |
+| `identify` has no effect | Token signed with the wrong key, expired, or `sub` missing. Listen to `Quokra.chat.on("identifyfailed", code => …)` to see why |
+| Customers see "Too many requests" | Rate limits: 5 new chat sessions a minute per IP address, 20 messages a minute per chat |
 | Console stuck on "Waiting for sign-in" | `getToken` didn't return a token, or the token lacks `quokra-api` / `SUPPORT_AGENT` |
 | Agent sees no conversations | Agent isn't a member of the tenant |
 
@@ -227,4 +230,5 @@ If your site uses a Content Security Policy, add:
 ```text
 script-src https://chat.example.com;
 frame-src  https://chat.example.com;
+img-src    https://chat.example.com;   # the chat button's robot image
 ```
