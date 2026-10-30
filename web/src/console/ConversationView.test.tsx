@@ -68,7 +68,8 @@ describe("ConversationView", () => {
     renderView(fakeApi(conversation()));
 
     expect(await screen.findByRole("button", { name: "Accept" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Pat" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Pat: show details" })).toBeTruthy();
+    expect(screen.getByText("· pat@example.test")).toBeTruthy();
     expect(screen.getByText("Sending assigns this chat to you")).toBeTruthy();
   });
 

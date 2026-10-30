@@ -63,3 +63,35 @@ export function eventLabel(type: string, actorName: string | null, reason: strin
       return type.toLowerCase().replace(/_/g, " ");
   }
 }
+
+// Compact time for lists: "11:00 AM" today, "Yesterday, 11:00 AM", otherwise "Oct 28, 11:00 AM".
+export function shortTime(iso: string | null, now = new Date()) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const day = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const days = Math.round((day(now) - day(d)) / 86_400_000);
+  if (days === 0) return time;
+  if (days === 1) return `Yesterday, ${time}`;
+  const sameYear = d.getFullYear() === now.getFullYear();
+  return `${d.toLocaleDateString([], { month: "short", day: "numeric", year: sameYear ? undefined : "numeric" })}, ${time}`;
+}
+
+// What kind of step an activity line is, for its dot colour.
+export function eventTone(type: string) {
+  switch (type) {
+    case "HANDOFF":
+      return "warn";
+    case "ACCEPTED":
+    case "TRANSFERRED":
+    case "REOPENED":
+      return "accent";
+    case "RESOLVED":
+      return "success";
+    case "BLOCKED":
+      return "danger";
+    default:
+      return "muted";
+  }
+}

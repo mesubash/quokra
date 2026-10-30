@@ -96,3 +96,20 @@ export function ExpandIcon({ size = 20 }: { size?: number }) {
     </svg>
   );
 }
+
+export function CopyIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg {...base} width={size} height={size}>
+      <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+    </svg>
+  );
+}
+
+export function CheckIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg {...base} width={size} height={size}>
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+  );
+}

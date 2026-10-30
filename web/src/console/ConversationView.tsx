@@ -10,11 +10,11 @@ import {
   type Person,
 } from "../lib/api";
 import type { Socket } from "../lib/realtime";
-import { BackIcon, CloseIcon, ExpandIcon, MoreIcon, PanelIcon } from "../lib/icons";
+import { BackIcon, CheckIcon, CloseIcon, CopyIcon, ExpandIcon, MoreIcon, PanelIcon } from "../lib/icons";
 import { Composer } from "../chat/Composer";
 import { MessageList, type TimelineItem } from "../chat/MessageList";
 import { mergeMessages } from "../chat/messages";
-import { dateTime, eventLabel, initials, priorityLabel, reasonLabel } from "./format";
+import { dateTime, eventLabel, eventTone, initials, priorityLabel, reasonLabel, shortTime } from "./format";
 
 interface Props {
   id: string;
@@ -173,16 +173,30 @@ export function ConversationView({ id, api, me, socket, onBack, onClose, onExpan
           <button type="button" className="icon-button quiet back" aria-label="Back to the list" onClick={onBack}>
             <BackIcon size={20} />
           </button>
-          <span className="avatar avatar-customer">{initials(customer)}</span>
-          <div className="conversation-title">
-            <h2>{customer}</h2>
-            <p className="muted">
-              <span className={`dot-status status-${status.toLowerCase()}`} />
-              {STATUS_LABEL[status]}
-              {conversation.assignee && !mine && ` · with ${conversation.assignee.name}`}
-              {mine && status === "HUMAN" && " · assigned to you"}
-            </p>
-          </div>
+          {/* The customer's name opens their details, like "view profile". */}
+          <button
+            type="button"
+            className="conversation-who"
+            aria-label={`${customer}: show details`}
+            aria-expanded={details}
+            onClick={() => setDetails(true)}
+          >
+            <span className="avatar avatar-customer">{initials(customer)}</span>
+            <span className="conversation-title">
+              <span className="conversation-name">{customer}</span>
+              <span className="conversation-sub muted">
+                <span className={`dot-status status-${status.toLowerCase()}`} />
+                <span>
+                  {STATUS_LABEL[status]}
+                  {conversation.assignee && !mine && ` · with ${conversation.assignee.name}`}
+                  {mine && status === "HUMAN" && " · assigned to you"}
+                </span>
+                {conversation.customer?.email && conversation.customer.email !== customer && (
+                  <span className="conversation-email">· {conversation.customer.email}</span>
+                )}
+              </span>
+            </span>
+          </button>
           <div className="conversation-actions">
             {status === "WAITING" && (
               <button type="button" className="button" disabled={busy} onClick={() => act(() => api.accept(id))}>
@@ -384,17 +398,20 @@ function Details({
   return (
     <aside className="details" aria-label="Details">
       <header className="details-header">
-        <strong>Details</strong>
-        <button type="button" className="link-button" onClick={onClose}>
-          Hide
+        <h2>Details</h2>
+        <button type="button" className="icon-button quiet" aria-label="Hide details" onClick={onClose}>
+          <CloseIcon size={18} />
         </button>
       </header>
-      <section className="details-contact">
+
+      <section className="details-card details-contact">
         <span className="avatar avatar-customer avatar-lg">{initials(contact?.name ?? contact?.email ?? null)}</span>
-        <strong>{contact?.name ?? "Guest"}</strong>
-        {contact?.email ? <a href={`mailto:${contact.email}`}>{contact.email}</a> : <span className="muted">No email yet</span>}
+        <div className="details-contact-text">
+          <strong>{contact?.name ?? "Guest"}</strong>
+          {contact?.email ? <CopyEmail email={contact.email} /> : <span className="muted">No email yet</span>}
+        </div>
         {contact?.blocked && (
-          <span className="blocked">
+          <div className="details-blocked">
             <span className="badge badge-urgent">Blocked</span>
             <button
               type="button"
@@ -404,41 +421,92 @@ function Details({
             >
               Unblock
             </button>
-          </span>
+          </div>
         )}
       </section>
-      <dl className="details-list">
-        <dt>Status</dt>
-        <dd>{STATUS_LABEL[c.status]}</dd>
-        <dt>Priority</dt>
-        <dd>{priorityLabel(c.priority)}</dd>
-        {c.handoffReason && (
-          <>
-            <dt>Reason</dt>
-            <dd>{reasonLabel(c.handoffReason)}</dd>
-          </>
-        )}
-        <dt>Assigned</dt>
-        <dd>{c.assignee?.name ?? "No one"}</dd>
-        <dt>Started</dt>
-        <dd>{dateTime(c.createdAt)}</dd>
-        <dt>Site</dt>
-        <dd>{c.tenantSlug}</dd>
-      </dl>
-      <section className="details-activity">
+
+      <section className="details-section">
+        <h3>Conversation</h3>
+        <dl className="details-list">
+          <dt>Status</dt>
+          <dd>
+            <span className={`badge status-${c.status.toLowerCase()}`}>{STATUS_LABEL[c.status]}</span>
+          </dd>
+          <dt>Priority</dt>
+          <dd>
+            {c.priority === "NORMAL" ? (
+              "Normal"
+            ) : (
+              <span className={`badge badge-${c.priority.toLowerCase()}`}>{priorityLabel(c.priority)}</span>
+            )}
+          </dd>
+          {c.handoffReason && (
+            <>
+              <dt>Reason</dt>
+              <dd>{reasonLabel(c.handoffReason)}</dd>
+            </>
+          )}
+          <dt>Assigned</dt>
+          <dd>
+            {c.assignee ? (
+              <span className="details-person">
+                <span className="avatar avatar-agent avatar-xs">{initials(c.assignee.name)}</span>
+                {c.assignee.name}
+              </span>
+            ) : (
+              <span className="muted">No one yet</span>
+            )}
+          </dd>
+          <dt>Started</dt>
+          <dd title={dateTime(c.createdAt)}>{shortTime(c.createdAt)}</dd>
+          <dt>Site</dt>
+          <dd>
+            <code>{c.tenantSlug}</code>
+          </dd>
+        </dl>
+      </section>
+
+      <section className="details-section">
         <h3>Activity</h3>
-        <ol className="activity">
+        <ol className="timeline">
           {events.map((e) => (
-            <li key={e.id}>
-              <span>{eventLabel(e.type, e.actorName, e.reason)}</span>
-              <time className="muted" dateTime={e.createdAt}>
-                {dateTime(e.createdAt)}
+            <li key={e.id} className={`timeline-item tone-${eventTone(e.type)}`}>
+              <span className="timeline-dot" aria-hidden="true" />
+              <span className="timeline-text">{eventLabel(e.type, e.actorName, e.reason)}</span>
+              <time dateTime={e.createdAt} title={dateTime(e.createdAt)}>
+                {shortTime(e.createdAt)}
               </time>
             </li>
           ))}
         </ol>
       </section>
     </aside>
+  );
+}
+
+// The email, with a button that copies it.
+function CopyEmail({ email }: { email: string }) {
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!copied) return;
+    const timer = setTimeout(() => setCopied(false), 1500);
+    return () => clearTimeout(timer);
+  }, [copied]);
+
+  return (
+    <span className="details-email">
+      <a href={`mailto:${email}`}>{email}</a>
+      <button
+        type="button"
+        className="icon-button quiet copy-button"
+        aria-label={copied ? "Copied" : "Copy email"}
+        title={copied ? "Copied" : "Copy email"}
+        onClick={() => navigator.clipboard?.writeText(email).then(() => setCopied(true), () => {})}
+      >
+        {copied ? <CheckIcon size={14} /> : <CopyIcon size={14} />}
+      </button>
+    </span>
   );
 }
 
