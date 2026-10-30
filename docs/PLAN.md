@@ -4,7 +4,7 @@ Quokra is an embeddable customer support platform. A FAQ bot answers first; when
 
 | | |
 |---|---|
-| **Status** | Plan v7: v1 done (steps 1–11); v2 in progress, see the table below and the [changelog](CHANGELOG.md) |
+| **Status** | Plan v7: v1 and v2 done; next is putting it in front of the first real company. See the table below and the [changelog](CHANGELOG.md) |
 | **Last updated** | 2026-10-30 |
 | **Current target** | v1: FAQ bot + human handoff on the web |
 | **Stack** | Spring Boot 4.1 (Java 21) + PostgreSQL · React + TypeScript (Vite), served by the server · one repository, one deployable |
@@ -60,7 +60,7 @@ AI answers · WhatsApp / Instagram / email · reports · automations · file att
 | Version | Theme | Contents | Rough size |
 |---|---|---|---|
 | **v1** | **FAQ bot + handoff** | Chat panel + console (full-page or bubble), both embeddable via `sdk.js`; FAQ bot; handoff; realtime; tenants by publishable key; guests + identified customers; agents via OIDC | 3–4 weeks |
-| v2 | Daily operations | **Done:** notifications in the console and browser, auto-resolve after silence, saved replies, business hours + offline message, the bot and its wording edited in Settings, Settings behind a gear (scoped to the console's company), images (disk or S3), "start a new chat", replying to a message, typing indicator, agent online / away, retention per company within server limits. **Next:** deploying for the first real company. **Later, on demand:** email notifications, more languages, mobile push, standalone console login | 2–3 weeks |
+| **v2** | **Daily operations (done)** | Notifications in the console and browser, email alerts (when SMTP is set up), auto-resolve after silence, saved replies, business hours + offline message, the bot and its wording edited in Settings, Settings behind a gear (scoped to the console's company), images (disk or S3), "start a new chat", replying to a message, typing indicator, agent online / away, retention per company within server limits. **Later, when someone asks:** more languages, mobile push, standalone console login | 2–3 weeks |
 | v3 | AI answers | Knowledge documents, search with sources, grounded LLM answers, evaluation set, AI summary on handoff | 3–4 weeks |
 | v4 | Channels + lookups | WhatsApp Cloud API, email; identity-verified lookups through backend-validated tools | 3–4 weeks |
 | v5 | Platform | Tenant self-service, per-tenant identity providers, analytics, CSAT, public release | later |
@@ -71,7 +71,7 @@ A version starts only when the previous one is in real use and there's a clear n
 
 1. **Done. In the console:** a chime and the button badge for new customer messages in *my* chats and for chats transferred to me (today only new queue items chime); the badge counts waiting + my unread; a short toast for what just arrived.
 2. **Done. Browser notifications:** system notifications while the dashboard is in another tab or app ("Pat: Hello?"), clicking opens that chat. Shown by `sdk.js` on the host page (an embedded iframe can't ask for the permission), opt-in with `notifications: true` and a one-time "turn on notifications" prompt.
-3. **Email:** to the team when a chat has waited longer than X minutes with no agent online; to the customer when an agent replies after they've left. Needs an email provider.
+3. **Done. Email** (only when SMTP is configured and answering): to the team when a chat has waited longer than X minutes with no agent online; to the customer when an agent's reply has gone unanswered for a few minutes (per company, off by default).
 4. **Mobile push:** later, with a PWA or an app.
 
 ---

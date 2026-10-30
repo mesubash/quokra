@@ -16,6 +16,8 @@ agents. Admins set them up in the console's **Settings** (the gear icon).
    - **Bot file:** which FAQ the bot starts from. You can edit the questions afterwards in the **Bot** section
      (see [Write the bot](07-write-the-bot.md)).
    - **Close quiet chats:** when chats without replies close by themselves (default after 24 hours).
+   - **Email** (optional): when the team is emailed about waiting chats, and whether customers get replies
+     they missed by email (see [Notifications](08-notifications.md)).
    - **Keep chats for:** how long resolved chats are kept before they're deleted (default 12 months),
      within the limits your server allows.
    - **Images** (optional): let customers and agents send images (PNG, JPEG, GIF, WebP up to 5 MB).

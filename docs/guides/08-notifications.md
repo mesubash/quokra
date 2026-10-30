@@ -29,3 +29,16 @@ notifications, so `sdk.js` shows them for the console. You can also listen with
 3. If you blocked notifications earlier, allow them again in the browser's site settings.
 
 Sounds need one click on the page first (a browser rule); after that they play.
+
+## Email
+
+When nobody is watching the console, email fills the gap. It needs your mail server (see
+[Deploying](../DEPLOY.md): `SMTP_HOST`, `QUOKRA_MAIL_FROM` and a login); without it Quokra sends nothing
+and says so in Settings.
+
+In **Settings → General → Email**:
+- **Waiting alert:** after how long a waiting chat is emailed to the team when nobody is online (default 10
+  minutes). Each chat is emailed once.
+- **Send alerts to:** a team address (or a few); empty sends to each agent's own email.
+- **Email customers:** when an agent replied and the customer hasn't answered in 5 minutes, they get the
+  reply by email (only customers who left an email). Off by default.

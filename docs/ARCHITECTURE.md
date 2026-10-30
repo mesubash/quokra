@@ -225,6 +225,7 @@ texts:
   offline_handoff: "We're away right now and back {opens}. Leave your message here and we'll reply then."
 ```
 
+- **Email:** `MailCheck` says whether SMTP is configured (`SMTP_HOST`, `QUOKRA_MAIL_FROM`) and answering (tested at most every 10 minutes; `/actuator/health` → `email`). `EmailAlerts` runs every minute while it is: a chat waiting longer than the tenant's `waiting_alert_minutes` with nobody of the team online gets one email to `alert_email` or the agents' emails (`conversations.waiting_alert_sent_at`); with `email_customers`, an agent's reply unanswered for 5 minutes (and under a day old) gets one email to the customer (`conversations.customer_emailed_message_id`). Plain text, sent through `Mailer`.
 - **Retention:** `RetentionJob` runs nightly and deletes each tenant's resolved conversations whose last message is older than `tenants.retention_months` (brought within `RetentionLimits`, the server's min/max), with their messages, events, notes, read markers and image files. Contacts stay. Open conversations are never deleted.
 - **Presence:** `agent_presence(agent_sub, status, last_seen)`. The console checks in every minute with ONLINE or AWAY; an agent is online when ONLINE and seen in the last 2 minutes (`AgentPresence`). The chat's config says whether anyone of the tenant's team is online, and the transfer list and Settings → Agents mark who is.
 - **Typing:** `typing` events on the conversation topic, sent by `POST …/typing` at most every 3 seconds from each side; never stored (`TypingSignals`).

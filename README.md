@@ -27,7 +27,7 @@
 - Queue, my chats and resolved lists with unread counts, search, and live updates, including when the customer is typing.
 - Online / Away status; customers see the team as online only while someone is.
 - Reply (which also accepts the chat), reply to a particular message, images, saved replies picked with `/`, private notes, transfer to a colleague or back to the queue, return to the bot, resolve, reopen, block a contact.
-- Notifications: sounds, toasts and browser notifications for new chats, replies in my chats, transfers and notes.
+- Notifications: sounds, toasts and browser notifications for new chats, replies in my chats, transfers and notes; email alerts when nobody is online (with your SMTP server).
 - Quiet chats close by themselves after a time each company sets.
 - Opening hours: outside them, customers are told when the team is back.
 - Settings behind the gear icon: notifications for each agent; for admins, the company's look, bot and wording, saved replies, agents, embed code and how long chats are kept.
@@ -88,7 +88,7 @@ The dev profile starts PostgreSQL with Docker Compose and loads a demo tenant. M
 
 ## Status
 
-v1 (FAQ bot + human handoff on the web) is complete: real agent login, settings for companies and keys, and a Docker image. v2 (daily operations) is in progress: notifications, auto-resolve, saved replies, opening hours, editing the bot in Settings, images, new chat and replying to a message are done; a retention job and more come next. See the [plan](docs/PLAN.md) and the [changelog](docs/CHANGELOG.md).
+v1 (FAQ bot + human handoff on the web) is complete: real agent login, settings for companies and keys, and a Docker image. v2 (daily operations) is complete too: notifications and email alerts, auto-resolve, saved replies, opening hours, editing the bot in Settings, images, new chat, replies, typing, online / away and retention. Next is the first real deployment. See the [plan](docs/PLAN.md) and the [changelog](docs/CHANGELOG.md).
 
 ## Docs
 

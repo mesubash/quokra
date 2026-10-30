@@ -49,6 +49,9 @@ All through environment variables. Generate random secrets with `openssl rand -b
 | `QUOKRA_AGENT_ROLES_CLAIM` | | Default `roles`; e.g. `realm_access.roles` |
 | `QUOKRA_AGENT_ROLE` / `QUOKRA_ADMIN_ROLE` | | Defaults `SUPPORT_AGENT` / `QUOKRA_ADMIN` |
 | `QUOKRA_BOTS_DIR` | | A folder with your bot files (`*.yml`), mounted into the container |
+| `SMTP_HOST` / `SMTP_PORT` | for email | Your mail server or provider (e.g. port 587 with STARTTLS). Without `SMTP_HOST` and `QUOKRA_MAIL_FROM`, email is simply off |
+| `SMTP_USERNAME` / `SMTP_PASSWORD` | for email | Its login, if it needs one. `SMTP_STARTTLS=false` for a server without STARTTLS |
+| `QUOKRA_MAIL_FROM` | for email | The sender, e.g. `Support <support@example.com>`; use a domain your provider is allowed to send for |
 | `QUOKRA_RETENTION_MIN_MONTHS` / `_MAX_MONTHS` | | What companies may choose for keeping resolved chats (default 1 to 60 months; max `0` also allows "forever"). A company's choice outside new limits is brought inside them |
 | `QUOKRA_RETENTION_CRON` | | When old chats are deleted, server time (default `0 0 3 * * *`, 03:00 every night) |
 | `QUOKRA_ATTACHMENTS_STORE` | | Where images sent in chats go: `disk` (default) or `s3` |
@@ -82,6 +85,7 @@ docker run -d --name quokra -p 8080:8080 \
 - **Proxy:** pass WebSocket upgrades through for `/ws`, and keep `X-Forwarded-For` / `X-Forwarded-Proto`.
 - **One instance for now:** rate limits and the WebSocket broker are in memory. Running several instances
   needs a shared broker and limiter (later).
+- **Email:** each company sets its alerts in Settings → General → Email, which also says whether email works. `/actuator/health` includes `email`: up when it's not configured or working, down when configured but the server doesn't answer.
 - **Images:** off for each company until an admin allows them (Settings → General). `/actuator/health` includes `storage`, which is down when the store can't be written or read; the image button then stays hidden.
 - **Backups:** back up the PostgreSQL database, and the images (the `/data` volume or the bucket). Keep `TENANT_SECRET_ENCRYPTION_KEY` safe alongside it.
 

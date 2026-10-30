@@ -6,7 +6,7 @@ What changed, newest first. Each entry says what people notice; the commits have
 
 ---
 
-## v2, daily operations (in progress)
+## v2, daily operations
 
 ### 2026-10-30
 
@@ -28,6 +28,9 @@ What changed, newest first. Each entry says what people notice; the commits have
   back; chats still reach the queue.
 
 **Agents**
+- **Email alerts**, when the server has SMTP set up: the team is emailed about a chat that has waited too
+  long with nobody online, and (if the company turns it on) customers get a reply they missed by email.
+  Settings → General → Email shows whether email works.
 - **Notifications:** sounds, toasts and browser notifications for new chats, messages in my chats,
   transfers and notes, with a bell menu and Settings → Notifications to choose.
 - **Saved replies** picked by typing `/` in the reply box, with `{name}` filled in.

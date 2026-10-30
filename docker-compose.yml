@@ -26,6 +26,8 @@ services:
       # container reaches it as keycloak:8080, so its keys are fetched from there.
       OIDC_ISSUER_URI: http://localhost:8180/realms/quokra
       OIDC_JWKS_URI: http://keycloak:8080/realms/quokra/protocol/openid-connect/certs
+      # Email alerts are off in the demo. To try them, set SMTP_HOST, SMTP_PORT, SMTP_USERNAME,
+      # SMTP_PASSWORD and QUOKRA_MAIL_FROM (see docs/DEPLOY.md).
     volumes:
       # Images sent in chats (QUOKRA_ATTACHMENTS_STORE=disk, the default).
       - quokra-files:/data
