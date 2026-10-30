@@ -148,7 +148,7 @@ class RealtimeTests {
 
         send(customer, "our payment failed");
 
-        Object event = queue.poll(5, TimeUnit.SECONDS);
+        Object event = nextOtherThan(queue, "conversation.activity");
         assertThat(JsonPath.<String>read(event, "$.type")).isEqualTo("conversation.waiting");
         assertThat(JsonPath.<String>read(event, "$.data.status")).isEqualTo("WAITING");
         assertThat(JsonPath.<String>read(event, "$.data.priority")).isEqualTo("URGENT");
@@ -174,6 +174,30 @@ class RealtimeTests {
         subscribeTo(session, queueTopic(tenantId));
 
         assertThat(errors.poll(5, TimeUnit.SECONDS)).isNotNull();
+    }
+
+    @Test
+    void newMessagesShowUpInTheQueueAsActivity() throws Exception {
+        String customer = sessionTokens.issue(tenantId).token();
+        String conversationId = startConversation(customer);
+        BlockingQueue<Object> queue = subscribeTo(connect(agentToken(agentSub)), queueTopic(tenantId));
+
+        send(customer, "hello there");
+
+        Object event = queue.poll(5, TimeUnit.SECONDS);
+        assertThat(JsonPath.<String>read(event, "$.type")).isEqualTo("conversation.activity");
+        assertThat(JsonPath.<String>read(event, "$.data.id")).isEqualTo(conversationId);
+        assertThat(JsonPath.<String>read(event, "$.data.lastMessagePreview")).isEqualTo("hello there");
+        assertThat(JsonPath.<String>read(event, "$.data.senderType")).isEqualTo("CUSTOMER");
+    }
+
+    private static Object nextOtherThan(BlockingQueue<Object> queue, String type) throws InterruptedException {
+        while (true) {
+            Object event = queue.poll(5, TimeUnit.SECONDS);
+            if (event == null || !type.equals(JsonPath.read(event, "$.type"))) {
+                return event;
+            }
+        }
     }
 
     @Test

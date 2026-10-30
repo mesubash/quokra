@@ -76,6 +76,12 @@ export function ConversationView({ id, api, me, socket, onBack, onClose, onExpan
     };
   }, [socket, id, load]);
 
+  // What the agent has on screen counts as read, including messages that arrive while it's open.
+  const lastId = messages.length > 0 ? messages[messages.length - 1].id : null;
+  useEffect(() => {
+    if (lastId) api.markRead(id, lastId).catch(() => {});
+  }, [api, id, lastId]);
+
   async function act(action: () => Promise<{ conversation: AgentConversation }>) {
     setBusy(true);
     setNotice(null);

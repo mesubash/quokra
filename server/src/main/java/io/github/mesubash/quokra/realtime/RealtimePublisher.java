@@ -1,7 +1,9 @@
 package io.github.mesubash.quokra.realtime;
 
 import io.github.mesubash.quokra.conversation.ConversationUpdated;
+import io.github.mesubash.quokra.conversation.Enums.SenderType;
 import io.github.mesubash.quokra.conversation.MessageCreated;
+import io.github.mesubash.quokra.conversation.MessageView;
 import io.github.mesubash.quokra.conversation.NoteCreated;
 import io.github.mesubash.quokra.conversation.Status;
 import java.time.Clock;
@@ -17,6 +19,11 @@ class RealtimePublisher {
 
     record Event(String type, UUID conversationId, Instant at, Object data) {}
 
+    // On the queue topic, so the console can update a row's preview and unread count without reloading.
+    record Activity(UUID id, String lastMessagePreview, Instant lastMessageAt, SenderType senderType) {}
+
+    static final int PREVIEW_LENGTH = 120;
+
     private final SimpMessagingTemplate messaging;
     private final Clock clock;
 
@@ -28,6 +35,11 @@ class RealtimePublisher {
     @TransactionalEventListener
     void on(MessageCreated event) {
         send("message.created", event.conversationId(), event.message());
+        MessageView m = event.message();
+        String preview = m.body().length() > PREVIEW_LENGTH ? m.body().substring(0, PREVIEW_LENGTH) : m.body();
+        messaging.convertAndSend(StompAuthInterceptor.queueTopic(event.tenantId()),
+            new Event("conversation.activity", event.conversationId(), clock.instant(),
+                new Activity(event.conversationId(), preview, m.createdAt(), m.senderType())));
     }
 
     @TransactionalEventListener

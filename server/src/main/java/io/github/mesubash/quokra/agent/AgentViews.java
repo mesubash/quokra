@@ -32,17 +32,17 @@ final class AgentViews {
 
     record Summary(UUID id, String tenantSlug, Status status, Priority priority, HandoffReason handoffReason,
                    String customerName, String lastMessagePreview, Instant lastMessageAt, Instant waitingSince,
-                   Person assignee) {
+                   Person assignee, int unreadCount) {
 
         static final int PREVIEW_LENGTH = 120;
 
-        static Summary of(Conversation c, String tenantSlug, Message last) {
+        static Summary of(Conversation c, String tenantSlug, Message last, int unreadCount) {
             String preview = last == null ? "" : last.getBody();
             if (preview.length() > PREVIEW_LENGTH) {
                 preview = preview.substring(0, PREVIEW_LENGTH);
             }
             return new Summary(c.getId(), tenantSlug, c.getStatus(), c.getPriority(), c.getHandoffReason(),
-                c.getCustomerName(), preview, c.getLastMessageAt(), c.getWaitingSince(), assigneeOf(c));
+                c.getCustomerName(), preview, c.getLastMessageAt(), c.getWaitingSince(), assigneeOf(c), unreadCount);
         }
     }
 

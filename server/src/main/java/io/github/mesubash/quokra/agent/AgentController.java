@@ -18,6 +18,7 @@ import io.github.mesubash.quokra.tenant.Tenant;
 import io.github.mesubash.quokra.tenant.TenantAgents;
 import io.github.mesubash.quokra.tenant.TenantRepository;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.util.List;
 import java.util.Map;
@@ -67,13 +68,17 @@ public class AgentController {
 
     record NoteResponse(NoteView note) {}
 
+    record ReadRequest(@NotNull UUID messageId) {}
+
     private final ConversationService service;
     private final TenantRepository tenants;
     private final TenantAgents tenantAgents;
     private final ContactRepository contacts;
+    private final AgentReads reads;
 
     public AgentController(ConversationService service, TenantRepository tenants, TenantAgents tenantAgents,
-                           ContactRepository contacts) {
+                           ContactRepository contacts, AgentReads reads) {
+        this.reads = reads;
         this.service = service;
         this.tenants = tenants;
         this.tenantAgents = tenantAgents;
@@ -114,8 +119,10 @@ public class AgentController {
         List<Conversation> page = service.list(ids, status, assigneeSub, cursor == null ? null : PageCursor.decode(cursor),
             size);
         // ponytail: one query per row for the preview; fine for a page of 50, batch it if lists grow.
+        Map<UUID, Integer> unread = reads.unreadCounts(jwt.getSubject(), page.stream().map(Conversation::getId).toList());
         List<Summary> items = page.stream()
-            .map(c -> Summary.of(c, mine.get(c.getTenantId()).getSlug(), service.lastMessage(c.getId()).orElse(null)))
+            .map(c -> Summary.of(c, mine.get(c.getTenantId()).getSlug(), service.lastMessage(c.getId()).orElse(null),
+                unread.getOrDefault(c.getId(), 0)))
             .toList();
         String next = page.size() == size ? PageCursor.after(page.getLast()).encode() : null;
         return new Page<>(items, next);
@@ -165,6 +172,14 @@ public class AgentController {
     public One returnToBot(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
         visible(jwt, id);
         return new One(view(service.returnToBot(id, agent(jwt))));
+    }
+
+    // The agent has seen the conversation up to this message.
+    @PostMapping("/conversations/{id}/read")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void read(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id, @Valid @RequestBody ReadRequest request) {
+        visible(jwt, id);
+        reads.markRead(id, jwt.getSubject(), request.messageId());
     }
 
     @PostMapping("/conversations/{id}/reopen")

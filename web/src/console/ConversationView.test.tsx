@@ -38,6 +38,7 @@ function fakeApi(start: AgentConversation, extra: Partial<AgentApi> = {}) {
   return {
     detail: vi.fn(() => Promise.resolve({ conversation: current, messages: [], events: [], notes: [] })),
     accept: vi.fn(() => change(taken(current))),
+    markRead: vi.fn(() => Promise.resolve()),
     reply: vi.fn((_id: string, clientMessageId: string, body: string) =>
       Promise.resolve({
         message: { id: "m9", senderType: "AGENT", senderName: "Sam", body, options: null, clientMessageId, createdAt: "" },

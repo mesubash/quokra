@@ -418,4 +418,42 @@ class AgentControllerTests {
         assertThat(result).bodyJson().extractingPath("$.waiting").isEqualTo(1);
         assertThat(result).bodyJson().extractingPath("$.mine").isEqualTo(1);
     }
+
+    @Test
+    void unreadCountsCustomerMessagesUntilTheAgentHasReadThem() throws Exception {
+        UUID id = waiting(tenant, HandoffReason.CUSTOMER_REQUEST);
+        service.addCustomerMessage(id, "c-1", "are you there?", null);
+
+        String list = get(alice, "/conversations?status=WAITING").getResponse().getContentAsString();
+        int before = JsonPath.<Integer>read(list, "$.items[0].unreadCount");
+        String detail = get(alice, "/conversations/" + id).getResponse().getContentAsString();
+        String lastId = JsonPath.read(detail, "$.messages[-1].id");
+
+        assertThat(before).isPositive();
+        assertThat(post(alice, "/conversations/" + id + "/read", "{\"messageId\":\"" + lastId + "\"}"))
+            .hasStatus(HttpStatus.NO_CONTENT);
+        assertThat(get(alice, "/conversations?status=WAITING")).bodyJson()
+            .extractingPath("$.items[0].unreadCount").isEqualTo(0);
+        // Bob hasn't read anything.
+        assertThat(get(bob, "/conversations?status=WAITING")).bodyJson()
+            .extractingPath("$.items[0].unreadCount").isEqualTo(before);
+
+        service.addCustomerMessage(id, "c-2", "hello?", null);
+        assertThat(get(alice, "/conversations?status=WAITING")).bodyJson()
+            .extractingPath("$.items[0].unreadCount").isEqualTo(1);
+    }
+
+    @Test
+    void markingAnOlderMessageReadDoesNotGoBack() throws Exception {
+        UUID id = waiting(tenant, HandoffReason.CUSTOMER_REQUEST);
+        String detail = get(alice, "/conversations/" + id).getResponse().getContentAsString();
+        String first = JsonPath.read(detail, "$.messages[0].id");
+        String last = JsonPath.read(detail, "$.messages[-1].id");
+
+        post(alice, "/conversations/" + id + "/read", "{\"messageId\":\"" + last + "\"}");
+        post(alice, "/conversations/" + id + "/read", "{\"messageId\":\"" + first + "\"}");
+
+        assertThat(get(alice, "/conversations?status=WAITING")).bodyJson()
+            .extractingPath("$.items[0].unreadCount").isEqualTo(0);
+    }
 }

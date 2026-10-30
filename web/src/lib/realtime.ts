@@ -1,11 +1,20 @@
 import { Client, type StompSubscription } from "@stomp/stompjs";
-import type { Conversation, HandoffReason, Message, Note, Person, Priority, Status } from "./api";
+import type { Conversation, HandoffReason, Message, Note, Person, Priority, SenderType, Status } from "./api";
 
 export type RealtimeEvent =
   | { type: "message.created"; conversationId: string; at: string; data: Message }
   | { type: "conversation.updated"; conversationId: string; at: string; data: Conversation }
   | { type: "conversation.waiting"; conversationId: string; at: string; data: QueueSnapshot }
-  | { type: "note.created"; conversationId: string; at: string; data: Note };
+  | { type: "note.created"; conversationId: string; at: string; data: Note }
+  | { type: "conversation.activity"; conversationId: string; at: string; data: Activity };
+
+// A new message in a conversation, as agents see it on the queue topic.
+export interface Activity {
+  id: string;
+  lastMessagePreview: string;
+  lastMessageAt: string;
+  senderType: SenderType;
+}
 
 // What agents get on the queue topic when a conversation changes.
 export interface QueueSnapshot {

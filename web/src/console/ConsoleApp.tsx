@@ -72,8 +72,8 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose, onExp
   }, [api, failed, refreshCounts]);
 
   // The socket outlives tab switches, so it calls whatever the latest handlers are.
-  const live = useRef({ apply: list.apply, refresh: list.refresh, refreshCounts, sound });
-  live.current = { apply: list.apply, refresh: list.refresh, refreshCounts, sound };
+  const live = useRef({ ...list, refreshCounts, sound, selected });
+  live.current = { ...list, refreshCounts, sound, selected };
 
   // One socket for the whole console: tenant queues here, the open chat in ConversationView.
   // After a reconnect, reload what's on screen, since events may have been missed.
@@ -95,6 +95,10 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose, onExp
     if (!socket) return;
     const stops = tenants.map((t) =>
       socket.subscribe(`/topic/tenants/${t.id}/queue`, (event) => {
+        if (event.type === "conversation.activity") {
+          live.current.activity(event.data, live.current.selected);
+          return;
+        }
         if (event.type === "conversation.waiting" && live.current.sound) chime();
         live.current.apply(event.data as unknown as QueueSnapshot);
         live.current.refreshCounts();
@@ -118,6 +122,11 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose, onExp
     observer.observe(el);
     return () => observer.disconnect();
   }, [hasMore, loadMore]);
+
+  function open(id: string) {
+    setSelected(id);
+    list.markSeen(id);
+  }
 
   function badge(id: Tab) {
     const n = id === "queue" ? counts.waiting : id === "mine" ? counts.mine : 0;
@@ -197,7 +206,7 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose, onExp
           {list.items.length === 0 && !list.loading && <li className="empty muted">{emptyText(tab)}</li>}
           {list.items.map((c) => (
             <li key={c.id}>
-              <Row conversation={c} selected={selected === c.id} showTenant={tenants.length > 1} onSelect={setSelected} />
+              <Row conversation={c} selected={selected === c.id} showTenant={tenants.length > 1} onSelect={open} />
             </li>
           ))}
           {list.loading && <li className="empty muted">Loading…</li>}
@@ -265,7 +274,16 @@ function Row({
           <strong>{name}</strong>
           <span className="muted item-time">{ago(c.waitingSince ?? c.lastMessageAt)}</span>
         </span>
-        {c.lastMessagePreview && <span className="item-preview">{c.lastMessagePreview}</span>}
+        <span className="item-middle">
+          {c.lastMessagePreview && (
+            <span className={`item-preview ${c.unreadCount > 0 ? "unread" : ""}`}>{c.lastMessagePreview}</span>
+          )}
+          {c.unreadCount > 0 && (
+            <span className="count" aria-label={`${c.unreadCount} unread`}>
+              {c.unreadCount > 99 ? "99+" : c.unreadCount}
+            </span>
+          )}
+        </span>
         <span className="item-tags">
           {c.priority !== "NORMAL" && (
             <span className={`badge badge-${c.priority.toLowerCase()}`}>{priorityLabel(c.priority)}</span>

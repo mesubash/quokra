@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AgentApi, ConversationSummary, ListStatus, Priority, TenantItem } from "../lib/api";
-import type { QueueSnapshot } from "../lib/realtime";
+import type { Activity, QueueSnapshot } from "../lib/realtime";
 
 export type Tab = "queue" | "mine" | "resolved";
 
@@ -42,8 +42,28 @@ export function applySnapshot(
     lastMessageAt: snapshot.lastMessageAt,
     waitingSince: snapshot.waitingSince,
     assignee: snapshot.assignee,
+    unreadCount: old?.unreadCount ?? 0,
   };
   return [...rest, row].sort((a, b) => compare(tab, a, b));
+}
+
+// A new message: update the row's preview and time, and count it as unread unless the agent has it open.
+export function applyActivity(
+  items: ConversationSummary[],
+  tab: Tab,
+  activity: Activity,
+  openId: string | null,
+): ConversationSummary[] {
+  const old = items.find((c) => c.id === activity.id);
+  if (!old) return items;
+  const unread = activity.senderType === "CUSTOMER" && activity.id !== openId;
+  const row = {
+    ...old,
+    lastMessagePreview: activity.lastMessagePreview,
+    lastMessageAt: activity.lastMessageAt,
+    unreadCount: old.unreadCount + (unread ? 1 : 0),
+  };
+  return items.map((c) => (c.id === row.id ? row : c)).sort((a, b) => compare(tab, a, b));
 }
 
 // One page at a time; live queue events patch the rows in place instead of reloading the list.
@@ -103,5 +123,15 @@ export function useConversationList(api: AgentApi, tab: Tab, meSub: string | nul
     [tab, meSub, tenants],
   );
 
-  return { items, hasMore: cursor !== null, loading, error, refresh, loadMore, apply };
+  const activity = useCallback(
+    (event: Activity, openId: string | null) => setItems((current) => applyActivity(current, tab, event, openId)),
+    [tab],
+  );
+
+  const markSeen = useCallback(
+    (id: string) => setItems((current) => current.map((c) => (c.id === id && c.unreadCount ? { ...c, unreadCount: 0 } : c))),
+    [],
+  );
+
+  return { items, hasMore: cursor !== null, loading, error, refresh, loadMore, apply, activity, markSeen };
 }

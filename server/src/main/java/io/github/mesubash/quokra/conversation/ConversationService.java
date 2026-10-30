@@ -535,7 +535,9 @@ public class ConversationService {
 
     private Message save(Message message) {
         Message saved = messages.save(message);
-        publisher.publishEvent(new MessageCreated(saved.getConversationId(), MessageView.of(saved)));
+        // Already loaded in this transaction, so this doesn't query again.
+        UUID tenantId = get(saved.getConversationId()).getTenantId();
+        publisher.publishEvent(new MessageCreated(saved.getConversationId(), tenantId, MessageView.of(saved)));
         return saved;
     }
 

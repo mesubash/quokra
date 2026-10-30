@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ConversationSummary } from "../lib/api";
 import type { QueueSnapshot } from "../lib/realtime";
-import { applySnapshot } from "./useConversationList";
+import { applyActivity, applySnapshot } from "./useConversationList";
 
 function row(id: string, overrides: Partial<ConversationSummary> = {}): ConversationSummary {
   return {
@@ -15,12 +15,13 @@ function row(id: string, overrides: Partial<ConversationSummary> = {}): Conversa
     lastMessageAt: "2026-10-29T10:00:00Z",
     waitingSince: "2026-10-29T10:00:00Z",
     assignee: null,
+    unreadCount: 0,
     ...overrides,
   };
 }
 
 function snapshot(id: string, overrides: Partial<QueueSnapshot> = {}): QueueSnapshot {
-  const { lastMessagePreview: _, tenantSlug: __, ...rest } = row(id);
+  const { lastMessagePreview: _, tenantSlug: __, unreadCount: ___, ...rest } = row(id);
   return { ...rest, tenantId: "t1", resolvedAt: null, ...overrides };
 }
 
@@ -57,5 +58,31 @@ describe("applySnapshot", () => {
 
     expect(mine[0].lastMessagePreview).toBe("hello");
     expect(theirs).toEqual([]);
+  });
+});
+
+describe("applyActivity", () => {
+  const message = (id: string, senderType: "CUSTOMER" | "AGENT" = "CUSTOMER") => ({
+    id,
+    lastMessagePreview: "new message",
+    lastMessageAt: "2026-10-29T11:00:00Z",
+    senderType,
+  });
+
+  it("updates the preview and counts customer messages as unread", () => {
+    const next = applyActivity([row("a"), row("b")], "mine", message("a"), null);
+
+    expect(next[0]).toMatchObject({ id: "a", lastMessagePreview: "new message", unreadCount: 1 });
+  });
+
+  it("doesn't count messages in the open chat or from agents", () => {
+    expect(applyActivity([row("a")], "mine", message("a"), "a")[0].unreadCount).toBe(0);
+    expect(applyActivity([row("a")], "mine", message("a", "AGENT"), null)[0].unreadCount).toBe(0);
+  });
+
+  it("ignores conversations that aren't in the list", () => {
+    const items = [row("a")];
+
+    expect(applyActivity(items, "mine", message("zzz"), null)).toBe(items);
   });
 });

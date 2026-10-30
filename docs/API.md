@@ -262,6 +262,15 @@ Any agent of the tenant. Notes are never sent to the customer.
 interface Note { id: string; author: { sub: string; name: string }; body: string; createdAt: string }
 ```
 
+### 4.16 `POST /agent/conversations/{id}/read`
+
+```json
+{ "messageId": "0192…" }   // the latest message the agent has seen
+// 204
+```
+
+Per agent. Marking an older message changes nothing. `ConversationSummary.unreadCount` counts the customer messages after this one (all of them if the agent never opened the conversation).
+
 ### 4.15 `GET /agent/conversations/counts`
 
 `200 { "waiting": 3, "mine": 1 }`: waiting conversations across the caller's tenants, and the caller's open (`HUMAN`) chats. For badges, so the console doesn't have to load whole lists to count them.
@@ -290,6 +299,7 @@ Every event has this envelope:
 | `conversation.updated` | conversation, queue | `Conversation` (customers get the customer view) |
 | `conversation.waiting` | queue | Agent snapshot of the conversation (as `ConversationSummary`, without `lastMessagePreview`; `tenantId` instead of `tenantSlug`) |
 | `note.created` | notes | `Note` |
+| `conversation.activity` | queue | `{ id, lastMessagePreview, lastMessageAt, senderType }` for every new message, so lists update their preview and unread count live |
 | `typing` | conversation | `{ "senderType": "AGENT" \| "CUSTOMER", "on": true }` |
 
 Typing is sent by clients to `/app/conversations/{id}/typing` with `{ "on": true }`; the server relays it. It is never stored. *(Not built yet: until then the server rejects any client `SEND` over the socket.)*
@@ -336,6 +346,7 @@ interface ConversationSummary {
   lastMessageAt: string;
   waitingSince: string | null;
   assignee: { sub: string; name: string } | null;
+  unreadCount: number;          // customer messages this agent hasn't read
 }
 
 interface Message {

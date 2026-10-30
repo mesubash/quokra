@@ -118,6 +118,8 @@ export interface ConversationSummary {
   lastMessageAt: string;
   waitingSince: string | null;
   assignee: Person | null;
+  // Customer messages this agent hasn't read yet.
+  unreadCount: number;
 }
 
 export interface AgentConversation {
@@ -209,6 +211,7 @@ export function agentApi(getToken: () => string) {
     transfer: (id: string, agentSub: string | null) => post<One>(`/conversations/${id}/transfer`, { agentSub }),
     block: (id: string) => post<One>(`/conversations/${id}/block`),
     unblock: (contactId: string) => post<void>(`/contacts/${contactId}/unblock`),
+    markRead: (id: string, messageId: string) => post<void>(`/conversations/${id}/read`, { messageId }),
     note: (id: string, body: string) => post<{ note: Note }>(`/conversations/${id}/notes`, { body }),
   };
 }
