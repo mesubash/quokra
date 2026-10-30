@@ -5,6 +5,8 @@ import { ConsoleApp } from "./ConsoleApp";
 
 const TOKEN_KEY = "quokra.agentToken";
 const REFRESH_BEFORE_MS = 60_000;
+// How long to wait for the dashboard to send a token before saying so.
+const SIGN_IN_TIMEOUT_MS = 10_000;
 
 // The agent console. Embedded in a dashboard (via sdk.js), the dashboard provides the agent's
 // token; opened on its own, local development can sign in as a dev agent.
@@ -41,10 +43,16 @@ function EmbeddedConsole() {
     [],
   );
 
+  // Asks the dashboard for a token; if none comes, say so instead of waiting forever.
+  const [timedOut, setTimedOut] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
-    postToHost({ type: "console.ready" });
+    if (token) return;
+    if (attempt === 0) postToHost({ type: "console.ready" });
     postToHost({ type: "auth.request", reason: "initial" });
-  }, []);
+    const timer = setTimeout(() => setTimedOut(true), SIGN_IN_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [token, attempt]);
 
   // Ask for a fresh token shortly before this one expires.
   useEffect(() => {
@@ -60,7 +68,32 @@ function EmbeddedConsole() {
 
   const unauthorized = useCallback(() => postToHost({ type: "auth.request", reason: "unauthorized" }), []);
 
-  if (!token) return <p className="console-placeholder muted console-waiting">Waiting for sign-in from your dashboard…</p>;
+  if (!token) {
+    return (
+      <div className="console-waiting" role="status">
+        {timedOut ? (
+          <div className="panel-state">
+            <p>
+              <strong>Couldn't sign you in</strong>
+            </p>
+            <p>Your dashboard didn't send a sign-in for the support console. Signing in again usually fixes it.</p>
+            <button
+              type="button"
+              className="button button-quiet"
+              onClick={() => {
+                setTimedOut(false);
+                setAttempt((n) => n + 1);
+              }}
+            >
+              Try again
+            </button>
+          </div>
+        ) : (
+          <p className="muted">Signing you in…</p>
+        )}
+      </div>
+    );
+  }
   return (
     <ConsoleApp
       getToken={getToken}
