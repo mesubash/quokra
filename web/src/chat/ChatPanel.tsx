@@ -141,6 +141,7 @@ function Chat({ tenant, token, visible, onUnauthorized }: ChatProps) {
   const options = status === "BOT" ? activeOptions(chat.messages) : [];
   const [seenUpTo, setSeenUpTo] = useState<string | null>(null);
   const [awaitingBot, setAwaitingBot] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const last = chat.messages[chat.messages.length - 1];
   const lastId = last?.id ?? null;
   const unread = visible ? 0 : countUnread(chat.messages, seenUpTo);
@@ -196,13 +197,27 @@ function Chat({ tenant, token, visible, onUnauthorized }: ChatProps) {
             typing={typing}
             pending={chat.pending}
             onRetry={(id) => void retry(id)}
+            loadImage={chat.loadImage}
           />
+          {notice && (
+            <p className="composer-notice" role="alert">
+              {notice}
+            </p>
+          )}
           <Composer
             onSend={(body) => void send({ body })}
             disabled={!chat.conversation}
             focus={visible}
             asking={chat.conversation?.asking ?? null}
             placeholder={placeholder(chat.conversation, tenant)}
+            onAttach={
+              tenant.attachments
+                ? (file) => {
+                    setNotice(null);
+                    void chat.sendImage(file).then(setNotice);
+                  }
+                : undefined
+            }
           />
         </>
       )}

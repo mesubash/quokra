@@ -24,6 +24,20 @@ function renderList(extra: Partial<Parameters<typeof MessageList>[0]> = {}) {
 }
 
 describe("MessageList", () => {
+  it("shows an image message as the image, fetched with the page's token", async () => {
+    URL.createObjectURL = vi.fn(() => "blob:shot");
+    URL.revokeObjectURL = vi.fn();
+    const loadImage = vi.fn(() => Promise.resolve(new Blob(["png"])));
+    const image = { ...message("06", "CUSTOMER", "Sent an image"), attachment: { name: "shot.png", contentType: "image/png", size: 3 } };
+
+    renderList({ messages: [image], loadImage });
+
+    const img = (await screen.findByAltText("shot.png")) as HTMLImageElement;
+    expect(img.src).toBe("blob:shot");
+    expect(loadImage).toHaveBeenCalledWith("06");
+    expect(screen.queryByText("Sent an image")).toBeNull();
+  });
+
   it("shows messages as plain text", () => {
     renderList();
 

@@ -16,17 +16,7 @@ const EVENTS: { key: keyof NotifyPrefs; label: string }[] = [
   { key: "notes", label: "Note on my chat" },
 ];
 
-export function NotifyMenu({
-  prefs,
-  onChange,
-  host,
-  onTurnOn,
-}: {
-  prefs: NotifyPrefs;
-  onChange: (prefs: NotifyPrefs) => void;
-  host: HostNotifications | null;
-  onTurnOn: () => void;
-}) {
+export function NotifyMenu({ prefs, onChange, host, onTurnOn }: NotifyOptionsProps) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
 
@@ -42,10 +32,6 @@ export function NotifyMenu({
     };
   }, [open]);
 
-  const set = (key: keyof NotifyPrefs, value: boolean) => {
-    onChange({ ...prefs, [key]: value });
-    if (key === "sound" && value) chime("message");
-  };
   const allOff = !prefs.sound && !prefs.browser;
 
   return (
@@ -62,35 +48,56 @@ export function NotifyMenu({
       </button>
       {open && (
         <div className="menu-list notify-menu" role="group" aria-label="Notifications">
-          <p className="notify-heading">Notify me about</p>
-          {EVENTS.map((e) => (
-            <Toggle key={e.key} label={e.label} checked={prefs[e.key]} onChange={(v) => set(e.key, v)} />
-          ))}
-          <p className="notify-heading">How</p>
-          <Toggle label="Sound" checked={prefs.sound} onChange={(v) => set("sound", v)} />
-          {host?.available ? (
-            <>
-              <Toggle
-                label="Desktop notifications"
-                checked={prefs.browser}
-                onChange={(v) => set("browser", v)}
-                disabled={host.permission === "denied"}
-              />
-              {prefs.browser && host.permission === "default" && (
-                <button type="button" className="button button-small notify-turn-on" onClick={onTurnOn}>
-                  Allow in this browser
-                </button>
-              )}
-              {host.permission === "denied" && (
-                <p className="notify-help muted">Blocked in this browser. Allow them in the site settings.</p>
-              )}
-            </>
-          ) : (
-            <p className="notify-help muted">Desktop notifications aren't turned on for this dashboard.</p>
-          )}
+          <NotifyOptions prefs={prefs} onChange={onChange} host={host} onTurnOn={onTurnOn} />
         </div>
       )}
     </div>
+  );
+}
+
+export interface NotifyOptionsProps {
+  prefs: NotifyPrefs;
+  onChange: (prefs: NotifyPrefs) => void;
+  host: HostNotifications | null;
+  onTurnOn: () => void;
+}
+
+// The switches, in the bell menu and in Settings → Notifications.
+export function NotifyOptions({ prefs, onChange, host, onTurnOn }: NotifyOptionsProps) {
+  const set = (key: keyof NotifyPrefs, value: boolean) => {
+    onChange({ ...prefs, [key]: value });
+    if (key === "sound" && value) chime("message");
+  };
+
+  return (
+    <>
+      <p className="notify-heading">Notify me about</p>
+      {EVENTS.map((e) => (
+        <Toggle key={e.key} label={e.label} checked={prefs[e.key]} onChange={(v) => set(e.key, v)} />
+      ))}
+      <p className="notify-heading">How</p>
+      <Toggle label="Sound" checked={prefs.sound} onChange={(v) => set("sound", v)} />
+      {host?.available ? (
+        <>
+          <Toggle
+            label="Desktop notifications"
+            checked={prefs.browser}
+            onChange={(v) => set("browser", v)}
+            disabled={host.permission === "denied"}
+          />
+          {prefs.browser && host.permission === "default" && (
+            <button type="button" className="button button-small notify-turn-on" onClick={onTurnOn}>
+              Allow in this browser
+            </button>
+          )}
+          {host.permission === "denied" && (
+            <p className="notify-help muted">Blocked in this browser. Allow them in the site settings.</p>
+          )}
+        </>
+      ) : (
+        <p className="notify-help muted">Desktop notifications aren't turned on for this dashboard.</p>
+      )}
+    </>
   );
 }
 

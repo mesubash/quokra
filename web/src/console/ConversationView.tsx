@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ApiError,
+  MAX_IMAGE_BYTES,
   type AgentApi,
   type AgentConversation,
   type ConversationEvent,
@@ -32,6 +33,8 @@ interface Props {
   onOpen?: (id: string) => void;
   onChanged: () => void;
   onError: (e: unknown) => void;
+  // Whether agents can send images in this company's chats.
+  imagesAllowed?: (tenantSlug: string) => boolean;
 }
 
 const STATUS_LABEL = { BOT: "With the bot", WAITING: "Waiting", HUMAN: "Open", RESOLVED: "Resolved" };
@@ -39,7 +42,19 @@ const STATUS_LABEL = { BOT: "With the bot", WAITING: "Waiting", HUMAN: "Open", R
 type Mode = "reply" | "note";
 type Dialog = "transfer" | "block" | null;
 
-export function ConversationView({ id, api, me, socket, onBack, onClose, onExpand, onOpen, onChanged, onError }: Props) {
+export function ConversationView({
+  id,
+  api,
+  me,
+  socket,
+  onBack,
+  onClose,
+  onExpand,
+  onOpen,
+  onChanged,
+  onError,
+  imagesAllowed = () => false,
+}: Props) {
   const [conversation, setConversation] = useState<AgentConversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
@@ -129,6 +144,22 @@ export function ConversationView({ id, api, me, socket, onBack, onClose, onExpan
       setMessages((current) => mergeMessages(current, [message]));
     } catch (e) {
       setNotice("Couldn't send. Try again.");
+      if (!(e instanceof ApiError) || e.status === 401) onError(e);
+    }
+  }
+
+  const loadImage = useCallback((messageId: string) => api.image(id, messageId), [api, id]);
+
+  // Like a reply: a waiting chat is taken first.
+  async function sendImage(file: File) {
+    setNotice(null);
+    if (file.size > MAX_IMAGE_BYTES) return setNotice("Images can be up to 5 MB.");
+    if (conversation?.status === "WAITING" && !(await act(() => api.accept(id)))) return;
+    try {
+      const { message } = await api.sendImage(id, file, crypto.randomUUID());
+      setMessages((current) => mergeMessages(current, [message]));
+    } catch (e) {
+      setNotice(e instanceof ApiError && e.status < 500 ? e.message : "Couldn't send the image. Try again.");
       if (!(e instanceof ApiError) || e.status === 401) onError(e);
     }
   }
@@ -255,6 +286,7 @@ export function ConversationView({ id, api, me, socket, onBack, onClose, onExpan
           botName="Bot"
           mine="AGENT"
           customerName={customer}
+          loadImage={loadImage}
         />
         <div className="console-composer">
           {canReply ? (
@@ -279,6 +311,9 @@ export function ConversationView({ id, api, me, socket, onBack, onClose, onExpan
             focus
             note={writing === "note"}
             replies={writing === "reply" ? fillName(saved, conversation.customer?.name) : []}
+            onAttach={
+              writing === "reply" && imagesAllowed(conversation.tenantSlug) ? (file) => void sendImage(file) : undefined
+            }
             placeholder={writing === "note" ? "Only your team sees this…" : `Reply to ${customer}…`}
           />
         </div>

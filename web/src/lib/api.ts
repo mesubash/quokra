@@ -7,6 +7,8 @@ export interface Tenant {
   texts: { online: string; waiting: string; closed: string; placeholder: string; offline: string };
   // Inside the tenant's opening hours (always, when it has none).
   open: boolean;
+  // Images can be sent (the company allows them and storage works).
+  attachments: boolean;
 }
 
 export interface Session {
@@ -31,7 +33,19 @@ export interface Message {
   options: Option[] | null;
   clientMessageId: string | null;
   createdAt: string;
+  // An image; the file is fetched separately with the same token.
+  attachment?: Attachment | null;
 }
+
+export interface Attachment {
+  name: string;
+  contentType: string;
+  size: number;
+}
+
+// Matches the server's limit, so a big file is refused before uploading it.
+export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+export const IMAGE_TYPES = "image/png,image/jpeg,image/gif,image/webp";
 
 export interface Conversation {
   id: string;
@@ -59,7 +73,8 @@ async function request<T>(path: string, init: RequestInit & { token?: string; ba
   const res = await fetch(`${base}${path}`, {
     ...rest,
     headers: {
-      "Content-Type": "application/json",
+      // A FormData body sets its own multipart type.
+      ...(rest.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...headers,
     },
@@ -69,6 +84,20 @@ async function request<T>(path: string, init: RequestInit & { token?: string; ba
     throw new ApiError(res.status, body?.error?.code ?? "UNKNOWN", body?.error?.message ?? res.statusText);
   }
   return (res.status === 204 ? undefined : res.json()) as Promise<T>;
+}
+
+function imageForm(file: File, clientMessageId: string) {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("clientMessageId", clientMessageId);
+  return form;
+}
+
+// An image the page can show: fetched with the token, since an <img> can't send one.
+async function image(path: string, token: string): Promise<Blob> {
+  const res = await fetch(`/api/v1${path}`, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new ApiError(res.status, "IMAGE_FAILED", res.statusText);
+  return res.blob();
 }
 
 export const widgetApi = {
@@ -103,6 +132,15 @@ export const widgetApi = {
       token,
       body: JSON.stringify(message),
     }),
+
+  sendImage: (token: string, file: File, clientMessageId: string) =>
+    request<{ message: Message; conversation: Conversation }>("/widget/conversation/attachments", {
+      method: "POST",
+      token,
+      body: imageForm(file, clientMessageId),
+    }),
+
+  image: (token: string, messageId: string) => image(`/widget/conversation/messages/${messageId}/attachment`, token),
 };
 
 // ---- Agent console ----
@@ -203,6 +241,7 @@ export interface AdminTenant {
   autoResolveMinutes: number;
   // null means always open.
   openingHours: OpeningHours | null;
+  attachmentsEnabled: boolean;
   hasSecret: boolean;
   agentCount: number;
   inviteCount: number;
@@ -220,6 +259,14 @@ export interface TenantForm {
   // 0 = never.
   autoResolveMinutes: number;
   openingHours: OpeningHours | null;
+  attachmentsEnabled: boolean;
+}
+
+// Whether image storage works (GET /admin/storage).
+export interface StorageStatus {
+  ok: boolean;
+  store: string;
+  problem: string | null;
 }
 
 export interface AdminAgents {
@@ -264,6 +311,7 @@ export function adminApi(getToken: () => string) {
   const slug = (s: string) => encodeURIComponent(s);
   return {
     bots: () => call<{ items: string[] }>("GET", "/bots"),
+    storage: () => call<StorageStatus>("GET", "/storage"),
     tenants: () => call<{ items: AdminTenant[] }>("GET", "/tenants"),
     create: (form: TenantForm) => call<AdminTenant>("POST", "/tenants", form),
     update: (s: string, form: TenantForm) => call<AdminTenant>("PUT", `/tenants/${slug(s)}`, form),
@@ -291,6 +339,8 @@ export interface TenantItem {
   id: string;
   slug: string;
   displayName: string;
+  // Agents can send images in this company's chats.
+  attachments: boolean;
 }
 
 // getToken returns the agent's current token, so a refreshed token is used without rebuilding anything.
@@ -320,6 +370,13 @@ export function agentApi(getToken: () => string) {
     accept: (id: string) => post<One>(`/conversations/${id}/accept`),
     reply: (id: string, clientMessageId: string, body: string) =>
       post<{ message: Message }>(`/conversations/${id}/messages`, { clientMessageId, body }),
+    sendImage: (id: string, file: File, clientMessageId: string) =>
+      request<{ message: Message }>(`/agent/conversations/${id}/attachments`, {
+        method: "POST",
+        token: getToken(),
+        body: imageForm(file, clientMessageId),
+      }),
+    image: (id: string, messageId: string) => image(`/agent/conversations/${id}/messages/${messageId}/attachment`, getToken()),
     resolve: (id: string) => post<One>(`/conversations/${id}/resolve`),
     returnToBot: (id: string) => post<One>(`/conversations/${id}/return-to-bot`),
     reopen: (id: string) => post<One>(`/conversations/${id}/reopen`),

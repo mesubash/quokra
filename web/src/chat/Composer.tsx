@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
-import { SendIcon } from "../lib/icons";
+import { IMAGE_TYPES } from "../lib/api";
+import { PaperclipIcon, SendIcon } from "../lib/icons";
 
 const MAX_LENGTH = 2000;
 const MAX_HEIGHT = 120;
@@ -17,6 +18,8 @@ interface Props {
   note?: boolean;
   // Saved replies; typing "/" lists them, picking one puts its text in the input.
   replies?: { title: string; body: string }[];
+  // Shows the 📎 button; called with the picked image.
+  onAttach?: (file: File) => void;
 }
 
 // Replies whose title matches what's typed after "/". Only while the input is a single "/word".
@@ -34,8 +37,10 @@ export function Composer({
   asking = null,
   note = false,
   replies = [],
+  onAttach,
 }: Props) {
   const input = useRef<HTMLTextAreaElement>(null);
+  const picker = useRef<HTMLInputElement>(null);
   const [text, setText] = useState("");
   const [active, setActive] = useState(0);
   const [hidden, setHidden] = useState(false);
@@ -126,6 +131,31 @@ export function Composer({
         </ul>
       )}
       <div className="composer-row">
+        {onAttach && (
+          <>
+            <button
+              type="button"
+              className="attach"
+              aria-label="Send an image"
+              title="Send an image"
+              disabled={disabled}
+              onClick={() => picker.current?.click()}
+            >
+              <PaperclipIcon size={18} />
+            </button>
+            <input
+              ref={picker}
+              type="file"
+              accept={IMAGE_TYPES}
+              hidden
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                if (file) onAttach(file);
+              }}
+            />
+          </>
+        )}
         <textarea
           ref={input}
           rows={1}

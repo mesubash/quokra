@@ -226,7 +226,7 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose, onExp
             <span className="muted">Support</span>
           </div>
           <NotifyMenu prefs={prefs} onChange={setPrefs} host={hostNotify} onTurnOn={askPermission} />
-          {me?.admin && (
+          {me && (
             <button
               type="button"
               className="icon-button quiet"
@@ -339,6 +339,7 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose, onExp
             onOpen={open}
             onChanged={refreshCounts}
             onError={failed}
+            imagesAllowed={(slug) => tenants.some((t) => t.slug === slug && t.attachments)}
           />
         ) : (
           <div className="console-empty">
@@ -347,7 +348,12 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose, onExp
         )}
       </section>
       {showSettings && (
-        <Settings admin={admin} api={admins} onClose={adminOnly ? undefined : () => setSettingsOpen(false)} />
+        <Settings
+          admin={me?.admin ? admin : undefined}
+          api={me?.admin ? admins : undefined}
+          notifications={{ prefs, onChange: setPrefs, host: hostNotify, onTurnOn: askPermission }}
+          onClose={adminOnly ? undefined : () => setSettingsOpen(false)}
+        />
       )}
       <div className="toasts" aria-live="polite">
         {toasts.map((t) => (

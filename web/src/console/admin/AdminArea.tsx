@@ -6,10 +6,12 @@ import {
   type AdminTenant,
   type OpeningHours,
   type SavedReply,
+  type StorageStatus,
   type TenantForm,
 } from "../../lib/api";
 import { CheckIcon, CloseIcon, CopyIcon } from "../../lib/icons";
 import { initials } from "../format";
+import { NotifyOptions, type NotifyOptionsProps } from "../NotifyMenu";
 import { BotCard } from "./BotCard";
 
 // Settings for admins: the companies (tenants) that use Quokra and everything about each one.
@@ -47,9 +49,10 @@ export function useAdmin(api: AdminApi, enabled: boolean) {
 
 type Admin = ReturnType<typeof useAdmin>;
 
-type Section = "general" | "bot" | "replies" | "agents" | "embed";
+type Section = "notifications" | "general" | "bot" | "replies" | "agents" | "embed";
 
-const SECTIONS: { id: Section; label: string }[] = [
+// Notifications are each agent's own; the rest is per company, for admins.
+const COMPANY_SECTIONS: { id: Section; label: string }[] = [
   { id: "general", label: "General" },
   { id: "bot", label: "Bot" },
   { id: "replies", label: "Saved replies" },
@@ -57,10 +60,21 @@ const SECTIONS: { id: Section; label: string }[] = [
   { id: "embed", label: "Embed & keys" },
 ];
 
-// Settings, opened from the gear in the console header: pick a company, then one section at a time.
-// onClose is missing for admins without the agent role, who only have settings.
-export function Settings({ admin, api, onClose }: { admin: Admin; api: AdminApi; onClose?: () => void }) {
-  const [section, setSection] = useState<Section>("general");
+// Settings, opened from the gear in the console header. Everyone gets their notifications; admins also pick
+// a company and see its sections one at a time. onClose is missing for admins without the agent role, who
+// only have settings.
+export function Settings({
+  admin,
+  api,
+  notifications,
+  onClose,
+}: {
+  admin?: Admin;
+  api?: AdminApi;
+  notifications: NotifyOptionsProps;
+  onClose?: () => void;
+}) {
+  const [section, setSection] = useState<Section>(admin ? "general" : "notifications");
 
   useEffect(() => {
     if (!onClose) return;
@@ -69,15 +83,17 @@ export function Settings({ admin, api, onClose }: { admin: Admin; api: AdminApi;
     return () => document.removeEventListener("keydown", close);
   }, [onClose]);
 
-  const tenants = admin.tenants ?? [];
-  const selected = admin.selected ?? tenants[0]?.slug ?? null;
+  const tenants = admin?.tenants ?? [];
+  const selected = admin?.selected ?? tenants[0]?.slug ?? null;
   const tenant = tenants.find((t) => t.slug === selected);
+  const companyView = admin && api && section !== "notifications";
+  const sections = [{ id: "notifications" as Section, label: "Notifications" }, ...(admin ? COMPANY_SECTIONS : [])];
 
   return (
     <div className="settings" role="dialog" aria-modal="true" aria-label="Settings">
       <header className="settings-header">
         <h2>Settings</h2>
-        {tenants.length > 0 && (
+        {companyView && tenants.length > 0 && (
           <label className="settings-company">
             <span className="muted">Company</span>
             <select value={selected ?? ""} onChange={(e) => admin.select(e.target.value)}>
@@ -90,16 +106,18 @@ export function Settings({ admin, api, onClose }: { admin: Admin; api: AdminApi;
             </select>
           </label>
         )}
-        <button type="button" className="button button-small" onClick={() => admin.select("new")}>
-          New company
-        </button>
+        {companyView && (
+          <button type="button" className="button button-small" onClick={() => admin.select("new")}>
+            New company
+          </button>
+        )}
         {onClose && (
           <button type="button" className="icon-button quiet" aria-label="Close settings" onClick={onClose}>
             <CloseIcon size={18} />
           </button>
         )}
       </header>
-      {admin.error && (
+      {companyView && admin.error && (
         <p className="console-error" role="alert">
           {admin.error}{" "}
           <button type="button" className="link-button" onClick={admin.reload}>
@@ -108,8 +126,29 @@ export function Settings({ admin, api, onClose }: { admin: Admin; api: AdminApi;
         </p>
       )}
       <div className="settings-body">
-        {selected === "new" ? (
-          <div className="settings-content">
+        <nav className="settings-nav" aria-label="Settings sections">
+          {sections.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              aria-current={section === s.id && selected !== "new" ? "page" : undefined}
+              onClick={() => {
+                setSection(s.id);
+                if (admin?.selected === "new") admin.select(null);
+              }}
+            >
+              {s.label}
+            </button>
+          ))}
+        </nav>
+        <div className="settings-content" key={`${selected} ${section}`}>
+          {section === "notifications" ? (
+            <section className="admin-card settings-notify">
+              <h3>Notifications</h3>
+              <p className="muted admin-help">Just for you, in this browser.</p>
+              <NotifyOptions {...notifications} />
+            </section>
+          ) : !companyView ? null : selected === "new" ? (
             <section className="admin-card">
               <h3>New company</h3>
               <TenantFormView
@@ -122,22 +161,12 @@ export function Settings({ admin, api, onClose }: { admin: Admin; api: AdminApi;
                 }}
               />
             </section>
-          </div>
-        ) : tenant ? (
-          <>
-            <nav className="settings-nav" aria-label="Settings sections">
-              {SECTIONS.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  aria-current={section === s.id ? "page" : undefined}
-                  onClick={() => setSection(s.id)}
-                >
-                  {s.label}
-                </button>
-              ))}
-            </nav>
-            <div className="settings-content" key={`${tenant.slug} ${section}`}>
+          ) : !tenant ? (
+            <p className="muted">
+              {admin.tenants === null ? "Loading…" : "No companies yet. Create one to get started."}
+            </p>
+          ) : (
+            <>
               {section === "general" && (
                 <section className="admin-card">
                   <h3>General</h3>
@@ -153,13 +182,9 @@ export function Settings({ admin, api, onClose }: { admin: Admin; api: AdminApi;
                   <SecretCard api={api} tenant={tenant} onChanged={admin.reload} />
                 </>
               )}
-            </div>
-          </>
-        ) : (
-          <p className="muted settings-empty">
-            {admin.tenants === null ? "Loading…" : "No companies yet. Create one to get started."}
-          </p>
-        )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -517,6 +542,7 @@ function TenantFormView({
   const [bot, setBot] = useState(tenant?.botConfig ?? "");
   const [autoResolve, setAutoResolve] = useState(tenant?.autoResolveMinutes ?? 1440);
   const [hours, setHours] = useState<OpeningHours | null>(tenant?.openingHours ?? null);
+  const [images, setImages] = useState(tenant?.attachmentsEnabled ?? false);
   const [widget, setWidget] = useState((tenant?.widgetOrigins ?? []).join("\n"));
   const [consoleSites, setConsoleSites] = useState((tenant?.consoleOrigins ?? []).join("\n"));
   const [error, setError] = useState<string | null>(null);
@@ -539,6 +565,7 @@ function TenantFormView({
       botConfig: bot,
       autoResolveMinutes: autoResolve,
       openingHours: hours,
+      attachmentsEnabled: images,
       widgetOrigins: lines(widget),
       consoleOrigins: lines(consoleSites),
     };
@@ -617,6 +644,7 @@ function TenantFormView({
         </span>
       </label>
       <HoursField value={hours} onChange={setHours} />
+      <ImagesField api={api} value={images} onChange={setImages} />
       <label>
         <span className="admin-label">Logo URL (optional)</span>
         <input value={logo} onChange={(e) => setLogo(e.target.value)} placeholder="https://www.acme.com/logo.png" />
@@ -656,6 +684,35 @@ function TenantFormView({
         </button>
       </div>
     </form>
+  );
+}
+
+// "Allow images", with whether the server's storage for them works.
+function ImagesField({ api, value, onChange }: { api: AdminApi; value: boolean; onChange: (v: boolean) => void }) {
+  const [storage, setStorage] = useState<StorageStatus | null>(null);
+
+  useEffect(() => {
+    api
+      .storage()
+      .then(setStorage)
+      .catch(() => setStorage({ ok: false, store: "?", problem: "Couldn't check the storage." }));
+  }, [api]);
+
+  return (
+    <div className="admin-field">
+      <span className="admin-label">Images</span>
+      <label className="admin-check">
+        <input type="checkbox" checked={value} onChange={(e) => onChange(e.target.checked)} />
+        Customers and agents can send images (PNG, JPEG, GIF or WebP, up to 5 MB)
+      </label>
+      {storage && (
+        <span className={storage.ok ? "admin-help muted" : "admin-help error-text"} role="status">
+          {storage.ok
+            ? `Storage works (${storage.store}).`
+            : `Storage isn't working (${storage.store}): ${storage.problem}. The image button stays hidden until it does.`}
+        </span>
+      )}
+    </div>
   );
 }
 

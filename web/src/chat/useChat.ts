@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ApiError, widgetApi, type Conversation, type Message } from "../lib/api";
+import { ApiError, MAX_IMAGE_BYTES, widgetApi, type Conversation, type Message } from "../lib/api";
 import { connectConversation } from "../lib/realtime";
 import { mergeMessages } from "./messages";
 
@@ -153,5 +153,24 @@ export function useChat(token: string | null, onUnauthorized?: () => void) {
     [state.pending, deliver],
   );
 
-  return { ...state, send, retry, startNew };
+  // Returns what went wrong, for a short line above the input, or null once it's sent.
+  const sendImage = useCallback(
+    async (file: File): Promise<string | null> => {
+      if (!token) return "Not connected yet.";
+      if (file.size > MAX_IMAGE_BYTES) return "Images can be up to 5 MB.";
+      try {
+        const { message, conversation } = await widgetApi.sendImage(token, file, crypto.randomUUID());
+        setState((s) => ({ ...s, conversation, messages: mergeMessages(s.messages, [message]) }));
+        return null;
+      } catch (e) {
+        if (e instanceof ApiError && e.code === "CONTACT_BLOCKED") setState((s) => ({ ...s, error: BLOCKED }));
+        return e instanceof ApiError && e.status < 500 ? e.message : "Couldn't send the image. Try again.";
+      }
+    },
+    [token],
+  );
+
+  const loadImage = useCallback((messageId: string) => widgetApi.image(token ?? "", messageId), [token]);
+
+  return { ...state, send, retry, startNew, sendImage, loadImage };
 }

@@ -411,6 +411,22 @@ button {
   line-height: 1.45;
 }
 
+.bubble-image {
+  padding: 4px;
+}
+
+.bubble-image img {
+  display: block;
+  max-width: min(260px, 100%);
+  max-height: 260px;
+  border-radius: 9px;
+  object-fit: cover;
+}
+
+.bubble-image .bubble-time {
+  padding: 0 6px 2px;
+}
+
 .bubble-text {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -614,6 +630,34 @@ button {
 
 .composer textarea::placeholder {
   color: var(--placeholder);
+}
+
+.attach {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 36px;
+  margin-left: -8px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.attach:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.attach:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.composer-notice {
+  margin: 0 4px 6px;
+  color: var(--danger);
+  font-size: 0.8rem;
 }
 
 .send {
@@ -1671,9 +1715,8 @@ button {
   max-width: 760px;
 }
 
-.settings-empty {
-  grid-column: 1 / -1;
-  padding: 24px;
+.settings-content > .settings-notify {
+  max-width: 460px;
 }
 
 @media (max-width: 760px) {

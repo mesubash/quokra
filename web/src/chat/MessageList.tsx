@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import type { Message, Option } from "../lib/api";
 import { RobotAvatar } from "./RobotAvatar";
 import { dayKey, dayLabel } from "./messages";
@@ -19,6 +19,8 @@ interface Props {
   // Whose messages go on the right: the customer in the chat panel, the agent in the console.
   mine?: Message["senderType"];
   customerName?: string;
+  // Fetches an image message's file (with the token the page already has).
+  loadImage?: (messageId: string) => Promise<Blob>;
 }
 
 interface Group {
@@ -48,10 +50,48 @@ function time(iso: string) {
 }
 
 // Rendered as text, never as HTML. The time sits inside the bubble, bottom right.
-function Bubble({ message }: { message: TimelineItem }) {
+function Bubble({ message, loadImage }: { message: TimelineItem; loadImage?: Props["loadImage"] }) {
+  if (message.attachment && loadImage) return <ImageBubble message={message} load={loadImage} />;
   return (
     <p className="bubble">
       <span className="bubble-text">{message.body}</span>
+      <time className="bubble-time" dateTime={message.createdAt}>
+        {time(message.createdAt)}
+      </time>
+    </p>
+  );
+}
+
+// Click opens the full image in a new tab.
+function ImageBubble({ message, load }: { message: TimelineItem; load: (messageId: string) => Promise<Blob> }) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let live = true;
+    let made: string | null = null;
+    load(message.id)
+      .then((blob) => {
+        if (!live) return;
+        made = URL.createObjectURL(blob);
+        setUrl(made);
+      })
+      .catch(() => live && setFailed(true));
+    return () => {
+      live = false;
+      if (made) URL.revokeObjectURL(made);
+    };
+  }, [message.id, load]);
+
+  return (
+    <p className="bubble bubble-image">
+      {url ? (
+        <a href={url} target="_blank" rel="noopener noreferrer">
+          <img src={url} alt={message.attachment?.name ?? "Image"} />
+        </a>
+      ) : (
+        <span className="bubble-text">{failed ? "The image couldn't load." : "Loading image…"}</span>
+      )}
       <time className="bubble-time" dateTime={message.createdAt}>
         {time(message.createdAt)}
       </time>
@@ -74,6 +114,7 @@ export function MessageList({
   onRetry,
   mine = "CUSTOMER",
   customerName = "Customer",
+  loadImage,
 }: Props) {
   const end = useRef<HTMLDivElement>(null);
   const last = messages[messages.length - 1];
@@ -99,7 +140,7 @@ export function MessageList({
           <div className="group-body">
             <span className="sender">Private note · {group.name}</span>
             {group.messages.map((m) => (
-              <Bubble key={m.id} message={m} />
+              <Bubble key={m.id} message={m} loadImage={loadImage} />
             ))}
           </div>
         </div>
@@ -121,7 +162,7 @@ export function MessageList({
         <div className="group-body">
           {!isMine && <span className="sender">{name}</span>}
           {group.messages.map((m) => (
-            <Bubble key={m.id} message={m} />
+            <Bubble key={m.id} message={m} loadImage={loadImage} />
           ))}
           {sentId && group.messages.some((m) => m.id === sentId) && (
             <span className="delivery">Sent</span>
