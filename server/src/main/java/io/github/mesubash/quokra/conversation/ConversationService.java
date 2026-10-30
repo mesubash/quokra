@@ -140,9 +140,15 @@ public class ConversationService {
     }
 
     // Stores the message, then lets the bot reply while the conversation is with the bot.
-    // Send either body (typed text) or optionId (a menu button).
     @Transactional
     public Message addCustomerMessage(UUID conversationId, String clientMessageId, String body, String optionId) {
+        return addCustomerMessage(conversationId, clientMessageId, body, optionId, null);
+    }
+
+    // Send either body (typed text) or optionId (a menu button). replyTo quotes an earlier message.
+    @Transactional
+    public Message addCustomerMessage(UUID conversationId, String clientMessageId, String body, String optionId,
+                                      UUID replyTo) {
         Conversation conversation = get(conversationId);
 
         if (clientMessageId != null) {
@@ -160,8 +166,10 @@ public class ConversationService {
         Instant now = clock.instant();
         reopenForCustomer(conversation, now);
         conversation.touch(now);
-        Message message = save(
-            Message.create(conversationId, SenderType.CUSTOMER, null, null, text, clientMessageId, null, now));
+        Message.Quote quote = optionId == null ? quoteOf(conversation, replyTo) : null;
+        Message created = Message.create(conversationId, SenderType.CUSTOMER, null, null, text, clientMessageId, null, now);
+        created.quote(quote);
+        Message message = save(created);
 
         if (collecting) {
             collectContact(conversation, text, optionId, now);
@@ -255,7 +263,8 @@ public class ConversationService {
 
     // An image from the customer. A closed chat reopens as with a message; the bot doesn't answer images.
     @Transactional
-    public Message addCustomerImage(UUID conversationId, String clientMessageId, String name, byte[] bytes) {
+    public Message addCustomerImage(UUID conversationId, String clientMessageId, String name, byte[] bytes,
+                                    UUID replyTo) {
         Conversation conversation = get(conversationId);
         Optional<Message> existing = alreadySent(conversationId, clientMessageId);
         if (existing.isPresent()) {
@@ -266,13 +275,15 @@ public class ConversationService {
         Instant now = clock.instant();
         reopenForCustomer(conversation, now);
         conversation.touch(now);
-        return save(Message.image(conversationId, SenderType.CUSTOMER, null, null, clientMessageId, attachment, now));
+        Message image = Message.image(conversationId, SenderType.CUSTOMER, null, null, clientMessageId, attachment, now);
+        image.quote(quoteOf(conversation, replyTo));
+        return save(image);
     }
 
     // An image from the agent who has the chat, like a reply.
     @Transactional
     public Message addAgentImage(UUID conversationId, AgentRef agent, String clientMessageId, String name,
-                                 byte[] bytes) {
+                                 byte[] bytes, UUID replyTo) {
         Conversation conversation = get(conversationId);
         Optional<Message> existing = alreadySent(conversationId, clientMessageId);
         if (existing.isPresent()) {
@@ -285,8 +296,30 @@ public class ConversationService {
         Message.Attachment attachment = storeImage(conversation, name, bytes);
         Instant now = clock.instant();
         conversation.touch(now);
-        return save(Message.image(conversationId, SenderType.AGENT, agent.sub(), agent.name(), clientMessageId,
-            attachment, now));
+        Message image = Message.image(conversationId, SenderType.AGENT, agent.sub(), agent.name(), clientMessageId,
+            attachment, now);
+        image.quote(quoteOf(conversation, replyTo));
+        return save(image);
+    }
+
+    static final int QUOTE_LENGTH = 100;
+
+    // The quote for a reply: only to a customer's or agent's message in the same conversation.
+    private Message.Quote quoteOf(Conversation conversation, UUID replyTo) {
+        if (replyTo == null) {
+            return null;
+        }
+        Message m = messages.findById(replyTo)
+            .filter(found -> found.getConversationId().equals(conversation.getId()))
+            .filter(found -> found.getSenderType() == SenderType.CUSTOMER || found.getSenderType() == SenderType.AGENT)
+            .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR",
+                "replyTo: only a customer's or agent's message in this conversation"));
+        String name = m.getSenderType() == SenderType.AGENT ? m.getSenderName() : conversation.getCustomerName();
+        String preview = m.getAttachmentKey() != null ? "Image" : m.getBody().strip().lines().findFirst().orElse("");
+        if (preview.length() > QUOTE_LENGTH) {
+            preview = preview.substring(0, QUOTE_LENGTH - 1) + "…";
+        }
+        return new Message.Quote(m.getId(), m.getSenderType(), name, preview);
     }
 
     // Whether the 📎 button shows: the tenant allows images and the file store works.
@@ -349,6 +382,12 @@ public class ConversationService {
 
     @Transactional
     public Message addAgentMessage(UUID conversationId, AgentRef agent, String clientMessageId, String body) {
+        return addAgentMessage(conversationId, agent, clientMessageId, body, null);
+    }
+
+    @Transactional
+    public Message addAgentMessage(UUID conversationId, AgentRef agent, String clientMessageId, String body,
+                                   UUID replyTo) {
         Conversation conversation = get(conversationId);
         if (clientMessageId != null) {
             var existing = messages.findByConversationIdAndClientMessageId(conversationId, clientMessageId);
@@ -363,8 +402,10 @@ public class ConversationService {
         requireAssignee(conversation, agent);
         Instant now = clock.instant();
         conversation.touch(now);
-        return save(Message.create(conversationId, SenderType.AGENT, agent.sub(), agent.name(), text, clientMessageId,
-            null, now));
+        Message reply = Message.create(conversationId, SenderType.AGENT, agent.sub(), agent.name(), text, clientMessageId,
+            null, now);
+        reply.quote(quoteOf(conversation, replyTo));
+        return save(reply);
     }
 
     // Closes a conversation. Waiting ones can be closed by any agent (e.g. spam); taken ones only by the assignee.

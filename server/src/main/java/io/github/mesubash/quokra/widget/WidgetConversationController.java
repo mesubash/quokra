@@ -46,7 +46,9 @@ public class WidgetConversationController {
 
     public record MessagePage(List<MessageView> items, UUID nextCursor) {}
 
-    public record SendRequest(@Size(max = 64) String clientMessageId, String body, @Size(max = 64) String optionId) {}
+    // replyTo: an earlier message this one answers (optional).
+    public record SendRequest(@Size(max = 64) String clientMessageId, String body, @Size(max = 64) String optionId,
+                              UUID replyTo) {}
 
     public record SendResponse(MessageView message, CustomerConversationView conversation) {}
 
@@ -111,7 +113,8 @@ public class WidgetConversationController {
     public SendResponse send(@AuthenticationPrincipal Session session, @Valid @RequestBody SendRequest request) {
         rateLimiter.check("messages:" + session.visitorId(), RateLimiter.MESSAGES_PER_MINUTE);
         UUID id = openConversation(session).getId();
-        Message message = service.addCustomerMessage(id, request.clientMessageId(), request.body(), request.optionId());
+        Message message = service.addCustomerMessage(id, request.clientMessageId(), request.body(), request.optionId(),
+            request.replyTo());
         return new SendResponse(MessageView.of(message), CustomerConversationView.of(service.get(id)));
     }
 
@@ -119,11 +122,13 @@ public class WidgetConversationController {
     @PostMapping(path = "/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     public SendResponse sendImage(@AuthenticationPrincipal Session session, @RequestParam MultipartFile file,
-                                  @RequestParam(required = false) @Size(max = 64) String clientMessageId)
+                                  @RequestParam(required = false) @Size(max = 64) String clientMessageId,
+                                  @RequestParam(required = false) UUID replyTo)
             throws IOException {
         rateLimiter.check("messages:" + session.visitorId(), RateLimiter.MESSAGES_PER_MINUTE);
         UUID id = openConversation(session).getId();
-        Message message = service.addCustomerImage(id, clientMessageId, file.getOriginalFilename(), file.getBytes());
+        Message message = service.addCustomerImage(id, clientMessageId, file.getOriginalFilename(), file.getBytes(),
+            replyTo);
         return new SendResponse(MessageView.of(message), CustomerConversationView.of(service.get(id)));
     }
 

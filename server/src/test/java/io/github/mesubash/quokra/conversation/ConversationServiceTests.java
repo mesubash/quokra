@@ -403,6 +403,33 @@ class ConversationServiceTests {
     }
 
     @Test
+    void replyQuotesAnEarlierMessageOfTheSameChat() {
+        UUID id = start();
+        service.handoff(id, HandoffReason.CUSTOMER_REQUEST, SenderType.CUSTOMER);
+        service.accept(id, new AgentRef("sam", "Sam"));
+        Message question = service.addCustomerMessage(id, "c-1", "Where is my order?\nIt's late.", null);
+
+        Message reply = service.addAgentMessage(id, new AgentRef("sam", "Sam"), "a-1", "On its way", question.getId());
+
+        assertThat(MessageView.of(reply).replyTo())
+            .isEqualTo(new Message.Quote(question.getId(), SenderType.CUSTOMER, "Pat", "Where is my order?"));
+    }
+
+    @Test
+    void cantReplyToTheBotOrAnotherChat() {
+        UUID id = start();
+        Message greeting = history(id).getFirst();
+        assertThatThrownBy(() -> service.addCustomerMessage(id, "c-1", "hi", null, greeting.getId()))
+            .isInstanceOfSatisfying(ApiException.class, e -> assertThat(e.code()).isEqualTo("VALIDATION_ERROR"));
+
+        visitor = UUID.randomUUID();
+        UUID other = start();
+        Message elsewhere = service.addCustomerMessage(other, "c-2", "mine", null);
+        assertThatThrownBy(() -> service.addCustomerMessage(id, "c-3", "hi", null, elsewhere.getId()))
+            .isInstanceOf(ApiException.class);
+    }
+
+    @Test
     void blockedContactCantChat() {
         UUID id = start();
         entityManager.flush();

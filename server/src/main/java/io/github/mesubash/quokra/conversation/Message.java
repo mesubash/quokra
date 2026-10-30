@@ -54,6 +54,13 @@ public class Message {
     private Integer attachmentSize;
     private String attachmentName;
 
+    // The quoted message, copied when this one was sent.
+    private UUID replyToId;
+    @Enumerated(EnumType.STRING)
+    private SenderType replyToSender;
+    private String replyToName;
+    private String replyToPreview;
+
     static Message create(UUID conversationId, SenderType senderType, String senderSub, String senderName,
                           String body, String clientMessageId, List<Option> options, Instant now) {
         Message m = new Message();
@@ -77,6 +84,19 @@ public class Message {
         m.attachmentName = attachment.name();
         return m;
     }
+
+    void quote(Quote quote) {
+        if (quote == null) {
+            return;
+        }
+        replyToId = quote.id();
+        replyToSender = quote.senderType();
+        replyToName = quote.senderName();
+        replyToPreview = quote.preview();
+    }
+
+    // What a reply shows of the message it answers.
+    public record Quote(UUID id, SenderType senderType, String senderName, String preview) {}
 
     // An image already in the file store.
     public record Attachment(String key, String contentType, int size, String name) {}

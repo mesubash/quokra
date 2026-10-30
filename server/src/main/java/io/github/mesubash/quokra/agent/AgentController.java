@@ -68,7 +68,8 @@ public class AgentController {
 
     record One(ConversationView conversation) {}
 
-    record ReplyRequest(@Size(max = 64) String clientMessageId, String body) {}
+    // replyTo: an earlier message this one answers (optional).
+    record ReplyRequest(@Size(max = 64) String clientMessageId, String body, UUID replyTo) {}
 
     record ReplyResponse(MessageView message) {}
 
@@ -191,7 +192,7 @@ public class AgentController {
                                @Valid @RequestBody ReplyRequest request) {
         visible(jwt, id);
         return new ReplyResponse(MessageView.of(
-            service.addAgentMessage(id, agent(jwt), request.clientMessageId(), request.body())));
+            service.addAgentMessage(id, agent(jwt), request.clientMessageId(), request.body(), request.replyTo())));
     }
 
     // An image (multipart field "file") from the agent who has the chat.
@@ -199,11 +200,12 @@ public class AgentController {
     @ResponseStatus(HttpStatus.CREATED)
     public ReplyResponse sendImage(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id,
                                    @RequestParam MultipartFile file,
-                                   @RequestParam(required = false) @Size(max = 64) String clientMessageId)
+                                   @RequestParam(required = false) @Size(max = 64) String clientMessageId,
+                                   @RequestParam(required = false) UUID replyTo)
             throws IOException {
         visible(jwt, id);
-        return new ReplyResponse(MessageView.of(
-            service.addAgentImage(id, agent(jwt), clientMessageId, file.getOriginalFilename(), file.getBytes())));
+        return new ReplyResponse(MessageView.of(service.addAgentImage(id, agent(jwt), clientMessageId,
+            file.getOriginalFilename(), file.getBytes(), replyTo)));
     }
 
     @GetMapping("/conversations/{id}/messages/{messageId}/attachment")

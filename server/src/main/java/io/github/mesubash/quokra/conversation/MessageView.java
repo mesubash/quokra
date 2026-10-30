@@ -6,16 +6,20 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-// A message as customers and agents see it. attachment is set for an image (fetched from its own URL).
+// A message as customers and agents see it. attachment is set for an image (fetched from its own URL);
+// replyTo for a reply to an earlier message.
 public record MessageView(UUID id, SenderType senderType, String senderName, String body,
-                          List<Option> options, String clientMessageId, Instant createdAt, Attachment attachment) {
+                          List<Option> options, String clientMessageId, Instant createdAt, Attachment attachment,
+                          Message.Quote replyTo) {
 
     public record Attachment(String name, String contentType, int size) {}
 
     public static MessageView of(Message m) {
         Attachment attachment = m.getAttachmentKey() == null ? null
             : new Attachment(m.getAttachmentName(), m.getAttachmentType(), m.getAttachmentSize());
+        Message.Quote replyTo = m.getReplyToId() == null ? null
+            : new Message.Quote(m.getReplyToId(), m.getReplyToSender(), m.getReplyToName(), m.getReplyToPreview());
         return new MessageView(m.getId(), m.getSenderType(), m.getSenderName(), m.getBody(), m.getOptions(),
-            m.getClientMessageId(), m.getCreatedAt(), attachment);
+            m.getClientMessageId(), m.getCreatedAt(), attachment, replyTo);
     }
 }
