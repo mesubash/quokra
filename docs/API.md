@@ -291,6 +291,14 @@ Per agent. Marking an older message changes nothing. `ConversationSummary.unread
 
 `200 { "waiting": 3, "mine": 1, "myUnread": 2 }`: waiting conversations across the caller's tenants, the caller's open (`HUMAN`) chats, and unread customer messages in them. For badges, so the console doesn't have to load whole lists to count them.
 
+### 4.18 `GET /agent/conversations/{id}/replies`
+
+Saved replies of the conversation's tenant, by title. The console fills in `{name}` itself.
+
+```json
+200 { "items": [{ "id": "…", "title": "Refunds", "body": "Hi {name}, refunds take 5 days." }], "nextCursor": null }
+```
+
 ---
 
 ## 4b. Admin endpoints
@@ -322,6 +330,10 @@ interface Tenant {
 | `POST /admin/tenants/{slug}/agents` | `{ "email": "…" }` → `{ "result": "ADDED" }` if someone already signed in with that verified email, else `"INVITED"` |
 | `DELETE /admin/tenants/{slug}/agents/{sub}` | Remove an agent (`204`) |
 | `DELETE /admin/tenants/{slug}/invites/{email}` | Cancel an invite (`204`) |
+| `GET /admin/tenants/{slug}/replies` | Saved replies: `{ "items": [{ id, title, body }] }` |
+| `POST /admin/tenants/{slug}/replies` | `{ title, body }` → `201 { id, title, body }`. Title up to 80 characters, body up to 2,000; `{name}` in the body becomes the customer's name |
+| `PUT /admin/tenants/{slug}/replies/{id}` | Change one (same body). `404 REPLY_NOT_FOUND` |
+| `DELETE /admin/tenants/{slug}/replies/{id}` | Remove one (`204`). `404 REPLY_NOT_FOUND` |
 
 Validation (`400 VALIDATION_ERROR`, the message names the field): slug of 2–40 lowercase letters, digits or dashes; sites as plain origins (`https://www.example.com`, no path); colour `#rrggbb`; logo `https://`; an existing bot file.
 
@@ -536,7 +548,7 @@ Envelope:
 | 403 | `CONTACT_BLOCKED` | The customer's contact was blocked by an agent |
 | 403 | `NOT_ASSIGNEE` | Agent action on a conversation assigned to someone else |
 | 403 | `ORIGIN_NOT_ALLOWED` | Request origin not allowed for the tenant |
-| 404 | `TENANT_NOT_FOUND` / `CONVERSATION_NOT_FOUND` | Unknown id or key |
+| 404 | `TENANT_NOT_FOUND` / `CONVERSATION_NOT_FOUND` / `REPLY_NOT_FOUND` | Unknown id or key |
 | 404 | `NOT_FOUND` | Unknown path |
 | 405 | `METHOD_NOT_ALLOWED` | Wrong HTTP method for the path |
 | 409 | `CONFLICT` | Someone else changed the same thing at the same moment; reload and retry |

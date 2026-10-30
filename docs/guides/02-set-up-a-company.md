@@ -23,6 +23,8 @@ agents. Admins set them up in the console's **Admin** tab.
 5. **Secret key** (only if you'll [identify logged-in customers](05-identify-customers.md)): **Create
    secret key**, copy it straight away (it's shown once) and give it to the backend team. Replacing it
    stops the old one at once.
+6. **Saved replies** (optional): answers your agents send often. Agents type `/` in the reply box to
+   pick one; `{name}` becomes the customer's name (or "there" for guests who didn't give one).
 
 Browsers refuse to show the chat or console on sites that aren't listed in step 2, so add every domain
 (including `www.` and staging sites) you'll use.
