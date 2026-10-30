@@ -1,0 +1,30 @@
+name: Bug report
+description: Something doesn't work as it should
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: And what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the chat on …
+        2. Click …
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Quokra version
+      placeholder: e.g. 2.0.0 (or the commit)
+  - type: textarea
+    id: setup
+    attributes:
+      label: Setup
+      description: How you run it (Docker image, compose, from source), browser, and anything relevant from the server log. Leave out keys and personal data.

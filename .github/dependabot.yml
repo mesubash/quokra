@@ -1,0 +1,21 @@
+# Weekly dependency updates, as pull requests to develop.
+version: 2
+updates:
+  - package-ecosystem: maven
+    directory: /server
+    target-branch: develop
+    schedule:
+      interval: weekly
+    groups:
+      spring:
+        patterns: ["org.springframework*"]
+  - package-ecosystem: npm
+    directory: /web
+    target-branch: develop
+    schedule:
+      interval: weekly
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: develop
+    schedule:
+      interval: weekly

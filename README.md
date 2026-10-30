@@ -104,6 +104,8 @@ v1 (FAQ bot + human handoff on the web) is complete: real agent login, settings 
 | [Embedding guide](docs/EMBEDDING.md) | How sites add the chat and the console |
 | [Development](docs/DEVELOPMENT.md) | Setup, conventions, testing, definition of done |
 | [Deploying](docs/DEPLOY.md) | The Docker image, settings, first steps after it runs |
+| [Contributing](CONTRIBUTING.md) | How to propose and make changes |
+| [Security](SECURITY.md) | How to report a vulnerability |
 
 ## Stack
 
