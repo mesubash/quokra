@@ -163,4 +163,62 @@ describe("sdk.js agent console", () => {
     agentConsole().init({ mode: "bubble", tenant: "demo", getToken: () => "t", accent: "red;}" });
     expect(frame().src).not.toContain("accent");
   });
+
+  describe("browser notifications", () => {
+    const shown: { title: string; options: NotificationOptions }[] = [];
+    class FakeNotification {
+      static permission: NotificationPermission = "granted";
+      static requestPermission = vi.fn(() => Promise.resolve("granted" as NotificationPermission));
+      onclick: (() => void) | null = null;
+      constructor(title: string, options: NotificationOptions) {
+        shown.push({ title, options });
+      }
+      close() {}
+    }
+
+    beforeEach(() => {
+      shown.length = 0;
+      vi.stubGlobal("Notification", FakeNotification);
+    });
+
+    afterEach(() => vi.unstubAllGlobals());
+
+    const notice = { source: "quokra", type: "console.notify", kind: "message", title: "Pat", body: "Hello?",
+      conversationId: "01a1874a-d18e-7a66-86ba-aca69283f91c" };
+
+    it("tells the console whether it can notify", () => {
+      agentConsole().init({ mode: "bubble", tenant: "demo", getToken: () => "t", notifications: true });
+      const post = vi.spyOn(frame().contentWindow!, "postMessage");
+
+      fromFrame({ source: "quokra", type: "console.ready" });
+
+      expect(post).toHaveBeenCalledWith(
+        { type: "console.notifications", available: true, permission: "granted", source: "quokra" },
+        window.location.origin,
+      );
+    });
+
+    it("shows a notification while the drawer is closed, with the Quokra logo", () => {
+      agentConsole().init({ mode: "bubble", tenant: "demo", getToken: () => "t", notifications: true });
+      fromFrame({ source: "quokra", type: "console.ready" });
+
+      fromFrame(notice);
+
+      expect(shown).toHaveLength(1);
+      expect(shown[0].title).toBe("Pat");
+      expect(shown[0].options.icon).toBe(`${window.location.origin}/logo.png`);
+    });
+
+    it("does nothing unless the dashboard turned notifications on", () => {
+      agentConsole().init({ mode: "bubble", tenant: "demo", getToken: () => "t" });
+      const onNotification = vi.fn();
+      agentConsole().on("notification", onNotification);
+      fromFrame({ source: "quokra", type: "console.ready" });
+
+      fromFrame(notice);
+
+      expect(shown).toHaveLength(0);
+      expect(onNotification).toHaveBeenCalledWith(expect.objectContaining({ title: "Pat" }));
+    });
+  });
 });

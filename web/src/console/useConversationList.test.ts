@@ -67,6 +67,8 @@ describe("applyActivity", () => {
     lastMessagePreview: "new message",
     lastMessageAt: "2026-10-29T11:00:00Z",
     senderType,
+    assigneeSub: null,
+    customerName: null,
   });
 
   it("updates the preview and counts customer messages as unread", () => {

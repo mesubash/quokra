@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { adminApi, agentApi, ApiError, type ConversationSummary, type Me, type TenantItem } from "../lib/api";
-import { postToHost } from "../lib/bridge";
-import { BellIcon, CloseIcon, ExpandIcon, SearchIcon } from "../lib/icons";
-import { chime, setSoundEnabled, soundEnabled } from "../lib/sound";
+import { onHostMessage, postToHost } from "../lib/bridge";
+import { CloseIcon, ExpandIcon, SearchIcon } from "../lib/icons";
+import { loadPrefs, savePrefs, type NotifyPrefs } from "../lib/notifyPrefs";
+import { chime } from "../lib/sound";
+import { NotifyMenu, type HostNotifications } from "./NotifyMenu";
+import { noticeFor, type Notice } from "./notifications";
 import { openSocket, type QueueSnapshot, type Socket } from "../lib/realtime";
 import { ConversationView } from "./ConversationView";
 import { AdminList, AdminMain, useAdmin } from "./admin/AdminArea";
@@ -38,12 +41,26 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose, onExp
   const [tenants, setTenants] = useState<TenantItem[]>([]);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [tab, setTab] = useState<Tab>("queue");
-  const [counts, setCounts] = useState({ waiting: 0, mine: 0 });
+  const [counts, setCounts] = useState({ waiting: 0, mine: 0, myUnread: 0 });
   const [selected, setSelected] = useState<string | null>(
     initialConversation && UUID.test(initialConversation) ? initialConversation : null,
   );
   const [error, setError] = useState<string | null>(null);
-  const [sound, setSound] = useState(soundEnabled);
+  const [prefs, setPrefsState] = useState<NotifyPrefs>(loadPrefs);
+  const setPrefs = (next: NotifyPrefs) => {
+    savePrefs(next);
+    setPrefsState(next);
+  };
+  // What the dashboard says about browser notifications (sdk.js, embedded only).
+  const [hostNotify, setHostNotify] = useState<HostNotifications | null>(null);
+  const [toasts, setToasts] = useState<(Notice & { key: number })[]>([]);
+  const [bannerDismissed, setBannerDismissed] = useState(() => {
+    try {
+      return localStorage.getItem("quokra.notify.banner") === "dismissed";
+    } catch {
+      return false;
+    }
+  });
   const [query, setQuery] = useState("");
   const search = useDebounced(query.trim(), 300);
   const list = useConversationList(api, tab, me?.sub ?? null, tenants, search);
@@ -89,8 +106,20 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose, onExp
   }, [api, failed, refreshCounts]);
 
   // The socket outlives tab switches, so it calls whatever the latest handlers are.
-  const live = useRef({ ...list, refreshCounts, sound, selected });
-  live.current = { ...list, refreshCounts, sound, selected };
+  // Sound, a toast in the console, and (through sdk.js) a browser notification if the dashboard isn't in front.
+  const notify = useCallback(
+    (notice: Notice) => {
+      if (prefs.sound) chime(notice.kind);
+      const key = Date.now() + Math.random();
+      setToasts((current) => [...current.slice(-2), { ...notice, key }]);
+      setTimeout(() => setToasts((current) => current.filter((t) => t.key !== key)), 6000);
+      if (prefs.browser) postToHost({ type: "console.notify", ...notice });
+    },
+    [prefs],
+  );
+
+  const live = useRef({ ...list, refreshCounts, prefs, selected, me, notify });
+  live.current = { ...list, refreshCounts, prefs, selected, me, notify };
 
   // One socket for the whole console: tenant queues here, the open chat in ConversationView.
   // After a reconnect, reload what's on screen, since events may have been missed.
@@ -112,22 +141,59 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose, onExp
     if (!socket) return;
     const stops = tenants.map((t) =>
       socket.subscribe(`/topic/tenants/${t.id}/queue`, (event) => {
+        const { me: who, prefs: p, selected: open } = live.current;
+        // "Watching" only counts while the console is actually in front of the agent.
+        const watching = document.hidden ? null : open;
+        const notice = who ? noticeFor(event, who.sub, p, watching) : null;
+        if (notice) live.current.notify(notice);
+
         if (event.type === "conversation.activity") {
-          live.current.activity(event.data, live.current.selected);
-          return;
+          live.current.activity(event.data, open);
+          if (event.data.assigneeSub === who?.sub) live.current.refreshCounts();
+        } else if (event.type === "conversation.waiting" || event.type === "conversation.updated") {
+          live.current.apply(event.data as unknown as QueueSnapshot);
+          live.current.refreshCounts();
+        } else if (event.type === "conversation.transferred") {
+          live.current.refreshCounts();
         }
-        if (event.type === "conversation.waiting" && live.current.sound) chime();
-        live.current.apply(event.data as unknown as QueueSnapshot);
-        live.current.refreshCounts();
       }),
     );
     return () => stops.forEach((stop) => stop());
   }, [socket, tenants]);
 
   useEffect(() => {
-    document.title = counts.waiting > 0 ? `(${counts.waiting}) Quokra console` : "Quokra console";
-    postToHost({ type: "console.unread", count: counts.waiting });
-  }, [counts.waiting]);
+    // The badge: people waiting, plus unread messages in my own chats.
+    const badge = counts.waiting + counts.myUnread;
+    document.title = badge > 0 ? `(${badge}) Quokra console` : "Quokra console";
+    postToHost({ type: "console.unread", count: badge });
+  }, [counts.waiting, counts.myUnread]);
+
+  // sdk.js says whether it can show browser notifications, and opens a chat when one is clicked.
+  // Asked once here, since this screen appears only after sign-in, later than the frame's "ready".
+  useEffect(() => postToHost({ type: "console.notifications.check" }), []);
+  useEffect(
+    () =>
+      onHostMessage((m) => {
+        if (m.type === "console.notifications") setHostNotify({ available: m.available, permission: m.permission });
+        else if (m.type === "console.open" && UUID.test(m.conversationId)) {
+          setView("chats");
+          setSelected(m.conversationId);
+        }
+      }),
+    [],
+  );
+
+  const showBanner =
+    !bannerDismissed && prefs.browser && hostNotify?.available === true && hostNotify.permission === "default";
+  const dismissBanner = () => {
+    setBannerDismissed(true);
+    try {
+      localStorage.setItem("quokra.notify.banner", "dismissed");
+    } catch {
+      // Storage blocked: hidden until the page reloads.
+    }
+  };
+  const askPermission = () => postToHost({ type: "console.notifications.request" });
 
   // Loads the next page when the end of the list scrolls into view.
   const sentinel = useRef<HTMLLIElement>(null);
@@ -159,19 +225,7 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose, onExp
             <strong>{me?.name ?? "…"}</strong>
             <span className="muted">Support</span>
           </div>
-          <button
-            type="button"
-            className="icon-button quiet"
-            aria-label={sound ? "Mute new-chat sound" : "Play a sound for new chats"}
-            aria-pressed={sound}
-            onClick={() => {
-              setSoundEnabled(!sound);
-              setSound(!sound);
-              if (!sound) chime();
-            }}
-          >
-            <BellIcon size={18} off={!sound} />
-          </button>
+          <NotifyMenu prefs={prefs} onChange={setPrefs} host={hostNotify} onTurnOn={askPermission} />
           {onSignOut && (
             <button type="button" className="link-button" onClick={onSignOut}>
               Sign out
@@ -194,6 +248,17 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose, onExp
             </button>
           )}
         </header>
+        {showBanner && (
+          <div className="notify-banner" role="status">
+            <span>Get notified of new chats, even in other tabs.</span>
+            <button type="button" className="button button-small" onClick={askPermission}>
+              Turn on
+            </button>
+            <button type="button" className="icon-button quiet" aria-label="Not now" onClick={dismissBanner}>
+              <CloseIcon size={14} />
+            </button>
+          </div>
+        )}
         <nav className="segmented" role="tablist" aria-label="Lists">
           {!adminOnly &&
             TABS.map((t) => (
@@ -285,6 +350,23 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose, onExp
           </div>
         )}
       </section>
+      <div className="toasts" aria-live="polite">
+        {toasts.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            className={`toast toast-${t.kind}`}
+            onClick={() => {
+              setToasts((current) => current.filter((x) => x.key !== t.key));
+              setView("chats");
+              open(t.conversationId);
+            }}
+          >
+            <strong>{t.title}</strong>
+            <span>{t.body}</span>
+          </button>
+        ))}
+      </div>
     </main>
   );
 }

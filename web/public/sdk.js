@@ -697,6 +697,53 @@
     }
   }
 
+  // ---- Browser notifications for agents (opt-in with notifications: true) ----
+  // The console decides what's worth telling the agent; this page shows it as a system notification,
+  // since an embedded frame isn't allowed to ask for that permission itself.
+
+  function notificationsAvailable() {
+    return !!(consoleState && consoleState.notifications && "Notification" in window);
+  }
+
+  function tellConsoleAboutNotifications() {
+    postToConsole({
+      type: "console.notifications",
+      available: notificationsAvailable(),
+      permission: "Notification" in window ? Notification.permission : "denied",
+    });
+  }
+
+  function text(value, max) {
+    return typeof value === "string" ? value.slice(0, max) : "";
+  }
+
+  function showNotification(data) {
+    var notice = {
+      kind: text(data.kind, 20),
+      title: text(data.title, 120) || "Support",
+      body: text(data.body, 240),
+      conversationId: /^[0-9a-f-]{36}$/i.test(data.conversationId || "") ? data.conversationId : null,
+    };
+    consoleEmit("notification", notice);
+    if (!notificationsAvailable() || Notification.permission !== "granted") return;
+    // In front of the agent already? The console's own toast and sound are enough.
+    var consoleVisible = !document.hidden && document.hasFocus() &&
+      !(consoleState.mode === "bubble" && !consoleState.open);
+    if (consoleVisible) return;
+    var shown = new Notification(notice.title, {
+      body: notice.body,
+      icon: ORIGIN + "/logo.png",
+      tag: notice.conversationId || undefined,
+    });
+    shown.onclick = function () {
+      window.focus();
+      shown.close();
+      if (!consoleState) return;
+      if (consoleState.mode === "bubble") agentConsole.open();
+      if (notice.conversationId) postToConsole({ type: "console.open", conversationId: notice.conversationId });
+    };
+  }
+
   function onConsoleMessage(event) {
     if (!consoleState) return;
     // Only trust our own frame, from our own origin, speaking our protocol.
@@ -709,12 +756,23 @@
       clearTimeout(consoleState.readyTimer);
       consoleState.frame.classList.remove("quokra-pending");
       if (consoleState.button) consoleState.button.classList.remove("quokra-pending");
+      tellConsoleAboutNotifications();
       consoleEmit("ready");
     }
     else if (data.type === "auth.request") sendToken();
     else if (data.type === "console.unread" && typeof data.count === "number") {
       setConsoleBadge(data.count);
       consoleEmit("unread", data.count);
+    } else if (data.type === "console.notify") {
+      showNotification(data);
+    } else if (data.type === "console.notifications.check") {
+      tellConsoleAboutNotifications();
+    } else if (data.type === "console.notifications.request") {
+      if (notificationsAvailable() && Notification.permission === "default") {
+        Notification.requestPermission().then(tellConsoleAboutNotifications, tellConsoleAboutNotifications);
+      } else {
+        tellConsoleAboutNotifications();
+      }
     } else if (data.type === "console.expand") {
       expand(data.conversationId);
     } else if (data.type === "console.close") {
@@ -743,7 +801,8 @@
     paintFrame(frame, applied);
     if (theme === "host") watchHost();
     consoleState = { frame: frame, button: null, mode: mode, open: mode === "full", getToken: options.getToken,
-      theme: theme, appliedTheme: applied, fullView: options.fullView || null, ready: false };
+      theme: theme, appliedTheme: applied, fullView: options.fullView || null, ready: false,
+      notifications: options.notifications === true };
     window.addEventListener("message", onConsoleMessage);
     listenForEscape();
     consoleState.readyTimer = setTimeout(function () {

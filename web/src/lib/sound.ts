@@ -1,13 +1,23 @@
-// A short two-note chime for a new waiting chat, made with Web Audio so there's no sound file to load.
+// Short notification sounds made with Web Audio, so there's no sound file to load. Each kind of
+// notification has its own little tune, so agents can tell them apart without looking.
 // Browsers only allow sound after the page has been clicked once; until then this stays silent.
+export type Tune = "waiting" | "message" | "transfer" | "note";
+
+const TUNES: Record<Tune, number[]> = {
+  waiting: [660, 990], // rising: someone new is waiting
+  message: [880], // one soft note: a reply in my chat
+  transfer: [523, 659, 784], // three notes: a chat is now mine
+  note: [988, 784], // falling: a colleague left a note
+};
+
 let context: AudioContext | null = null;
 
-export function chime() {
+export function chime(tune: Tune = "waiting") {
   try {
     context ??= new AudioContext();
     if (context.state === "suspended") void context.resume();
     const start = context.currentTime;
-    [660, 990].forEach((frequency, i) => {
+    TUNES[tune].forEach((frequency, i) => {
       const at = start + i * 0.12;
       const osc = context!.createOscillator();
       const gain = context!.createGain();
@@ -22,23 +32,5 @@ export function chime() {
     });
   } catch {
     // No audio available (old browser, tests): nothing to do.
-  }
-}
-
-const KEY = "quokra.sound";
-
-export function soundEnabled() {
-  try {
-    return localStorage.getItem(KEY) !== "off";
-  } catch {
-    return true;
-  }
-}
-
-export function setSoundEnabled(on: boolean) {
-  try {
-    localStorage.setItem(KEY, on ? "on" : "off");
-  } catch {
-    // Storage blocked: the choice lasts until the page reloads.
   }
 }

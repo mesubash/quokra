@@ -8,6 +8,10 @@ export type HostMessage =
   | { type: "chat.identify"; token: string }
   | { type: "chat.logout" }
   | { type: "theme.set"; theme: string }
+  // From sdk.js to the console: whether the dashboard can show browser notifications, and the permission.
+  | { type: "console.notifications"; available: boolean; permission: string }
+  // From sdk.js to the console: an agent clicked a notification; show that conversation.
+  | { type: "console.open"; conversationId: string }
   | { type: "auth.token"; token: string };
 
 export const embedded = window.parent !== window;
@@ -24,6 +28,15 @@ export function onHostMessage(handler: (message: HostMessage) => void): () => vo
     const { type } = event.data;
     if (type === "chat.open" || type === "chat.close" || type === "chat.logout") handler(event.data as HostMessage);
     else if (type === "theme.set" && typeof event.data.theme === "string") handler(event.data as HostMessage);
+    else if (
+      type === "console.notifications" &&
+      typeof event.data.available === "boolean" &&
+      typeof event.data.permission === "string"
+    ) {
+      handler(event.data as HostMessage);
+    } else if (type === "console.open" && typeof event.data.conversationId === "string") {
+      handler(event.data as HostMessage);
+    }
     // Only our parent can send a token, and frame-ancestors already limits who the parent can be.
     else if ((type === "auth.token" || type === "chat.identify") && typeof event.data.token === "string") {
       handler(event.data as HostMessage);

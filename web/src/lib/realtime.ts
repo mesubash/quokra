@@ -6,7 +6,9 @@ export type RealtimeEvent =
   | { type: "conversation.updated"; conversationId: string; at: string; data: Conversation }
   | { type: "conversation.waiting"; conversationId: string; at: string; data: QueueSnapshot }
   | { type: "note.created"; conversationId: string; at: string; data: Note }
-  | { type: "conversation.activity"; conversationId: string; at: string; data: Activity };
+  | { type: "conversation.activity"; conversationId: string; at: string; data: Activity }
+  | { type: "note.added"; conversationId: string; at: string; data: NoteAdded }
+  | { type: "conversation.transferred"; conversationId: string; at: string; data: Transferred };
 
 // A new message in a conversation, as agents see it on the queue topic.
 export interface Activity {
@@ -14,6 +16,25 @@ export interface Activity {
   lastMessagePreview: string;
   lastMessageAt: string;
   senderType: SenderType;
+  assigneeSub: string | null;
+  customerName: string | null;
+}
+
+export interface NoteAdded {
+  id: string;
+  authorSub: string;
+  authorName: string;
+  assigneeSub: string | null;
+  customerName: string | null;
+  preview: string;
+}
+
+export interface Transferred {
+  id: string;
+  toSub: string;
+  toName: string;
+  byName: string;
+  customerName: string | null;
 }
 
 // What agents get on the queue topic when a conversation changes.
