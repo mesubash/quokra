@@ -106,6 +106,7 @@ public class AgentController {
                                        @RequestParam(required = false) String tenant,
                                        @RequestParam(required = false) String assignee,
                                        @RequestParam(required = false) String cursor,
+                                       @RequestParam(required = false) @Size(max = 100) String q,
                                        @RequestParam(defaultValue = "" + DEFAULT_LIMIT) int limit) {
         if (status == Status.BOT) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "status must be WAITING, HUMAN or RESOLVED");
@@ -116,8 +117,8 @@ public class AgentController {
         String assigneeSub = "me".equals(assignee) ? jwt.getSubject() : null;
 
         int size = Math.clamp(limit, 1, MAX_LIMIT);
-        List<Conversation> page = service.list(ids, status, assigneeSub, cursor == null ? null : PageCursor.decode(cursor),
-            size);
+        List<Conversation> page = service.list(ids, status, assigneeSub, q,
+            cursor == null ? null : PageCursor.decode(cursor), size);
         // ponytail: one query per row for the preview; fine for a page of 50, batch it if lists grow.
         Map<UUID, Integer> unread = reads.unreadCounts(jwt.getSubject(), page.stream().map(Conversation::getId).toList());
         List<Summary> items = page.stream()

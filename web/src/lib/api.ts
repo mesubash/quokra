@@ -191,9 +191,10 @@ export function agentApi(getToken: () => string) {
   return {
     me: () => get<Me>("/me"),
     tenants: () => get<{ items: TenantItem[] }>("/tenants"),
-    list: (status: ListStatus, options: { mine?: boolean; cursor?: string | null } = {}) => {
+    list: (status: ListStatus, options: { mine?: boolean; cursor?: string | null; q?: string } = {}) => {
       const query = new URLSearchParams({ status });
       if (options.mine) query.set("assignee", "me");
+      if (options.q?.trim()) query.set("q", options.q.trim().slice(0, 100));
       if (options.cursor) query.set("cursor", options.cursor);
       return get<Page<ConversationSummary>>(`/conversations?${query}`);
     },

@@ -182,6 +182,7 @@ All require an agent token. The agent only sees tenants they're a member of (`te
 | `assignee` | `me` (optional) |
 | `limit` | default 25, max 200 |
 | `cursor` | `nextCursor` from the previous page |
+| `q` | search, max 100 characters (optional): matches the customer's name or email, or any message in the conversation, ignoring case. `%` and `_` are taken literally |
 
 `WAITING` is sorted by priority (URGENT first), then oldest first. The others are newest first. Paging continues from the last row shown (keyset), so new conversations arriving meanwhile don't shift pages. `nextCursor` is `null` on the last page. A bad cursor is `400 VALIDATION_ERROR`.
 

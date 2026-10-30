@@ -456,4 +456,37 @@ class AgentControllerTests {
         assertThat(get(alice, "/conversations?status=WAITING")).bodyJson()
             .extractingPath("$.items[0].unreadCount").isEqualTo(0);
     }
+
+    @Test
+    void searchFindsByNameEmailOrMessage() {
+        UUID byName = waiting(tenant, HandoffReason.CUSTOMER_REQUEST);
+        UUID byMessage = waiting(tenant, HandoffReason.CUSTOMER_REQUEST);
+        waiting(tenant, HandoffReason.CUSTOMER_REQUEST);
+        jdbc.update("update conversations set customer_name = 'Robin Fischer' where id = ?", byName);
+        service.addCustomerMessage(byMessage, "c-1", "My invoice 100% is wrong", null);
+
+        assertThat(get(alice, "/conversations?status=WAITING&q=fISCHER")).bodyJson()
+            .extractingPath("$.items[*].id").isEqualTo(List.of(byName.toString()));
+        assertThat(get(alice, "/conversations?status=WAITING&q=invoice")).bodyJson()
+            .extractingPath("$.items[*].id").isEqualTo(List.of(byMessage.toString()));
+        assertThat(get(alice, "/conversations?status=WAITING&q=" + "pat-" + byName)).bodyJson()
+            .extractingPath("$.items[*].id").isEqualTo(List.of(byName.toString()));
+    }
+
+    @Test
+    void searchTakesWildcardsLiterally() {
+        UUID percent = waiting(tenant, HandoffReason.CUSTOMER_REQUEST);
+        waiting(tenant, HandoffReason.CUSTOMER_REQUEST);
+        service.addCustomerMessage(percent, "c-1", "50% off?", null);
+
+        assertThat(get(alice, "/conversations?status=WAITING&q=%")).bodyJson()
+            .extractingPath("$.items[*].id").isEqualTo(List.of(percent.toString()));
+        assertThat(get(alice, "/conversations?status=WAITING&q=_")).bodyJson()
+            .extractingPath("$.items").asArray().isEmpty();
+    }
+
+    @Test
+    void searchIsLimitedInLength() {
+        assertThat(get(alice, "/conversations?status=WAITING&q=" + "x".repeat(101))).hasStatus(HttpStatus.BAD_REQUEST);
+    }
 }

@@ -781,6 +781,31 @@ button {
   line-height: 18px;
 }
 
+.console-search {
+  padding: 0 16px 10px;
+}
+
+.console-search input {
+  width: 100%;
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--raised);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.console-search input::placeholder {
+  color: var(--placeholder);
+}
+
+.console-search input:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: -1px;
+  border-color: transparent;
+}
+
 .console-error {
   margin: 0 16px 8px;
   color: var(--danger);

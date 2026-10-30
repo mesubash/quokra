@@ -19,18 +19,24 @@ interface ConversationRepository extends JpaRepository<Conversation, UUID> {
     @Query("""
         select c from Conversation c
         where c.tenantId in :tenantIds and c.status = io.github.mesubash.quokra.conversation.Status.WAITING
+          and (:q is null or lower(coalesce(c.customerName, '')) like :q escape '\\'
+            or lower(coalesce(c.customerEmail, '')) like :q escape '\\'
+            or exists (select m.id from Message m where m.conversationId = c.id and lower(m.body) like :q escape '\\'))
         order by c.priorityRank, c.waitingSince, c.id
         """)
-    List<Conversation> findQueue(Collection<UUID> tenantIds, Limit limit);
+    List<Conversation> findQueue(Collection<UUID> tenantIds, String q, Limit limit);
 
     @Query("""
         select c from Conversation c
         where c.tenantId in :tenantIds and c.status = io.github.mesubash.quokra.conversation.Status.WAITING
           and (c.priorityRank > :rank or (c.priorityRank = :rank
             and (c.waitingSince > :at or (c.waitingSince = :at and c.id > :id))))
+          and (:q is null or lower(coalesce(c.customerName, '')) like :q escape '\\'
+            or lower(coalesce(c.customerEmail, '')) like :q escape '\\'
+            or exists (select m.id from Message m where m.conversationId = c.id and lower(m.body) like :q escape '\\'))
         order by c.priorityRank, c.waitingSince, c.id
         """)
-    List<Conversation> findQueueAfter(Collection<UUID> tenantIds, int rank, Instant at, UUID id, Limit limit);
+    List<Conversation> findQueueAfter(Collection<UUID> tenantIds, int rank, Instant at, UUID id, String q, Limit limit);
 
     long countByTenantIdInAndStatus(Collection<UUID> tenantIds, Status status);
 
@@ -41,17 +47,23 @@ interface ConversationRepository extends JpaRepository<Conversation, UUID> {
         select c from Conversation c
         where c.tenantId in :tenantIds and c.status = :status
           and (:assigneeSub is null or c.assigneeSub = :assigneeSub)
+          and (:q is null or lower(coalesce(c.customerName, '')) like :q escape '\\'
+            or lower(coalesce(c.customerEmail, '')) like :q escape '\\'
+            or exists (select m.id from Message m where m.conversationId = c.id and lower(m.body) like :q escape '\\'))
         order by c.lastMessageAt desc, c.id desc
         """)
-    List<Conversation> findRecent(Collection<UUID> tenantIds, Status status, String assigneeSub, Limit limit);
+    List<Conversation> findRecent(Collection<UUID> tenantIds, Status status, String assigneeSub, String q, Limit limit);
 
     @Query("""
         select c from Conversation c
         where c.tenantId in :tenantIds and c.status = :status
           and (:assigneeSub is null or c.assigneeSub = :assigneeSub)
           and (c.lastMessageAt < :at or (c.lastMessageAt = :at and c.id < :id))
+          and (:q is null or lower(coalesce(c.customerName, '')) like :q escape '\\'
+            or lower(coalesce(c.customerEmail, '')) like :q escape '\\'
+            or exists (select m.id from Message m where m.conversationId = c.id and lower(m.body) like :q escape '\\'))
         order by c.lastMessageAt desc, c.id desc
         """)
     List<Conversation> findRecentAfter(Collection<UUID> tenantIds, Status status, String assigneeSub, Instant at, UUID id,
-                                       Limit limit);
+                                       String q, Limit limit);
 }

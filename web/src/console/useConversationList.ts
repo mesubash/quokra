@@ -67,7 +67,14 @@ export function applyActivity(
 }
 
 // One page at a time; live queue events patch the rows in place instead of reloading the list.
-export function useConversationList(api: AgentApi, tab: Tab, meSub: string | null, tenants: TenantItem[]) {
+// search: only conversations matching it (name, email or a message); "" for all.
+export function useConversationList(
+  api: AgentApi,
+  tab: Tab,
+  meSub: string | null,
+  tenants: TenantItem[],
+  search = "",
+) {
   const [items, setItems] = useState<ConversationSummary[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -78,7 +85,7 @@ export function useConversationList(api: AgentApi, tab: Tab, meSub: string | nul
     const run = ++generation.current;
     setLoading(true);
     api
-      .list(STATUS[tab], { mine: tab === "mine" })
+      .list(STATUS[tab], { mine: tab === "mine", q: search })
       .then((page) => {
         if (run !== generation.current) return;
         setItems(page.items);
@@ -87,7 +94,7 @@ export function useConversationList(api: AgentApi, tab: Tab, meSub: string | nul
       })
       .catch((e) => run === generation.current && setError(e))
       .finally(() => run === generation.current && setLoading(false));
-  }, [api, tab]);
+  }, [api, tab, search]);
 
   useEffect(() => {
     setItems([]);
@@ -100,7 +107,7 @@ export function useConversationList(api: AgentApi, tab: Tab, meSub: string | nul
     const run = generation.current;
     setLoading(true);
     api
-      .list(STATUS[tab], { mine: tab === "mine", cursor })
+      .list(STATUS[tab], { mine: tab === "mine", cursor, q: search })
       .then((page) => {
         if (run !== generation.current) return;
         // A row can already be here if it arrived live; keep one copy.
@@ -112,15 +119,19 @@ export function useConversationList(api: AgentApi, tab: Tab, meSub: string | nul
       })
       .catch((e) => run === generation.current && setError(e))
       .finally(() => run === generation.current && setLoading(false));
-  }, [api, tab, cursor, loading]);
+  }, [api, tab, cursor, loading, search]);
 
   const apply = useCallback(
     (snapshot: QueueSnapshot) => {
       if (!meSub) return;
       const slug = tenants.find((t) => t.id === snapshot.tenantId)?.slug ?? "";
-      setItems((current) => applySnapshot(current, tab, snapshot, meSub, slug));
+      setItems((current) => {
+        // While searching, a live change can't tell whether a new row would match: only update shown rows.
+        if (search && !current.some((c) => c.id === snapshot.id)) return current;
+        return applySnapshot(current, tab, snapshot, meSub, slug);
+      });
     },
-    [tab, meSub, tenants],
+    [tab, meSub, tenants, search],
   );
 
   const activity = useCallback(

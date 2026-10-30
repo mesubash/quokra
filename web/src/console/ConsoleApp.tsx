@@ -40,7 +40,9 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose, onExp
   );
   const [error, setError] = useState<string | null>(null);
   const [sound, setSound] = useState(soundEnabled);
-  const list = useConversationList(api, tab, me?.sub ?? null, tenants);
+  const [query, setQuery] = useState("");
+  const search = useDebounced(query.trim(), 300);
+  const list = useConversationList(api, tab, me?.sub ?? null, tenants, search);
 
   const failed = useCallback(
     (e: unknown) => {
@@ -194,6 +196,16 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose, onExp
             </button>
           ))}
         </nav>
+        <div className="console-search">
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search name, email or message"
+            aria-label="Search conversations"
+            maxLength={100}
+          />
+        </div>
         {error && (
           <p className="console-error" role="alert">
             {error}{" "}
@@ -203,7 +215,9 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose, onExp
           </p>
         )}
         <ul className="console-list">
-          {list.items.length === 0 && !list.loading && <li className="empty muted">{emptyText(tab)}</li>}
+          {list.items.length === 0 && !list.loading && (
+            <li className="empty muted">{search ? "No conversations match your search." : emptyText(tab)}</li>
+          )}
           {list.items.map((c) => (
             <li key={c.id}>
               <Row conversation={c} selected={selected === c.id} showTenant={tenants.length > 1} onSelect={open} />
@@ -241,6 +255,16 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose, onExp
       </section>
     </main>
   );
+}
+
+// The value once it has stopped changing for a moment, so typing doesn't send a request per key.
+function useDebounced(value: string, ms: number) {
+  const [settled, setSettled] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setSettled(value), ms);
+    return () => clearTimeout(timer);
+  }, [value, ms]);
+  return settled;
 }
 
 function emptyText(tab: Tab) {

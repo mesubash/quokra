@@ -356,18 +356,30 @@ public class ConversationService {
     // WAITING: the queue (urgent first, longest wait first). Others: most recent first.
     // `after` continues from the last row of the previous page.
     @Transactional(readOnly = true)
-    public List<Conversation> list(Collection<UUID> tenantIds, Status status, String assigneeSub, PageCursor after,
-                                   int limit) {
+    // search: matches the customer's name or email, or any message, ignoring case. Null or blank: everything.
+    public List<Conversation> list(Collection<UUID> tenantIds, Status status, String assigneeSub, String search,
+                                   PageCursor after, int limit) {
         if (tenantIds.isEmpty()) {
             return List.of();
         }
         Limit size = Limit.of(limit);
+        String q = likePattern(search);
         if (status == Status.WAITING) {
-            return after == null ? conversations.findQueue(tenantIds, size)
-                : conversations.findQueueAfter(tenantIds, after.rank(), after.at(), after.id(), size);
+            return after == null ? conversations.findQueue(tenantIds, q, size)
+                : conversations.findQueueAfter(tenantIds, after.rank(), after.at(), after.id(), q, size);
         }
-        return after == null ? conversations.findRecent(tenantIds, status, assigneeSub, size)
-            : conversations.findRecentAfter(tenantIds, status, assigneeSub, after.at(), after.id(), size);
+        return after == null ? conversations.findRecent(tenantIds, status, assigneeSub, q, size)
+            : conversations.findRecentAfter(tenantIds, status, assigneeSub, after.at(), after.id(), q, size);
+    }
+
+    // "%text%" for LIKE, with the text's own % _ and \ taken literally.
+    static String likePattern(String search) {
+        if (search == null || search.isBlank()) {
+            return null;
+        }
+        String escaped = search.strip().toLowerCase(java.util.Locale.ROOT)
+            .replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+        return "%" + escaped + "%";
     }
 
     public record Counts(long waiting, long mine) {}
