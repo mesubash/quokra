@@ -1,32 +1,42 @@
-greeting: "Hi! How can we help? Pick a topic below or type your question."
-teaser: "Hi 👋 Need any help? We're here."
+# The demo tenant's bot. It answers questions about Quokra itself, so the playground
+# and test pages show the bot doing something real.
+greeting: "Hi! I'm the Quokra demo bot. Ask me about Quokra, or pick a topic below."
+teaser: "Hi 👋 Questions about Quokra? Ask me."
 
 menu:
+  - id: what
+    title: "What is Quokra?"
+    keywords: [what is quokra, about quokra, what does it do, how does it work, how it works, overview]
+    answer: "Quokra is a support chat you add to your site with one script tag. A bot like me answers common questions first; when you need a person, the chat moves to the support team's console in the same conversation, with the whole history."
+  - id: embed
+    title: "How do I add it?"
+    keywords: [embed, install, setup, set up, add, integrate, integration, script, sdk, react, nextjs, vue]
+    answer: "Add one script tag to your page for the chat, and Quokra.console.mount(...) in your dashboard for your team. It works with any stack: plain HTML, React, Next.js or Vue. The embedding guide in the Quokra repo has copy-paste examples."
   - id: pricing
     title: "Pricing"
-    keywords: [price, prices, pricing, cost, plan, plans]
-    answer: "Our plans start at $10 a month. You can compare them on our pricing page."
-  - id: account
-    title: "Account help"
-    keywords: [password, login, sign in, account, email]
-    answer: "To reset your password, use 'Forgot password' on the sign-in page. We'll email you a link."
-  - id: hours
-    title: "Opening hours"
-    keywords: [hours, open, opening, available]
-    answer: "Our team is available Monday to Friday, 9:00 to 17:00."
+    keywords: [price, prices, pricing, cost, costs, free, pay, paid, plan, plans, license, open source]
+    answer: "Quokra is free and self-hosted: you run it on your own server with PostgreSQL. There's no hosted paid plan."
+  - id: console
+    title: "The agent console"
+    keywords: [console, dashboard, inbox, agents, team, queue, transfer, notes]
+    answer: "Your team answers from a console inside your own dashboard, using your existing login. It has a queue, unread counts, search, private notes, transfers between agents, and it follows your dashboard's light or dark theme."
+  - id: ai
+    title: "Is there AI?"
+    keywords: [ai, gpt, llm, chatgpt, machine learning, smart]
+    answer: "Not yet. Today the bot answers from a list of questions and keywords that each company writes in a simple file. AI answers grounded in your own documents are planned."
 
 human:
   title: "Talk to a person"
-  keywords: [agent, human, person, someone, representative]
+  keywords: [human, person, someone, representative, real agent, live agent, support team, talk to]
 
 urgent:
-  keywords: [urgent, outage, down, payment failed]
-  message: "Sorry about this. We're connecting you to our team right away."
+  keywords: [urgent, outage, down, not working, broken, security]
+  message: "Sorry about that. I'm connecting you to the team right away."
 
-fallback: "Sorry, I didn't get that. Pick a topic below or choose 'Talk to a person'."
+fallback: "Sorry, I didn't get that. Pick a topic below, or choose 'Talk to a person'."
 max_fallbacks: 2
-handoff_message: "Connecting you with our team. Someone will reply shortly."
+handoff_message: "Connecting you with the team. Someone will reply shortly."
 
 # Wording for the chat's header and questions. Anything left out keeps the default.
 texts:
-  online: "Online · we usually reply in a few minutes"
+  online: "Online · a person usually replies within minutes"
