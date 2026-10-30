@@ -230,6 +230,26 @@ export interface SavedReply {
   body: string;
 }
 
+// A bot in the shape of a bot file (see the write-the-bot guide).
+export interface BotFields {
+  greeting: string;
+  teaser?: string;
+  menu: { id: string; title: string; keywords: string[]; answer: string }[];
+  human: { title: string; keywords: string[] };
+  urgent: { keywords: string[]; message: string };
+  fallback: string;
+  max_fallbacks: number;
+  handoff_message: string;
+  texts: Record<string, string>;
+}
+
+// custom: edited in the Admin tab; otherwise the bot file is used.
+export interface AdminBot {
+  custom: boolean;
+  file: string;
+  bot: BotFields | null;
+}
+
 export function adminApi(getToken: () => string) {
   const call = <T,>(method: string, path: string, body?: unknown) =>
     request<T>(`/admin${path}`, {
@@ -250,6 +270,9 @@ export function adminApi(getToken: () => string) {
     removeAgent: (s: string, sub: string) => call<void>("DELETE", `/tenants/${slug(s)}/agents/${encodeURIComponent(sub)}`),
     removeInvite: (s: string, email: string) =>
       call<void>("DELETE", `/tenants/${slug(s)}/invites/${encodeURIComponent(email)}`),
+    bot: (s: string) => call<AdminBot>("GET", `/tenants/${slug(s)}/bot`),
+    saveBot: (s: string, bot: BotFields) => call<AdminBot>("PUT", `/tenants/${slug(s)}/bot`, bot),
+    resetBot: (s: string) => call<AdminBot>("DELETE", `/tenants/${slug(s)}/bot`),
     replies: (s: string) => call<{ items: SavedReply[] }>("GET", `/tenants/${slug(s)}/replies`),
     addReply: (s: string, reply: Omit<SavedReply, "id">) => call<SavedReply>("POST", `/tenants/${slug(s)}/replies`, reply),
     updateReply: (s: string, { id, ...reply }: SavedReply) =>

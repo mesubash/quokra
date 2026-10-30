@@ -10,6 +10,7 @@ import {
 } from "../../lib/api";
 import { BackIcon, CheckIcon, CopyIcon } from "../../lib/icons";
 import { initials } from "../format";
+import { BotCard } from "./BotCard";
 
 // The Admin tab: companies (tenants) on the left, the selected one on the right.
 // Only shown to people with the admin role; the server checks that role on every call anyway.
@@ -122,6 +123,7 @@ export function AdminMain({ admin, api, onBack }: { admin: Admin; api: AdminApi;
       <EmbedCard tenant={tenant} />
       <SecretCard api={api} tenant={tenant} onChanged={admin.reload} />
       <AgentsCard api={api} tenant={tenant} onChanged={admin.reload} />
+      <BotCard api={api} tenant={tenant} />
       <RepliesCard api={api} tenant={tenant} />
       <section className="admin-card">
         <h3>Settings</h3>

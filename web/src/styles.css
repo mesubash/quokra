@@ -1725,6 +1725,31 @@ button {
   font-size: 0.82rem;
 }
 
+.admin-question {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 10px;
+  border: var(--pane-border);
+  border-radius: 10px;
+}
+
+.admin-question-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-question-head input {
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-form .admin-add {
+  align-self: flex-start;
+}
+
 .admin-hours {
   display: flex;
   flex-direction: column;
