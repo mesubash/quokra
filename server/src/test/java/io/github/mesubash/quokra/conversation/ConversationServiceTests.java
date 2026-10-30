@@ -416,6 +416,19 @@ class ConversationServiceTests {
     }
 
     @Test
+    void cantReopenAnOldChatWhileTheCustomerHasANewerOne() {
+        UUID old = start();
+        service.handoff(old, HandoffReason.CUSTOMER_REQUEST, SenderType.CUSTOMER);
+        AgentRef sam = new AgentRef("sam", "Sam");
+        service.accept(old, sam);
+        service.resolve(old, sam);
+        service.startNew(TENANT, visitor, null);
+
+        assertThatThrownBy(() -> service.reopen(old, sam))
+            .isInstanceOfSatisfying(ApiException.class, e -> assertThat(e.code()).isEqualTo("NEWER_CHAT_OPEN"));
+    }
+
+    @Test
     void cantReplyToTheBotOrAnotherChat() {
         UUID id = start();
         Message greeting = history(id).getFirst();

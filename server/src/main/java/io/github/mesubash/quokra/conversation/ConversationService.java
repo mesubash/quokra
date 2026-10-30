@@ -487,6 +487,12 @@ public class ConversationService {
     public Conversation reopen(UUID conversationId, AgentRef agent) {
         Conversation conversation = get(conversationId);
         requireNotBlocked(conversation);
+        // The customer started a new chat since: there can only be one open chat per visitor, so answer there.
+        if (conversations.existsByTenantIdAndVisitorIdAndStatusNotAndIdNot(conversation.getTenantId(),
+                conversation.getVisitorId(), Status.RESOLVED, conversationId)) {
+            throw new ApiException(HttpStatus.CONFLICT, "NEWER_CHAT_OPEN",
+                "This customer has a newer chat open. Answer them there.");
+        }
         Instant now = clock.instant();
         conversation.moveTo(StateMachine.next(conversation.getStatus(), Transition.AGENT_REOPEN), now);
         conversation.assign(agent.sub(), agent.name());

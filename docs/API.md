@@ -626,6 +626,7 @@ Envelope:
 | 409 | `CONFLICT` | Someone else changed the same thing at the same moment; reload and retry |
 | 409 | `INVALID_TRANSITION` | State change not allowed |
 | 409 | `ALREADY_ACCEPTED` | Another agent accepted first |
+| 409 | `NEWER_CHAT_OPEN` | Reopening an old chat while the customer has a newer open one (after "Start a new chat"); answer in that one |
 | 409 | `NO_OPEN_CONVERSATION` | Sending without an open conversation |
 | 422 | `MESSAGE_TOO_LONG` | Body over 2,000 characters |
 | 403 | `ATTACHMENTS_OFF` | Images aren't allowed for this company |

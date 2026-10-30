@@ -138,6 +138,7 @@ export function ConversationView({
 
   function explain(e: unknown) {
     if (e instanceof ApiError && e.code === "ALREADY_ACCEPTED") setNotice("Someone else already took this conversation.");
+    else if (e instanceof ApiError && e.code === "NEWER_CHAT_OPEN") setNotice(e.message);
     else if (e instanceof ApiError && e.code === "CONTACT_BLOCKED") setNotice("This contact is blocked. Unblock them first.");
     else if (e instanceof ApiError && (e.status === 409 || e.status === 403)) setNotice("This conversation has changed. Showing the latest.");
     else onError(e);
