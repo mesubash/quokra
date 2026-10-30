@@ -139,9 +139,15 @@ class AdminControllerTests {
 
         Map<String, Object> fields = JsonPath.read(file.getResponse().getContentAsString(), "$.bot");
         fields.put("greeting", " Hi there ");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> texts = (Map<String, Object>) fields.get("texts");
+        texts.put("online", "We're here");
         MvcTestResult saved = call("PUT", admin, "/tenants/acme/bot", JSON.writeValueAsString(fields));
         assertThat(saved).bodyJson().extractingPath("$.custom").isEqualTo(true);
         assertThat(saved).bodyJson().extractingPath("$.bot.greeting").isEqualTo("Hi there");
+        assertThat(mvc.get().uri("/api/v1/widget/tenants/" + JsonPath.read(call("GET", admin, "/tenants/acme", null)
+            .getResponse().getContentAsString(), "$.publishableKey"))).bodyJson()
+            .extractingPath("$.texts.online").isEqualTo("We're here");
         UUID started = conversations.startOrResume(UUID.fromString(id), UUID.randomUUID()).conversation().getId();
         assertThat(conversations.messages(started, null, 1).getFirst().getBody()).isEqualTo("Hi there");
 

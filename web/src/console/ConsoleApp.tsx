@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { adminApi, agentApi, ApiError, type ConversationSummary, type Me, type TenantItem } from "../lib/api";
+import { adminApi, agentApi, ApiError, type ConversationSummary, type FreshToken, type Me, type TenantItem } from "../lib/api";
 import { onHostMessage, postToHost } from "../lib/bridge";
+import { accent, applyColor } from "../lib/theme";
 import { CloseIcon, ExpandIcon, SearchIcon, SettingsIcon } from "../lib/icons";
 import { loadPrefs, savePrefs, type NotifyPrefs } from "../lib/notifyPrefs";
 import { chime } from "../lib/sound";
@@ -22,6 +23,8 @@ interface Props {
   getToken: () => string;
   // The token was rejected: sign out (standalone) or ask the dashboard for a new one (embedded).
   onUnauthorized: () => void;
+  // Asks the dashboard for a new token when a call gets a 401, so it can be retried once.
+  freshToken?: FreshToken;
   onSignOut?: () => void;
   onClose?: () => void;
   // Opens the host's full-page console, on this conversation if one is open.
@@ -32,13 +35,14 @@ interface Props {
 // A conversation id from the host is only used if it looks like one.
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose, onExpand, initialConversation }: Props) {
-  const api = useMemo(() => agentApi(getToken), [getToken]);
-  const admins = useMemo(() => adminApi(getToken), [getToken]);
+export function ConsoleApp({ getToken, freshToken, onUnauthorized, onSignOut, onClose, onExpand, initialConversation }: Props) {
+  const api = useMemo(() => agentApi(getToken, freshToken), [getToken, freshToken]);
+  const admins = useMemo(() => adminApi(getToken, freshToken), [getToken, freshToken]);
   // Settings (admins only) open over the whole console.
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [me, setMe] = useState<Me | null>(null);
   const [tenants, setTenants] = useState<TenantItem[]>([]);
+  useCompanyColor(tenants);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [tab, setTab] = useState<Tab>("queue");
   const [counts, setCounts] = useState({ waiting: 0, mine: 0, myUnread: 0 });
@@ -380,6 +384,16 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose, onExp
 // The company this console was embedded for (sdk.js passes ?tenant=). Its settings show only that company;
 // Quokra's own console page, without one, can switch between companies and create them.
 const SCOPE = new URLSearchParams(window.location.search).get("tenant") || null;
+
+// The console embedded for one company wears its colour, unless the dashboard passed its own accent.
+function useCompanyColor(tenants: TenantItem[]) {
+  const color = SCOPE && !accent ? tenants.find((t) => t.slug === SCOPE)?.primaryColor : null;
+  useEffect(() => {
+    if (!color) return;
+    applyColor(color);
+    postToHost({ type: "console.color", color });
+  }, [color]);
+}
 
 // The value once it has stopped changing for a moment, so typing doesn't send a request per key.
 function useDebounced(value: string, ms: number) {

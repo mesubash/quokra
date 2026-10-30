@@ -58,8 +58,8 @@ public class AgentController {
     // agent / admin: which parts of the console this person may use.
     record Me(String sub, String name, List<String> tenants, boolean agent, boolean admin) {}
 
-    // attachments: agents can send images in this tenant's chats.
-    record TenantItem(UUID id, String slug, String displayName, boolean attachments) {}
+    // attachments: agents can send images in this tenant's chats. primaryColor: the company's brand colour.
+    record TenantItem(UUID id, String slug, String displayName, boolean attachments, String primaryColor) {}
 
     record Page<T>(List<T> items, String nextCursor) {}
 
@@ -120,7 +120,8 @@ public class AgentController {
     @GetMapping("/tenants")
     public Page<TenantItem> tenants(@AuthenticationPrincipal Jwt jwt) {
         return new Page<>(myTenants(jwt).values().stream()
-            .map(t -> new TenantItem(t.getId(), t.getSlug(), t.getDisplayName(), service.imagesAllowed(t)))
+            .map(t -> new TenantItem(t.getId(), t.getSlug(), t.getDisplayName(), service.imagesAllowed(t),
+                t.getPrimaryColor()))
             .sorted((a, b) -> a.slug().compareTo(b.slug()))
             .toList(), null);
     }

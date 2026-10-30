@@ -760,6 +760,10 @@
       consoleEmit("ready");
     }
     else if (data.type === "auth.request") sendToken();
+    else if (data.type === "console.color" && typeof data.color === "string" && /^#[0-9a-fA-F]{6}$/.test(data.color)) {
+      // The company's colour, unless the dashboard chose its own accent.
+      if (consoleState.button && !consoleState.accent) consoleState.button.style.background = data.color;
+    }
     else if (data.type === "console.unread" && typeof data.count === "number") {
       setConsoleBadge(data.count);
       consoleEmit("unread", data.count);
@@ -802,7 +806,7 @@
     if (theme === "host") watchHost();
     consoleState = { frame: frame, button: null, mode: mode, open: mode === "full", getToken: options.getToken,
       theme: theme, appliedTheme: applied, fullView: options.fullView || null, ready: false,
-      notifications: options.notifications === true };
+      notifications: options.notifications === true, accent: accentParam(options.accent) !== "" };
     window.addEventListener("message", onConsoleMessage);
     listenForEscape();
     consoleState.readyTimer = setTimeout(function () {

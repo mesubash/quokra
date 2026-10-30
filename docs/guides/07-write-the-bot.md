@@ -3,10 +3,11 @@
 Each company's bot has a greeting, a menu of common questions, keywords for typed questions, and rules
 for when to hand over to a person.
 
-**The quick way:** in the console's **Settings** (the gear icon), pick the company and open **Bot**: questions,
-keywords and answers, reordered with Up and Down. Saving makes the company's own copy and applies to new
-messages straight away; **Go back to the bot file** drops the copy. Wording in `texts` (below) stays as in
-the file it was copied from.
+**The quick way:** in the console's **Settings** (the gear icon), open **Bot**: the greeting, the
+questions with their keywords and answers (reordered with Up and Down), handing over, and the chat's own
+**Wording** (header lines, the email and name questions, the away message). Saving makes the company's own
+copy and applies to new messages straight away; emptying a wording field brings back its default, and
+**Use the file again** drops the copy.
 
 **With a file** (handy for keeping bots in version control):
 

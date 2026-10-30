@@ -210,7 +210,7 @@ export function SupportPage() {
 
 The console and chat follow your page's light/dark mode by themselves (`theme: "host"`, the default), and switch when your page does. They recognise a `dark`/`light` class or a `data-theme`/`data-mode`/`data-bs-theme` attribute on `<html>` or `<body>`, the CSS `color-scheme`, and otherwise how dark your page background is. To force one, pass `theme: "light"`, `"dark"` or `"auto"`, or call `setTheme(…)`. Pass `accent: "#rrggbb"` to use your own brand colour.
 
-`getToken` is called when the console starts and whenever its token expires. Return your current access token, refreshing it first if needed.
+`getToken` is called when the console starts, shortly before its token expires, and again if a call is refused (`401`), which the console then retries once. Return your current access token, refreshing it first if needed (for example with your OIDC library's refresh token).
 
 ### 5.3 Bubble mode (on every dashboard page)
 

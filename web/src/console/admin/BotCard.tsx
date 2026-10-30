@@ -48,13 +48,31 @@ export function fromDraft(d: Draft): BotFields {
     }
     return { id, title: m.title, keywords: words(m.keywords), answer: m.answer };
   });
+  // An emptied wording falls back to the default, so it's left out rather than sent blank.
+  const texts = Object.fromEntries(Object.entries(d.bot.texts).filter(([, text]) => text.trim() !== ""));
   return {
     ...d.bot,
+    texts,
     menu,
     human: { ...d.bot.human, keywords: words(d.humanKeywords) },
     urgent: { ...d.bot.urgent, keywords: words(d.urgentKeywords) },
   };
 }
+
+// The chat's own wording (the bot file's `texts`). {name} and {opens} are filled in by the chat.
+const TEXTS: { key: string; label: string; help: string }[] = [
+  { key: "online", label: "Header, with the bot", help: "Under the company name while the bot answers." },
+  { key: "waiting", label: "Header, waiting", help: "While the chat waits for a person." },
+  { key: "offline", label: "Header, away", help: "Outside opening hours." },
+  { key: "closed", label: "Header, closed", help: "After the chat is resolved." },
+  { key: "placeholder", label: "Message box", help: "{name} is the company, or the agent once one joins." },
+  { key: "ask_email", label: "Asking for an email", help: "Before a guest joins the queue." },
+  { key: "bad_email", label: "Email looks wrong", help: "When the reply isn't an email address." },
+  { key: "ask_name", label: "Asking for a name", help: "After the email." },
+  { key: "skip", label: "Skip button", help: "Under the name question." },
+  { key: "offline_handoff", label: "Away message", help: "Instead of the handoff message outside opening hours. {opens} is when the team is back." },
+  { key: "auto_closed", label: "Closed for being quiet", help: "When a quiet chat closes by itself." },
+];
 
 export function BotCard({ api, tenant }: { api: AdminApi; tenant: AdminTenant }) {
   const [state, setState] = useState<AdminBot | null>(null);
@@ -267,6 +285,21 @@ export function BotCard({ api, tenant }: { api: AdminApi; tenant: AdminTenant })
             aria-label="Handoff message"
           />
         </Row>
+      </section>
+
+      <section className="settings-group">
+        <h4>Wording</h4>
+        <p className="settings-group-help">The chat's own lines. Empty a field to go back to the default.</p>
+        {TEXTS.map((t) => (
+          <Row key={t.key} label={t.label} help={t.help}>
+            <input
+              value={bot.texts[t.key] ?? ""}
+              onChange={(e) => setBot({ texts: { ...bot.texts, [t.key]: e.target.value } })}
+              maxLength={300}
+              aria-label={t.label}
+            />
+          </Row>
+        ))}
       </section>
 
       <div className="settings-save">

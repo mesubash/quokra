@@ -10,7 +10,7 @@ const bot: BotFields = {
   fallback: "Sorry?",
   max_fallbacks: 2,
   handoff_message: "Connecting you",
-  texts: {},
+  texts: { online: "Online", waiting: "  " },
 };
 
 describe("fromDraft", () => {
@@ -31,5 +31,6 @@ describe("fromDraft", () => {
     expect(out.menu[0].keywords).toEqual(["open", "closing time"]);
     expect(out.human.keywords).toEqual(["person", "agent"]);
     expect(out.urgent.keywords).toEqual([]);
+    expect(out.texts).toEqual({ online: "Online" });
   });
 });

@@ -2567,7 +2567,8 @@ button {
   background: var(--hover);
 }
 
-.notify-toggle input {
+.notify-toggle input,
+.settings .admin-check input {
   appearance: none;
   position: relative;
   flex: none;
@@ -2581,7 +2582,8 @@ button {
   transition: background 0.15s ease;
 }
 
-.notify-toggle input::after {
+.notify-toggle input::after,
+.settings .admin-check input::after {
   content: "";
   position: absolute;
   top: 2px;
@@ -2594,21 +2596,25 @@ button {
   transition: transform 0.15s ease;
 }
 
-.notify-toggle input:checked {
+.notify-toggle input:checked,
+.settings .admin-check input:checked {
   background: var(--primary);
   box-shadow: none;
 }
 
-.notify-toggle input:checked::after {
+.notify-toggle input:checked::after,
+.settings .admin-check input:checked::after {
   transform: translateX(14px);
 }
 
-.notify-toggle input:disabled {
+.notify-toggle input:disabled,
+.settings .admin-check input:disabled {
   opacity: 0.5;
   cursor: default;
 }
 
-.notify-toggle input:focus-visible {
+.notify-toggle input:focus-visible,
+.settings .admin-check input:focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
 }

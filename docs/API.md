@@ -197,8 +197,8 @@ All require an agent token. The agent only sees tenants they're a member of (`te
 ### 4.1 `GET /agent/tenants`
 
 ```json
-200 { "items": [{ "id": "…", "slug": "demo", "displayName": "Demo Company", "attachments": true }] }
-// attachments: agents can send images in this company's chats
+200 { "items": [{ "id": "…", "slug": "demo", "displayName": "Demo Company", "attachments": true, "primaryColor": "#0051fb" }] }
+// attachments: agents can send images in this company's chats; primaryColor: the company's colour (or null)
 ```
 
 ### 4.2 `GET /agent/conversations`
@@ -510,6 +510,7 @@ The host side (`sdk.js`) only accepts messages from the Quokra origin. The panel
 | console → host | `auth.request` | `reason` (`initial`, `expired`, `unauthorized`) | Please send a fresh agent token |
 | host → console | `auth.token` | `token` | Agent access token |
 | console → host | `console.unread` | `count` | Waiting conversations (for a nav badge) |
+| console → host | `console.color` | `color` | The company's colour, used by a console embedded with `tenant` (unless `accent` is set); `sdk.js` paints the floating button with it |
 | console → host | `console.close` | | The agent closed the drawer (bubble mode) |
 | console → host | `console.notify` | `kind`, `title`, `body`, `conversationId` | Something to tell the agent; `sdk.js` shows it as a browser notification if allowed and the console isn't in front |
 | console → host | `console.notifications.check` / `.request` | | Ask for the notification status / ask the browser for permission (from a click) |

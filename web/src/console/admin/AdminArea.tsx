@@ -271,39 +271,39 @@ function SecretCard({ api, tenant, onChanged }: { api: AdminApi; tenant: AdminTe
         label="Secret key"
         help="Only for identifying signed-in customers. The company's backend signs a short token with it; keep it there."
       >
-      {secret ? (
-        <div className="admin-secret" role="status">
-          <strong>Copy it now: it won't be shown again.</strong>
-          <span className="admin-value">
-            <code>{secret}</code>
-            <CopyButton text={secret} label="Copy secret key" />
-          </span>
-        </div>
-      ) : (
-        <p className="admin-help">{tenant.hasSecret ? "A secret key is set." : "No secret key yet."}</p>
-      )}
-      {error && <p className="error-text">{error}</p>}
-      {confirming ? (
-        <div className="admin-actions">
-          <span className="muted">The current key stops working at once.</span>
-          <button type="button" className="button button-quiet" onClick={() => setConfirming(false)}>
-            Cancel
-          </button>
-          <button type="button" className="button button-danger" onClick={() => void rotate()}>
-            Replace key
-          </button>
-        </div>
-      ) : (
-        <div className="admin-actions">
-          <button
-            type="button"
-            className="button button-quiet"
-            onClick={() => (tenant.hasSecret ? setConfirming(true) : void rotate())}
-          >
-            {tenant.hasSecret ? "Replace secret key…" : "Create secret key"}
-          </button>
-        </div>
-      )}
+        {secret ? (
+          <div className="admin-secret" role="status">
+            <strong>Copy it now: it won't be shown again.</strong>
+            <span className="admin-value">
+              <code>{secret}</code>
+              <CopyButton text={secret} label="Copy secret key" />
+            </span>
+          </div>
+        ) : (
+          <p className="admin-help">{tenant.hasSecret ? "A secret key is set." : "No secret key yet."}</p>
+        )}
+        {error && <p className="error-text">{error}</p>}
+        {confirming ? (
+          <div className="admin-actions">
+            <span className="muted">The current key stops working at once.</span>
+            <button type="button" className="button button-quiet" onClick={() => setConfirming(false)}>
+              Cancel
+            </button>
+            <button type="button" className="button button-danger" onClick={() => void rotate()}>
+              Replace key
+            </button>
+          </div>
+        ) : (
+          <div className="admin-actions">
+            <button
+              type="button"
+              className="button button-quiet"
+              onClick={() => (tenant.hasSecret ? setConfirming(true) : void rotate())}
+            >
+              {tenant.hasSecret ? "Replace secret key…" : "Create secret key"}
+            </button>
+          </div>
+        )}
       </Row>
     </section>
   );
@@ -685,7 +685,12 @@ function TenantFormView({
           <SitesField value={widget} onChange={setWidget} placeholder="https://www.acme.com" name="website" />
         </Row>
         <Row label="Dashboards" help="Where the agent console may appear.">
-          <SitesField value={consoleSites} onChange={setConsoleSites} placeholder="https://admin.acme.com" name="dashboard" />
+          <SitesField
+            value={consoleSites}
+            onChange={setConsoleSites}
+            placeholder="https://admin.acme.com"
+            name="dashboard"
+          />
         </Row>
       </section>
 
@@ -781,7 +786,7 @@ function ImagesField({ api, value, onChange }: { api: AdminApi; value: boolean; 
   return (
     <Row label="Images" help="PNG, JPEG, GIF or WebP, up to 5 MB, from customers and agents.">
       <label className="admin-check">
-        <input type="checkbox" checked={value} onChange={(e) => onChange(e.target.checked)} />
+        <input type="checkbox" role="switch" checked={value} onChange={(e) => onChange(e.target.checked)} />
         Allow images
       </label>
       {storage && (
@@ -832,6 +837,7 @@ function HoursField({ value, onChange }: { value: OpeningHours | null; onChange:
       <label className="admin-check">
         <input
           type="checkbox"
+          role="switch"
           checked={value !== null}
           onChange={(e) =>
             onChange(
@@ -860,6 +866,7 @@ function HoursField({ value, onChange }: { value: OpeningHours | null; onChange:
                 <label className="admin-check">
                   <input
                     type="checkbox"
+                    role="switch"
                     checked={!!range}
                     onChange={(e) => setDay(day, e.target.checked ? `${from}-${to}` : null)}
                   />

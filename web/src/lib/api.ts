@@ -86,6 +86,24 @@ async function request<T>(path: string, init: RequestInit & { token?: string; ba
   return (res.status === 204 ? undefined : res.json()) as Promise<T>;
 }
 
+// Agent and admin calls: a 401 means the token ran out, so ask for a fresh one (refresh) and try once more.
+// Without refresh (local dev sign-in), the 401 goes to the caller as before.
+export type FreshToken = () => Promise<string>;
+
+async function authed<T>(
+  path: string,
+  init: RequestInit,
+  getToken: () => string,
+  refresh?: FreshToken,
+): Promise<T> {
+  try {
+    return await request<T>(path, { ...init, token: getToken() });
+  } catch (e) {
+    if (!(e instanceof ApiError) || e.status !== 401 || !refresh) throw e;
+    return request<T>(path, { ...init, token: await refresh() });
+  }
+}
+
 function imageForm(file: File, clientMessageId: string) {
   const form = new FormData();
   form.append("file", file);
@@ -94,8 +112,11 @@ function imageForm(file: File, clientMessageId: string) {
 }
 
 // An image the page can show: fetched with the token, since an <img> can't send one.
-async function image(path: string, token: string): Promise<Blob> {
-  const res = await fetch(`/api/v1${path}`, { headers: { Authorization: `Bearer ${token}` } });
+async function image(path: string, token: string, refresh?: FreshToken): Promise<Blob> {
+  let res = await fetch(`/api/v1${path}`, { headers: { Authorization: `Bearer ${token}` } });
+  if (res.status === 401 && refresh) {
+    res = await fetch(`/api/v1${path}`, { headers: { Authorization: `Bearer ${await refresh()}` } });
+  }
   if (!res.ok) throw new ApiError(res.status, "IMAGE_FAILED", res.statusText);
   return res.blob();
 }
@@ -301,13 +322,14 @@ export interface AdminBot {
   bot: BotFields | null;
 }
 
-export function adminApi(getToken: () => string) {
+export function adminApi(getToken: () => string, refresh?: FreshToken) {
   const call = <T,>(method: string, path: string, body?: unknown) =>
-    request<T>(`/admin${path}`, {
-      method,
-      token: getToken(),
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
+    authed<T>(
+      `/admin${path}`,
+      { method, body: body === undefined ? undefined : JSON.stringify(body) },
+      getToken,
+      refresh,
+    );
   const slug = (s: string) => encodeURIComponent(s);
   return {
     bots: () => call<{ items: string[] }>("GET", "/bots"),
@@ -341,17 +363,19 @@ export interface TenantItem {
   displayName: string;
   // Agents can send images in this company's chats.
   attachments: boolean;
+  primaryColor: string | null;
 }
 
 // getToken returns the agent's current token, so a refreshed token is used without rebuilding anything.
-export function agentApi(getToken: () => string) {
-  const get = <T,>(path: string) => request<T>(`/agent${path}`, { token: getToken() });
+export function agentApi(getToken: () => string, refresh?: FreshToken) {
+  const get = <T,>(path: string) => authed<T>(`/agent${path}`, {}, getToken, refresh);
   const post = <T,>(path: string, body?: unknown) =>
-    request<T>(`/agent${path}`, {
-      method: "POST",
-      token: getToken(),
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
+    authed<T>(
+      `/agent${path}`,
+      { method: "POST", body: body === undefined ? undefined : JSON.stringify(body) },
+      getToken,
+      refresh,
+    );
   return {
     me: () => get<Me>("/me"),
     tenants: () => get<{ items: TenantItem[] }>("/tenants"),
@@ -371,12 +395,14 @@ export function agentApi(getToken: () => string) {
     reply: (id: string, clientMessageId: string, body: string) =>
       post<{ message: Message }>(`/conversations/${id}/messages`, { clientMessageId, body }),
     sendImage: (id: string, file: File, clientMessageId: string) =>
-      request<{ message: Message }>(`/agent/conversations/${id}/attachments`, {
-        method: "POST",
-        token: getToken(),
-        body: imageForm(file, clientMessageId),
-      }),
-    image: (id: string, messageId: string) => image(`/agent/conversations/${id}/messages/${messageId}/attachment`, getToken()),
+      authed<{ message: Message }>(
+        `/agent/conversations/${id}/attachments`,
+        { method: "POST", body: imageForm(file, clientMessageId) },
+        getToken,
+        refresh,
+      ),
+    image: (id: string, messageId: string) =>
+      image(`/agent/conversations/${id}/messages/${messageId}/attachment`, getToken(), refresh),
     resolve: (id: string) => post<One>(`/conversations/${id}/resolve`),
     returnToBot: (id: string) => post<One>(`/conversations/${id}/return-to-bot`),
     reopen: (id: string) => post<One>(`/conversations/${id}/reopen`),

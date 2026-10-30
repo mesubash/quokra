@@ -33,12 +33,27 @@ function EmbeddedConsole() {
   // The host has a full-page console to open from the drawer.
   const expandable = closable && params.get("expand") === "1";
 
+  // Calls that got a 401 wait here for the dashboard's next token.
+  const waiting = useRef<((token: string) => void)[]>([]);
+
   useEffect(
     () =>
       onHostMessage((m) => {
         if (m.type !== "auth.token") return;
         tokenRef.current = m.token;
         setToken(m.token);
+        waiting.current.splice(0).forEach((resolve) => resolve(m.token));
+      }),
+    [],
+  );
+
+  // A fresh token from the dashboard (its getToken refreshes the login), for retrying a call once.
+  const freshToken = useCallback(
+    () =>
+      new Promise<string>((resolve, reject) => {
+        waiting.current.push(resolve);
+        postToHost({ type: "auth.request", reason: "unauthorized" });
+        setTimeout(() => reject(new Error("No fresh token from the dashboard")), SIGN_IN_TIMEOUT_MS);
       }),
     [],
   );
@@ -97,6 +112,7 @@ function EmbeddedConsole() {
   return (
     <ConsoleApp
       getToken={getToken}
+      freshToken={freshToken}
       onUnauthorized={unauthorized}
       onClose={closable ? () => postToHost({ type: "console.close" }) : undefined}
       onExpand={expandable ? (conversationId) => postToHost({ type: "console.expand", conversationId }) : undefined}
