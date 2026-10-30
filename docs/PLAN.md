@@ -130,7 +130,7 @@ Admin tab (companies, keys and embed snippets, allowed sites, agents by email in
 | 4 | Domain | One: `chat.<domain>` (UI, API and WebSocket) |
 | 5 | Message retention | Each company chooses (default 12 months) within the server's limits (`QUOKRA_RETENTION_MIN_MONTHS` / `_MAX_MONTHS`, default 1–60); resolved chats are deleted nightly. Done in v2 |
 | 6 | Languages | English in v1; more via per-language bot files in v2 |
-| 7 | Repository licence | Private for now; decide before any public release |
+| 7 | Repository licence | AGPL-3.0, public on GitHub (decided 2026-10-30) |
 
 ---
 

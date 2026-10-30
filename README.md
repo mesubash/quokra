@@ -116,4 +116,8 @@ test-host/   pages on another origin for embedding tests
 docs/        plan, architecture, API, embedding, development
 ```
 
+## License
+
+Copyright (C) 2026 Subash Singh Dhami. Quokra is free software under the [GNU Affero General Public License v3.0](LICENSE): you can use, change and self-host it; if you run a changed version for others over a network, you must offer them its source code too.
+
 Third-party assets and their licences: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
