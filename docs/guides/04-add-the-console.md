@@ -49,6 +49,8 @@ Use one of the two per page: the button everywhere, and the full console on `/su
   arrives, the console says "Couldn't sign you in" with Try again.
 
 The console follows your dashboard's light or dark mode by itself. Agents who also have the
-`QUOKRA_ADMIN` role also get **Settings** (the gear icon).
+`QUOKRA_ADMIN` role also see the company's sections in **Settings** (the gear icon); everyone gets
+**Notifications** there. Settings only show the company in `tenant`; to manage all companies, see
+[Set up a company](02-set-up-a-company.md).
 
 Reference: [Embedding guide §5](../EMBEDDING.md#5-agent-console-in-your-dashboard), [sdk.js API](../API.md#92-agent-console-windowquokraconsole).

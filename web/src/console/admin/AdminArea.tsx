@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import {
   ApiError,
   type AdminAgents,
@@ -13,6 +13,7 @@ import { CheckIcon, CloseIcon, CopyIcon } from "../../lib/icons";
 import { initials } from "../format";
 import { NotifyOptions, type NotifyOptionsProps } from "../NotifyMenu";
 import { BotCard } from "./BotCard";
+import { Row } from "./Row";
 
 // Settings for admins: the companies (tenants) that use Quokra and everything about each one.
 // Only shown to people with the admin role; the server checks that role on every call anyway.
@@ -60,17 +61,29 @@ const COMPANY_SECTIONS: { id: Section; label: string }[] = [
   { id: "embed", label: "Embed & keys" },
 ];
 
-// Settings, opened from the gear in the console header. Everyone gets their notifications; admins also pick
-// a company and see its sections one at a time. onClose is missing for admins without the agent role, who
-// only have settings.
+const INTRO: Record<Section, (company: string) => string> = {
+  notifications: () => "What alerts you, and how. Kept in this browser.",
+  general: (c) => `How ${c} looks in the chat, and when chats are answered.`,
+  bot: () => "The questions and answers customers can pick from before they reach a person.",
+  replies: () => "Answers agents insert by typing / in the reply box. {name} becomes the customer's name.",
+  agents: (c) => `People who answer chats for ${c}. They sign in with your own login and need the agent role there.`,
+  embed: () => "Code for the website and the dashboard, and the key for identifying signed-in customers.",
+};
+
+// Settings, opened from the gear in the console header. Everyone gets their notifications; admins also get the
+// company's sections. A console embedded for one company (scope) only ever shows that company; the company
+// picker and "New company" are for Quokra's own console page. onClose is missing for admins without the agent
+// role, who only have settings.
 export function Settings({
   admin,
   api,
+  scope,
   notifications,
   onClose,
 }: {
   admin?: Admin;
   api?: AdminApi;
+  scope?: string | null;
   notifications: NotifyOptionsProps;
   onClose?: () => void;
 }) {
@@ -83,110 +96,117 @@ export function Settings({
     return () => document.removeEventListener("keydown", close);
   }, [onClose]);
 
-  const tenants = admin?.tenants ?? [];
-  const selected = admin?.selected ?? tenants[0]?.slug ?? null;
+  const tenants = (admin?.tenants ?? []).filter((t) => !scope || t.slug === scope);
+  const selected = scope ?? admin?.selected ?? tenants[0]?.slug ?? null;
   const tenant = tenants.find((t) => t.slug === selected);
-  const companyView = admin && api && section !== "notifications";
-  const sections = [{ id: "notifications" as Section, label: "Notifications" }, ...(admin ? COMPANY_SECTIONS : [])];
+  const creating = !scope && selected === "new";
+  // General first, then your own notifications, then the rest of the company's sections.
+  const sections: { id: Section; label: string }[] =
+    admin && api && tenant
+      ? [COMPANY_SECTIONS[0], { id: "notifications", label: "Notifications" }, ...COMPANY_SECTIONS.slice(1)]
+      : [{ id: "notifications", label: "Notifications" }];
+  const title = creating ? "New company" : (COMPANY_SECTIONS.find((x) => x.id === section)?.label ?? "Notifications");
+
+  function go(next: Section) {
+    setSection(next);
+    if (creating) admin?.select(null);
+  }
 
   return (
     <div className="settings" role="dialog" aria-modal="true" aria-label="Settings">
-      <header className="settings-header">
-        <h2>Settings</h2>
-        {companyView && tenants.length > 0 && (
-          <label className="settings-company">
-            <span className="muted">Company</span>
-            <select value={selected ?? ""} onChange={(e) => admin.select(e.target.value)}>
-              {selected === "new" && <option value="new">New company</option>}
+      <aside className="settings-side">
+        <div className="settings-side-head">
+          <h2>Settings</h2>
+          {onClose && (
+            <button type="button" className="icon-button quiet" aria-label="Close settings" onClick={onClose}>
+              <CloseIcon size={18} />
+            </button>
+          )}
+        </div>
+        <nav className="settings-nav" aria-label="Settings sections">
+          {admin && api && !scope && tenants.length > 1 && (
+            <select
+              className="settings-company"
+              aria-label="Company"
+              value={creating ? "" : (selected ?? "")}
+              onChange={(e) => admin.select(e.target.value)}
+            >
+              {creating && <option value="">New company</option>}
               {tenants.map((t) => (
                 <option key={t.slug} value={t.slug}>
                   {t.displayName}
                 </option>
               ))}
             </select>
-          </label>
-        )}
-        {companyView && (
-          <button type="button" className="button button-small" onClick={() => admin.select("new")}>
-            New company
-          </button>
-        )}
-        {onClose && (
-          <button type="button" className="icon-button quiet" aria-label="Close settings" onClick={onClose}>
-            <CloseIcon size={18} />
-          </button>
-        )}
-      </header>
-      {companyView && admin.error && (
-        <p className="console-error" role="alert">
-          {admin.error}{" "}
-          <button type="button" className="link-button" onClick={admin.reload}>
-            Retry
-          </button>
-        </p>
-      )}
-      <div className="settings-body">
-        <nav className="settings-nav" aria-label="Settings sections">
-          {sections.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              aria-current={section === s.id && selected !== "new" ? "page" : undefined}
-              onClick={() => {
-                setSection(s.id);
-                if (admin?.selected === "new") admin.select(null);
-              }}
-            >
-              {s.label}
-            </button>
-          ))}
-        </nav>
-        <div className="settings-content" key={`${selected} ${section}`}>
-          {section === "notifications" ? (
-            <section className="admin-card settings-notify">
-              <h3>Notifications</h3>
-              <p className="muted admin-help">Just for you, in this browser.</p>
-              <NotifyOptions {...notifications} />
-            </section>
-          ) : !companyView ? null : selected === "new" ? (
-            <section className="admin-card">
-              <h3>New company</h3>
-              <TenantFormView
-                api={api}
-                bots={admin.bots}
-                onSaved={(t) => {
-                  admin.reload();
-                  admin.select(t.slug);
-                  setSection("embed");
-                }}
-              />
-            </section>
-          ) : !tenant ? (
-            <p className="muted">
-              {admin.tenants === null ? "Loading…" : "No companies yet. Create one to get started."}
-            </p>
-          ) : (
-            <>
-              {section === "general" && (
-                <section className="admin-card">
-                  <h3>General</h3>
-                  <TenantFormView api={api} bots={admin.bots} tenant={tenant} onSaved={admin.reload} />
-                </section>
-              )}
-              {section === "bot" && <BotCard api={api} tenant={tenant} />}
-              {section === "replies" && <RepliesCard api={api} tenant={tenant} />}
-              {section === "agents" && <AgentsCard api={api} tenant={tenant} onChanged={admin.reload} />}
-              {section === "embed" && (
-                <>
-                  <EmbedCard tenant={tenant} />
-                  <SecretCard api={api} tenant={tenant} onChanged={admin.reload} />
-                </>
-              )}
-            </>
           )}
-        </div>
+          {sections.map((x) => (
+            <NavItem key={x.id} current={!creating && section === x.id} onClick={() => go(x.id)}>
+              {x.label}
+            </NavItem>
+          ))}
+          {admin && api && !scope && (
+            <button type="button" className="settings-new" onClick={() => admin.select("new")}>
+              + New company
+            </button>
+          )}
+        </nav>
+      </aside>
+
+      <div className="settings-main" key={`${selected} ${section}`}>
+        <header className="settings-head">
+          <h3>{title}</h3>
+          {!creating && <p>{INTRO[section](tenant?.displayName ?? "the company")}</p>}
+        </header>
+        {admin?.error && section !== "notifications" && (
+          <p className="console-error" role="alert">
+            {admin.error}{" "}
+            <button type="button" className="link-button" onClick={admin.reload}>
+              Retry
+            </button>
+          </p>
+        )}
+        {section === "notifications" && !creating ? (
+          <div className="settings-notify">
+            <NotifyOptions {...notifications} explained />
+          </div>
+        ) : !admin || !api ? null : creating ? (
+          <TenantFormView
+            api={api}
+            bots={admin.bots}
+            onSaved={(t) => {
+              admin.reload();
+              admin.select(t.slug);
+              setSection("embed");
+            }}
+          />
+        ) : !tenant ? (
+          <p className="muted">{admin.tenants === null ? "Loading…" : "No companies yet."}</p>
+        ) : (
+          <>
+            {section === "general" && (
+              <TenantFormView api={api} bots={admin.bots} tenant={tenant} onSaved={admin.reload} />
+            )}
+            {section === "bot" && <BotCard api={api} tenant={tenant} />}
+            {section === "replies" && <RepliesCard api={api} tenant={tenant} />}
+            {section === "agents" && <AgentsCard api={api} tenant={tenant} onChanged={admin.reload} />}
+            {section === "embed" && (
+              <>
+                <EmbedCard tenant={tenant} />
+                <SecretCard api={api} tenant={tenant} onChanged={admin.reload} />
+              </>
+            )}
+          </>
+        )}
       </div>
     </div>
+  );
+}
+
+function NavItem({ current, onClick, children }: { current: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button type="button" aria-current={current ? "page" : undefined} onClick={onClick}>
+      {children}
+    </button>
   );
 }
 
@@ -196,22 +216,24 @@ function EmbedCard({ tenant }: { tenant: AdminTenant }) {
   const chat = `<script src="${origin}/sdk.js"\n        data-quokra-chat="${tenant.slug}"\n        data-quokra-pk="${tenant.publishableKey}"\n        async></script>`;
   const consoleSnippet = `<div id="support" style="height: 100vh"></div>\n<script src="${origin}/sdk.js"></script>\n<script>\n  Quokra.console.mount("#support", {\n    tenant: "${tenant.slug}",\n    getToken: () => auth.getAccessToken(), // your dashboard's login\n  });\n</script>`;
   return (
-    <section className="admin-card">
-      <h3>Embed</h3>
-      <div className="admin-field">
-        <span className="admin-label">Publishable key</span>
+    <section className="settings-group">
+      {(tenant.widgetOrigins.length === 0 || tenant.consoleOrigins.length === 0) && (
+        <p className="notice admin-notice">
+          Add the company's sites under General, or browsers will refuse to show the chat or console there.
+        </p>
+      )}
+      <Row label="Publishable key" help="Public. Safe to put in web pages.">
         <span className="admin-value">
           <code>{tenant.publishableKey}</code>
           <CopyButton text={tenant.publishableKey} label="Copy publishable key" />
         </span>
-      </div>
-      <Snippet label="Customer chat, on the company's website" code={chat} />
-      <Snippet label="Agent console, in the company's dashboard" code={consoleSnippet} />
-      {(tenant.widgetOrigins.length === 0 || tenant.consoleOrigins.length === 0) && (
-        <p className="notice admin-notice">
-          Add the company's sites under Settings, or browsers will refuse to show the chat or console there.
-        </p>
-      )}
+      </Row>
+      <Row label="Chat" help="Before </body> on every page of the website.">
+        <Snippet label="Chat snippet" code={chat} />
+      </Row>
+      <Row label="Console" help="On the dashboard page where agents answer.">
+        <Snippet label="Console snippet" code={consoleSnippet} />
+      </Row>
     </section>
   );
 }
@@ -219,13 +241,10 @@ function EmbedCard({ tenant }: { tenant: AdminTenant }) {
 function Snippet({ label, code }: { label: string; code: string }) {
   return (
     <div className="admin-snippet">
-      <div className="admin-snippet-head">
-        <span className="admin-label">{label}</span>
-        <CopyButton text={code} label={`Copy: ${label}`} />
-      </div>
       <pre>
         <code>{code}</code>
       </pre>
+      <CopyButton text={code} label={`Copy ${label.toLowerCase()}`} />
     </div>
   );
 }
@@ -247,12 +266,11 @@ function SecretCard({ api, tenant, onChanged }: { api: AdminApi; tenant: AdminTe
   }
 
   return (
-    <section className="admin-card">
-      <h3>Secret key</h3>
-      <p className="muted admin-help">
-        Only needed to identify logged-in customers: the company's backend signs a short token with it. Keep it on the
-        server, never in a web page.
-      </p>
+    <section className="settings-group">
+      <Row
+        label="Secret key"
+        help="Only for identifying signed-in customers. The company's backend signs a short token with it; keep it there."
+      >
       {secret ? (
         <div className="admin-secret" role="status">
           <strong>Copy it now: it won't be shown again.</strong>
@@ -286,6 +304,7 @@ function SecretCard({ api, tenant, onChanged }: { api: AdminApi; tenant: AdminTe
           </button>
         </div>
       )}
+      </Row>
     </section>
   );
 }
@@ -337,11 +356,7 @@ function AgentsCard({ api, tenant, onChanged }: { api: AdminApi; tenant: AdminTe
   }
 
   return (
-    <section className="admin-card">
-      <h3>Agents</h3>
-      <p className="muted admin-help">
-        Add people by their work email. They sign in with the company's login and need the agent role there.
-      </p>
+    <section className="settings-group">
       <form className="admin-inline-form" onSubmit={add}>
         <input
           type="email"
@@ -440,11 +455,7 @@ function RepliesCard({ api, tenant }: { api: AdminApi; tenant: AdminTenant }) {
   }
 
   return (
-    <section className="admin-card">
-      <h3>Saved replies</h3>
-      <p className="muted admin-help">
-        Agents type / in the reply box to pick one. {"{name}"} becomes the customer's name.
-      </p>
+    <section className="settings-group">
       <ul className="admin-people">
         {replies === null && <li className="muted">Loading…</li>}
         {replies?.map((r) => (
@@ -463,7 +474,8 @@ function RepliesCard({ api, tenant }: { api: AdminApi; tenant: AdminTenant }) {
         ))}
         {replies?.length === 0 && <li className="muted">No saved replies yet.</li>}
       </ul>
-      <form className="admin-form" onSubmit={save}>
+      <form className="admin-form admin-reply-form" onSubmit={save}>
+        <h4>{form.id ? "Edit reply" : "New reply"}</h4>
         <label>
           <span className="admin-label">Title</span>
           <input
@@ -543,8 +555,8 @@ function TenantFormView({
   const [autoResolve, setAutoResolve] = useState(tenant?.autoResolveMinutes ?? 1440);
   const [hours, setHours] = useState<OpeningHours | null>(tenant?.openingHours ?? null);
   const [images, setImages] = useState(tenant?.attachmentsEnabled ?? false);
-  const [widget, setWidget] = useState((tenant?.widgetOrigins ?? []).join("\n"));
-  const [consoleSites, setConsoleSites] = useState((tenant?.consoleOrigins ?? []).join("\n"));
+  const [widget, setWidget] = useState<string[]>(tenant?.widgetOrigins ?? []);
+  const [consoleSites, setConsoleSites] = useState<string[]>(tenant?.consoleOrigins ?? []);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -566,8 +578,8 @@ function TenantFormView({
       autoResolveMinutes: autoResolve,
       openingHours: hours,
       attachmentsEnabled: images,
-      widgetOrigins: lines(widget),
-      consoleOrigins: lines(consoleSites),
+      widgetOrigins: widget,
+      consoleOrigins: consoleSites,
     };
     try {
       const result = tenant ? await api.update(tenant.slug, form) : await api.create({ ...form, slug });
@@ -581,30 +593,32 @@ function TenantFormView({
   }
 
   return (
-    <form className="admin-form" onSubmit={submit}>
-      {!tenant && (
-        <label>
-          <span className="admin-label">Slug</span>
+    <form className="settings-form" onSubmit={submit}>
+      <section className="settings-group">
+        <h4>Company</h4>
+        {!tenant && (
+          <Row label="Slug" help="Used in the embed code. Lowercase letters, digits and dashes; can't change later.">
+            <input
+              value={slug}
+              onChange={(e) => setSlug(e.target.value.toLowerCase())}
+              placeholder="acme-shop"
+              required
+              pattern="[a-z0-9][a-z0-9-]{0,38}[a-z0-9]"
+              aria-label="Slug"
+            />
+          </Row>
+        )}
+        <Row label="Name" help="Shown in the chat header.">
           <input
-            value={slug}
-            onChange={(e) => setSlug(e.target.value.toLowerCase())}
-            placeholder="acme-shop"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Acme"
             required
-            pattern="[a-z0-9][a-z0-9-]{0,38}[a-z0-9]"
+            maxLength={80}
+            aria-label="Name"
           />
-          <span className="admin-help muted">
-            Lowercase letters, digits and dashes. Used in embed code; can't change later.
-          </span>
-        </label>
-      )}
-      <label>
-        <span className="admin-label">Name</span>
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Acme" required maxLength={80} />
-        <span className="admin-help muted">Shown in the chat header.</span>
-      </label>
-      <div className="admin-row">
-        <label>
-          <span className="admin-label">Brand colour</span>
+        </Row>
+        <Row label="Brand colour" help="Buttons and the chat header.">
           <span className="admin-color">
             <input
               type="color"
@@ -612,78 +626,144 @@ function TenantFormView({
               onChange={(e) => setColor(e.target.value)}
               aria-label="Pick a colour"
             />
-            <input value={color} onChange={(e) => setColor(e.target.value)} placeholder="#0051fb" maxLength={7} />
+            <input
+              value={color}
+              onChange={(e) => setColor(e.target.value)}
+              placeholder="#0051fb"
+              maxLength={7}
+              aria-label="Brand colour"
+            />
           </span>
-        </label>
-        <label>
-          <span className="admin-label">Bot file</span>
-          <select value={bot} onChange={(e) => setBot(e.target.value)} required>
+        </Row>
+        <Row label="Logo" help="An https:// image, shown in the chat header. Optional.">
+          <input
+            value={logo}
+            onChange={(e) => setLogo(e.target.value)}
+            placeholder="https://www.acme.com/logo.png"
+            aria-label="Logo URL"
+          />
+        </Row>
+      </section>
+
+      <section className="settings-group">
+        <h4>Chat</h4>
+        <Row label="Bot file" help="Where the bot's questions start from. Change the questions under Bot.">
+          <select value={bot} onChange={(e) => setBot(e.target.value)} required aria-label="Bot file">
             {bots.map((b) => (
               <option key={b} value={b}>
                 {b}
               </option>
             ))}
           </select>
-        </label>
-      </div>
-      <label>
-        <span className="admin-label">Close quiet chats</span>
-        <select value={autoResolve} onChange={(e) => setAutoResolve(Number(e.target.value))}>
-          {AUTO_RESOLVE.some((o) => o.minutes === autoResolve) ? null : (
-            <option value={autoResolve}>After {autoResolve} minutes</option>
-          )}
-          {AUTO_RESOLVE.map((o) => (
-            <option key={o.minutes} value={o.minutes}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-        <span className="admin-help muted">
-          Chats with the bot that the customer left, and chats where the agent wrote last, close by themselves after
-          this long without messages. Waiting chats never do.
-        </span>
-      </label>
-      <HoursField value={hours} onChange={setHours} />
-      <ImagesField api={api} value={images} onChange={setImages} />
-      <label>
-        <span className="admin-label">Logo URL (optional)</span>
-        <input value={logo} onChange={(e) => setLogo(e.target.value)} placeholder="https://www.acme.com/logo.png" />
-      </label>
-      <label>
-        <span className="admin-label">Websites that show the chat</span>
-        <textarea
-          value={widget}
-          onChange={(e) => setWidget(e.target.value)}
-          rows={3}
-          placeholder="https://www.acme.com"
-        />
-        <span className="admin-help muted">One per line, just the address: https://www.acme.com</span>
-      </label>
-      <label>
-        <span className="admin-label">Dashboards that show the agent console</span>
-        <textarea
-          value={consoleSites}
-          onChange={(e) => setConsoleSites(e.target.value)}
-          rows={2}
-          placeholder="https://admin.acme.com"
-        />
-      </label>
-      {error && (
-        <p className="error-text" role="alert">
-          {error}
-        </p>
-      )}
-      <div className="admin-actions">
-        {saved && (
-          <span className="muted" role="status">
-            Saved.
-          </span>
+        </Row>
+        <Row
+          label="Close quiet chats"
+          help="Chats the customer left, or where the agent wrote last. Waiting chats never close by themselves."
+        >
+          <select
+            value={autoResolve}
+            onChange={(e) => setAutoResolve(Number(e.target.value))}
+            aria-label="Close quiet chats"
+          >
+            {AUTO_RESOLVE.some((o) => o.minutes === autoResolve) ? null : (
+              <option value={autoResolve}>After {autoResolve} minutes</option>
+            )}
+            {AUTO_RESOLVE.map((o) => (
+              <option key={o.minutes} value={o.minutes}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </Row>
+        <HoursField value={hours} onChange={setHours} />
+        <ImagesField api={api} value={images} onChange={setImages} />
+      </section>
+
+      <section className="settings-group">
+        <h4>Sites</h4>
+        <Row label="Websites" help="Where the chat may appear. Include www. and staging sites you use.">
+          <SitesField value={widget} onChange={setWidget} placeholder="https://www.acme.com" name="website" />
+        </Row>
+        <Row label="Dashboards" help="Where the agent console may appear.">
+          <SitesField value={consoleSites} onChange={setConsoleSites} placeholder="https://admin.acme.com" name="dashboard" />
+        </Row>
+      </section>
+
+      <div className="settings-save">
+        {error ? (
+          <p className="error-text" role="alert">
+            {error}
+          </p>
+        ) : (
+          saved && (
+            <span className="muted" role="status">
+              Saved.
+            </span>
+          )
         )}
         <button type="submit" className="button" disabled={busy}>
-          {tenant ? "Save changes" : "Create company"}
+          {tenant ? "Save" : "Create company"}
         </button>
       </div>
     </form>
+  );
+}
+
+// A list of site addresses: one per line with Remove, and a field to add more (pasting several works too).
+// Only the address is kept (https://www.acme.com); the server checks the rest.
+function SitesField({
+  value,
+  onChange,
+  placeholder,
+  name,
+}: {
+  value: string[];
+  onChange: (sites: string[]) => void;
+  placeholder: string;
+  name: string;
+}) {
+  const [draft, setDraft] = useState("");
+
+  function add() {
+    const added = lines(draft).map((site) => site.replace(/\/+$/, ""));
+    if (added.length === 0) return;
+    onChange([...value, ...added.filter((site) => !value.includes(site))]);
+    setDraft("");
+  }
+
+  return (
+    <div className="sites">
+      {value.length > 0 && (
+        <ul className="sites-list">
+          {value.map((site) => (
+            <li key={site}>
+              <code>{site}</code>
+              <button type="button" className="link-button" onClick={() => onChange(value.filter((s) => s !== site))}>
+                Remove
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="sites-add">
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              add();
+            }
+          }}
+          onBlur={add}
+          placeholder={placeholder}
+          aria-label={`Add a ${name}`}
+        />
+        <button type="button" className="button button-quiet" disabled={!draft.trim()} onClick={add}>
+          Add
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -699,20 +779,19 @@ function ImagesField({ api, value, onChange }: { api: AdminApi; value: boolean; 
   }, [api]);
 
   return (
-    <div className="admin-field">
-      <span className="admin-label">Images</span>
+    <Row label="Images" help="PNG, JPEG, GIF or WebP, up to 5 MB, from customers and agents.">
       <label className="admin-check">
         <input type="checkbox" checked={value} onChange={(e) => onChange(e.target.checked)} />
-        Customers and agents can send images (PNG, JPEG, GIF or WebP, up to 5 MB)
+        Allow images
       </label>
       {storage && (
-        <span className={storage.ok ? "admin-help muted" : "admin-help error-text"} role="status">
+        <p className={storage.ok ? "setting-note" : "setting-note error-text"} role="status">
           {storage.ok
-            ? `Storage works (${storage.store}).`
-            : `Storage isn't working (${storage.store}): ${storage.problem}. The image button stays hidden until it does.`}
-        </span>
+            ? `Storage is working (${storage.store}).`
+            : `Storage isn't working (${storage.store}): ${storage.problem}. The image button stays hidden until it is.`}
+        </p>
       )}
-    </div>
+    </Row>
   );
 }
 
@@ -746,8 +825,10 @@ function HoursField({ value, onChange }: { value: OpeningHours | null; onChange:
   }
 
   return (
-    <fieldset className="admin-hours">
-      <legend className="admin-label">Opening hours</legend>
+    <Row
+      label="Opening hours"
+      help="Outside them the chat says the team is away and when it's back. Chats still reach the queue."
+    >
       <label className="admin-check">
         <input
           type="checkbox"
@@ -758,15 +839,12 @@ function HoursField({ value, onChange }: { value: OpeningHours | null; onChange:
             )
           }
         />
-        Only answer chats at set times
+        Only at set times
       </label>
-      <span className="admin-help muted">
-        Outside these hours the chat says the team is away and when it's back. Chats still reach the queue.
-      </span>
       {value && (
-        <>
-          <label>
-            <span className="admin-label">Time zone</span>
+        <div className="admin-hours">
+          <label className="admin-day">
+            <span>Time zone</span>
             <input
               value={value.timezone}
               onChange={(e) => onChange({ ...value, timezone: e.target.value })}
@@ -811,9 +889,9 @@ function HoursField({ value, onChange }: { value: OpeningHours | null; onChange:
               </div>
             );
           })}
-        </>
+        </div>
       )}
-    </fieldset>
+    </Row>
   );
 }
 

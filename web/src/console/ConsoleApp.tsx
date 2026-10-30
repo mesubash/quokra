@@ -351,6 +351,7 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose, onExp
         <Settings
           admin={me?.admin ? admin : undefined}
           api={me?.admin ? admins : undefined}
+          scope={SCOPE}
           notifications={{ prefs, onChange: setPrefs, host: hostNotify, onTurnOn: askPermission }}
           onClose={adminOnly ? undefined : () => setSettingsOpen(false)}
         />
@@ -375,6 +376,10 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose, onExp
     </main>
   );
 }
+
+// The company this console was embedded for (sdk.js passes ?tenant=). Its settings show only that company;
+// Quokra's own console page, without one, can switch between companies and create them.
+const SCOPE = new URLSearchParams(window.location.search).get("tenant") || null;
 
 // The value once it has stopped changing for a moment, so typing doesn't send a request per key.
 function useDebounced(value: string, ms: number) {

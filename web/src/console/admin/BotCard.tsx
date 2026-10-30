@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { ApiError, type AdminApi, type AdminBot, type AdminTenant, type BotFields } from "../../lib/api";
+import { Row } from "./Row";
 
 // The bot's questions and answers, edited here instead of in a bot file. Keywords are typed as
 // comma-separated text and only split when saving, so typing a comma doesn't get eaten.
@@ -87,12 +88,7 @@ export function BotCard({ api, tenant }: { api: AdminApi; tenant: AdminTenant })
   }
 
   if (!state || !draft) {
-    return (
-      <section className="admin-card">
-        <h3>Bot</h3>
-        <p className="muted admin-help">{message ?? "Loading…"}</p>
-      </section>
-    );
+    return <p className="muted">{message ?? "Loading…"}</p>;
   }
 
   const bot = draft.bot;
@@ -112,119 +108,145 @@ export function BotCard({ api, tenant }: { api: AdminApi; tenant: AdminTenant })
   }
 
   return (
-    <section className="admin-card">
-      <h3>Bot</h3>
-      <p className="muted admin-help">
-        {state.custom
-          ? "Edited here. The bot file below is no longer used."
-          : `From the bot file "${state.file}". Saving here makes a copy for this company.`}
+    <form className="settings-form" onSubmit={submit}>
+      <p className="settings-source">
+        {state.custom ? (
+          <>
+            Edited here; the bot file "{state.file}" isn't used.{" "}
+            <button
+              type="button"
+              className="link-button"
+              disabled={busy}
+              onClick={() => void run(() => api.resetBot(tenant.slug), `Back to the bot file "${state.file}".`)}
+            >
+              Use the file again
+            </button>
+          </>
+        ) : (
+          `From the bot file "${state.file}". Saving makes this company's own copy.`
+        )}
       </p>
-      <form className="admin-form" onSubmit={submit}>
-        <label>
-          <span className="admin-label">Greeting</span>
+
+      <section className="settings-group">
+        <h4>Opening</h4>
+        <Row label="Greeting" help="The bot's first message, above the questions.">
           <textarea
-            className="admin-reply-body"
             rows={2}
             required
             value={bot.greeting}
             onChange={(e) => setBot({ greeting: e.target.value })}
+            aria-label="Greeting"
           />
-        </label>
-        <label>
-          <span className="admin-label">Teaser (optional)</span>
-          <input value={bot.teaser ?? ""} onChange={(e) => setBot({ teaser: e.target.value || undefined })} />
-          <span className="admin-help muted">Shown next to the chat button before the chat is opened.</span>
-        </label>
+        </Row>
+        <Row label="Teaser" help="A short line next to the chat button before it's opened. Optional.">
+          <input
+            value={bot.teaser ?? ""}
+            onChange={(e) => setBot({ teaser: e.target.value || undefined })}
+            aria-label="Teaser"
+          />
+        </Row>
+      </section>
 
-        <span className="admin-label">Questions</span>
-        {draft.menu.map((m, i) => (
-          <fieldset className="admin-question" key={i}>
-            <div className="admin-question-head">
-              <input
-                value={m.title}
+      <section className="settings-group">
+        <h4>Questions</h4>
+        <p className="settings-group-help">
+          Each shows as a button. Typed messages match the keywords (separated by commas).
+        </p>
+        <ol className="bot-questions">
+          {draft.menu.map((m, i) => (
+            <li key={i}>
+              <div className="bot-question-head">
+                <input
+                  className="bot-question-title"
+                  value={m.title}
+                  required
+                  onChange={(e) => setItem(i, { title: e.target.value })}
+                  placeholder="Button text, e.g. Opening hours"
+                  aria-label={`Question ${i + 1}`}
+                />
+                <span className="bot-question-tools">
+                  <button type="button" className="link-button" disabled={i === 0} onClick={() => move(i, -1)}>
+                    Up
+                  </button>
+                  <button
+                    type="button"
+                    className="link-button"
+                    disabled={i === draft.menu.length - 1}
+                    onClick={() => move(i, 1)}
+                  >
+                    Down
+                  </button>
+                  <button
+                    type="button"
+                    className="link-button"
+                    onClick={() => setDraft({ ...draft, menu: draft.menu.filter((_, j) => j !== i) })}
+                  >
+                    Remove
+                  </button>
+                </span>
+              </div>
+              <textarea
+                rows={2}
                 required
-                onChange={(e) => setItem(i, { title: e.target.value })}
-                placeholder="Button title, e.g. Opening hours"
-                aria-label={`Question ${i + 1} title`}
+                value={m.answer}
+                onChange={(e) => setItem(i, { answer: e.target.value })}
+                placeholder="The answer"
+                aria-label={`Question ${i + 1} answer`}
               />
-              <button type="button" className="link-button" disabled={i === 0} onClick={() => move(i, -1)}>
-                Up
-              </button>
-              <button
-                type="button"
-                className="link-button"
-                disabled={i === draft.menu.length - 1}
-                onClick={() => move(i, 1)}
-              >
-                Down
-              </button>
-              <button
-                type="button"
-                className="link-button"
-                onClick={() => setDraft({ ...draft, menu: draft.menu.filter((_, j) => j !== i) })}
-              >
-                Remove
-              </button>
-            </div>
-            <input
-              value={m.keywords}
-              onChange={(e) => setItem(i, { keywords: e.target.value })}
-              placeholder="Keywords, separated by commas"
-              aria-label={`Question ${i + 1} keywords`}
-            />
-            <textarea
-              className="admin-reply-body"
-              rows={2}
-              required
-              value={m.answer}
-              onChange={(e) => setItem(i, { answer: e.target.value })}
-              placeholder="The answer"
-              aria-label={`Question ${i + 1} answer`}
-            />
-          </fieldset>
-        ))}
+              <input
+                className="bot-question-keywords"
+                value={m.keywords}
+                onChange={(e) => setItem(i, { keywords: e.target.value })}
+                placeholder="Keywords: hours, open, closing time"
+                aria-label={`Question ${i + 1} keywords`}
+              />
+            </li>
+          ))}
+        </ol>
         <button
           type="button"
-          className="link-button admin-add"
+          className="button button-quiet bot-add"
           onClick={() => setDraft({ ...draft, menu: [...draft.menu, { id: "", title: "", keywords: "", answer: "" }] })}
         >
           Add a question
         </button>
+      </section>
 
-        <div className="admin-row">
-          <label>
-            <span className="admin-label">"Talk to a person" button</span>
-            <input
-              required
-              value={bot.human.title}
-              onChange={(e) => setBot({ human: { ...bot.human, title: e.target.value } })}
-            />
-          </label>
-          <label>
-            <span className="admin-label">Its keywords</span>
-            <input value={draft.humanKeywords} onChange={(e) => setDraft({ ...draft, humanKeywords: e.target.value })} />
-          </label>
-        </div>
-        <label>
-          <span className="admin-label">Urgent keywords</span>
-          <input value={draft.urgentKeywords} onChange={(e) => setDraft({ ...draft, urgentKeywords: e.target.value })} />
-          <span className="admin-help muted">These go straight to the team, at the top of the queue.</span>
-        </label>
-        <label>
-          <span className="admin-label">Urgent reply</span>
+      <section className="settings-group">
+        <h4>Handing over</h4>
+        <Row label="Talk to a person" help="The button text, and words that mean the same when typed.">
+          <input
+            required
+            value={bot.human.title}
+            onChange={(e) => setBot({ human: { ...bot.human, title: e.target.value } })}
+            aria-label="Talk to a person button"
+          />
+          <input
+            value={draft.humanKeywords}
+            onChange={(e) => setDraft({ ...draft, humanKeywords: e.target.value })}
+            placeholder="person, agent, human"
+            aria-label="Talk to a person keywords"
+          />
+        </Row>
+        <Row label="Urgent" help="Words that go straight to the team, at the top of the queue, with this reply.">
+          <input
+            value={draft.urgentKeywords}
+            onChange={(e) => setDraft({ ...draft, urgentKeywords: e.target.value })}
+            placeholder="outage, payment failed"
+            aria-label="Urgent keywords"
+          />
           <input
             required
             value={bot.urgent.message}
             onChange={(e) => setBot({ urgent: { ...bot.urgent, message: e.target.value } })}
+            aria-label="Urgent reply"
           />
-        </label>
-        <label>
-          <span className="admin-label">When the bot doesn't understand</span>
-          <input required value={bot.fallback} onChange={(e) => setBot({ fallback: e.target.value })} />
-        </label>
-        <div className="admin-row">
-          <label>
-            <span className="admin-label">Hand over after this many misses</span>
+        </Row>
+        <Row label="Didn't understand" help="The bot's reply when nothing matches.">
+          <input required value={bot.fallback} onChange={(e) => setBot({ fallback: e.target.value })} aria-label="Fallback" />
+        </Row>
+        <Row label="Hand over after" help="Misses in a row before the chat goes to the team.">
+          <span className="admin-inline">
             <input
               type="number"
               min={1}
@@ -232,39 +254,31 @@ export function BotCard({ api, tenant }: { api: AdminApi; tenant: AdminTenant })
               required
               value={bot.max_fallbacks}
               onChange={(e) => setBot({ max_fallbacks: Number(e.target.value) })}
+              aria-label="Misses before handing over"
             />
-          </label>
-          <label>
-            <span className="admin-label">Handoff message</span>
-            <input
-              required
-              value={bot.handoff_message}
-              onChange={(e) => setBot({ handoff_message: e.target.value })}
-            />
-          </label>
-        </div>
+            <span className="muted">misses</span>
+          </span>
+        </Row>
+        <Row label="Handoff message" help="Shown when the chat joins the queue.">
+          <input
+            required
+            value={bot.handoff_message}
+            onChange={(e) => setBot({ handoff_message: e.target.value })}
+            aria-label="Handoff message"
+          />
+        </Row>
+      </section>
 
+      <div className="settings-save">
         {message && (
-          <p className="admin-help" role="status">
+          <span className="muted" role="status">
             {message}
-          </p>
+          </span>
         )}
-        <div className="admin-actions">
-          {state.custom && (
-            <button
-              type="button"
-              className="link-button"
-              disabled={busy}
-              onClick={() => void run(() => api.resetBot(tenant.slug), `Back to the bot file "${state.file}".`)}
-            >
-              Go back to the bot file
-            </button>
-          )}
-          <button type="submit" className="button" disabled={busy}>
-            Save bot
-          </button>
-        </div>
-      </form>
-    </section>
+        <button type="submit" className="button" disabled={busy}>
+          Save bot
+        </button>
+      </div>
+    </form>
   );
 }

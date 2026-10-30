@@ -9,11 +9,11 @@ export interface HostNotifications {
   permission: string; // "default" | "granted" | "denied"
 }
 
-const EVENTS: { key: keyof NotifyPrefs; label: string }[] = [
-  { key: "waiting", label: "New chat waiting" },
-  { key: "myMessages", label: "Customer writes in my chat" },
-  { key: "transfers", label: "Chat transferred to me" },
-  { key: "notes", label: "Note on my chat" },
+const EVENTS: { key: keyof NotifyPrefs; label: string; help: string }[] = [
+  { key: "waiting", label: "New chat waiting", help: "Someone asked for a person and nobody has the chat yet." },
+  { key: "myMessages", label: "Customer writes in my chat", help: "A new message in a chat you're handling." },
+  { key: "transfers", label: "Chat transferred to me", help: "A teammate hands a chat over to you." },
+  { key: "notes", label: "Note on my chat", help: "A teammate leaves a private note on your chat." },
 ];
 
 export function NotifyMenu({ prefs, onChange, host, onTurnOn }: NotifyOptionsProps) {
@@ -60,10 +60,12 @@ export interface NotifyOptionsProps {
   onChange: (prefs: NotifyPrefs) => void;
   host: HostNotifications | null;
   onTurnOn: () => void;
+  // In Settings each switch gets a line saying what it does.
+  explained?: boolean;
 }
 
 // The switches, in the bell menu and in Settings → Notifications.
-export function NotifyOptions({ prefs, onChange, host, onTurnOn }: NotifyOptionsProps) {
+export function NotifyOptions({ prefs, onChange, host, onTurnOn, explained = false }: NotifyOptionsProps) {
   const set = (key: keyof NotifyPrefs, value: boolean) => {
     onChange({ ...prefs, [key]: value });
     if (key === "sound" && value) chime("message");
@@ -73,14 +75,26 @@ export function NotifyOptions({ prefs, onChange, host, onTurnOn }: NotifyOptions
     <>
       <p className="notify-heading">Notify me about</p>
       {EVENTS.map((e) => (
-        <Toggle key={e.key} label={e.label} checked={prefs[e.key]} onChange={(v) => set(e.key, v)} />
+        <Toggle
+          key={e.key}
+          label={e.label}
+          help={explained ? e.help : undefined}
+          checked={prefs[e.key]}
+          onChange={(v) => set(e.key, v)}
+        />
       ))}
       <p className="notify-heading">How</p>
-      <Toggle label="Sound" checked={prefs.sound} onChange={(v) => set("sound", v)} />
+      <Toggle
+        label="Sound"
+        help={explained ? "A short chime. Browsers play it after your first click on the page." : undefined}
+        checked={prefs.sound}
+        onChange={(v) => set("sound", v)}
+      />
       {host?.available ? (
         <>
           <Toggle
             label="Desktop notifications"
+            help={explained ? "Pop up while the dashboard is in another tab or window." : undefined}
             checked={prefs.browser}
             onChange={(v) => set("browser", v)}
             disabled={host.permission === "denied"}
@@ -103,18 +117,23 @@ export function NotifyOptions({ prefs, onChange, host, onTurnOn }: NotifyOptions
 
 function Toggle({
   label,
+  help,
   checked,
   onChange,
   disabled = false,
 }: {
   label: string;
+  help?: string;
   checked: boolean;
   onChange: (value: boolean) => void;
   disabled?: boolean;
 }) {
   return (
     <label className="notify-toggle">
-      <span>{label}</span>
+      <span>
+        {label}
+        {help && <small>{help}</small>}
+      </span>
       <input
         type="checkbox"
         role="switch"

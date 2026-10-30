@@ -5,7 +5,10 @@ agents. Admins set them up in the console's **Settings** (the gear icon).
 
 **You need:** the `QUOKRA_ADMIN` role in your identity provider (in the demo, `sam` has it).
 
-1. Open the agent console, click the gear icon (**Settings**) and choose **New company**.
+1. Open a console that isn't tied to one company: on an internal admin page, mount it **without**
+   `tenant` (`Quokra.console.mount("#admin", { getToken })`). Click the gear icon (**Settings**) and
+   choose **+ New company**. A console embedded with `tenant: "…"` only ever shows that company's
+   settings, with no company picker; that's the one your support team uses.
 2. Fill in:
    - **Slug:** a short id like `acme-shop`. It's used in the embed code and can't change later.
    - **Name:** shown in the chat header.
