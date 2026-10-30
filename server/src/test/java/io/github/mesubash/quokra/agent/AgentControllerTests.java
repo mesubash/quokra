@@ -489,4 +489,41 @@ class AgentControllerTests {
     void searchIsLimitedInLength() {
         assertThat(get(alice, "/conversations?status=WAITING&q=" + "x".repeat(101))).hasStatus(HttpStatus.BAD_REQUEST);
     }
+
+    UUID chatWithEmail(String email) {
+        UUID id = service.startOrResume(tenant, UUID.randomUUID()).conversation().getId();
+        service.addContact(id, "Pat", email);
+        return id;
+    }
+
+    @Test
+    void historyListsTheSameCustomersOtherChats() {
+        UUID first = chatWithEmail("returning@example.test");
+        service.addCustomerMessage(first, "c-1", "first visit", null);
+        UUID second = chatWithEmail("RETURNING@example.test");
+        chatWithEmail("someone-else@example.test");
+
+        MvcTestResult result = get(alice, "/conversations/" + second + "/history");
+
+        assertThat(result).hasStatusOk();
+        assertThat(result).bodyJson().extractingPath("$.items[*].id").isEqualTo(List.of(first.toString()));
+        assertThat(result).bodyJson().extractingPath("$.items[0].lastMessagePreview").isEqualTo("Fallback message.");
+    }
+
+    @Test
+    void anonymousGuestsHaveNoHistory() {
+        UUID guest = service.startOrResume(tenant, UUID.randomUUID()).conversation().getId();
+        service.startOrResume(tenant, UUID.randomUUID());
+
+        assertThat(get(alice, "/conversations/" + guest + "/history")).bodyJson()
+            .extractingPath("$.items").asArray().isEmpty();
+    }
+
+    @Test
+    void historyIsOnlyForAgentsOfTheTenant() throws Exception {
+        UUID id = chatWithEmail("returning@example.test");
+        String carol = devTokens.sign("carol", "Carol", List.of("SUPPORT_AGENT"));
+
+        assertThat(get(carol, "/conversations/" + id + "/history")).hasStatus(HttpStatus.NOT_FOUND);
+    }
 }

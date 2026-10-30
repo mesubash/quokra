@@ -1323,6 +1323,59 @@ button {
   font-size: 0.6rem;
 }
 
+.details-note {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.history {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.history-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 8px 10px;
+  border: var(--pane-border);
+  border-radius: 10px;
+  background: var(--bg);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.history-item:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+.history-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.history-top time {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.history-preview {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.82rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Activity: a timeline with a dot per step and a line joining them. */
 
 .timeline {

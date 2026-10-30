@@ -39,6 +39,26 @@ function fakeApi(start: AgentConversation, extra: Partial<AgentApi> = {}) {
     detail: vi.fn(() => Promise.resolve({ conversation: current, messages: [], events: [], notes: [] })),
     accept: vi.fn(() => change(taken(current))),
     markRead: vi.fn(() => Promise.resolve()),
+    history: vi.fn(() =>
+      Promise.resolve({
+        items: [
+          {
+            id: "c0",
+            tenantSlug: "acme",
+            status: "RESOLVED",
+            priority: "NORMAL",
+            handoffReason: null,
+            customerName: "Pat",
+            lastMessagePreview: "Thanks, that fixed it",
+            lastMessageAt: "2026-10-20T10:00:00Z",
+            waitingSince: null,
+            assignee: null,
+            unreadCount: 0,
+          },
+        ],
+        nextCursor: null,
+      }),
+    ),
     reply: vi.fn((_id: string, clientMessageId: string, body: string) =>
       Promise.resolve({
         message: { id: "m9", senderType: "AGENT", senderName: "Sam", body, options: null, clientMessageId, createdAt: "" },
@@ -51,9 +71,18 @@ function fakeApi(start: AgentConversation, extra: Partial<AgentApi> = {}) {
   } as unknown as AgentApi & Record<string, ReturnType<typeof vi.fn>>;
 }
 
-function renderView(api: AgentApi) {
+function renderView(api: AgentApi, onOpen: (id: string) => void = () => {}) {
   return render(
-    <ConversationView id="c1" api={api} me={me} socket={socket} onBack={() => {}} onChanged={() => {}} onError={() => {}} />,
+    <ConversationView
+      id="c1"
+      api={api}
+      me={me}
+      socket={socket}
+      onBack={() => {}}
+      onOpen={onOpen}
+      onChanged={() => {}}
+      onError={() => {}}
+    />,
   );
 }
 
@@ -125,5 +154,14 @@ describe("ConversationView", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Accept" }));
 
     expect(await screen.findByText("Someone else already took this conversation.")).toBeTruthy();
+  });
+
+  it("lists the customer's earlier conversations and opens one", async () => {
+    const onOpen = vi.fn();
+    renderView(fakeApi(conversation()), onOpen);
+
+    fireEvent.click(await screen.findByText("Thanks, that fixed it"));
+
+    expect(onOpen).toHaveBeenCalledWith("c0");
   });
 });

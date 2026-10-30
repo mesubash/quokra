@@ -244,6 +244,7 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose, onExp
             onBack={() => setSelected(null)}
             onClose={onClose}
             onExpand={onExpand ? () => onExpand(selected) : undefined}
+            onOpen={open}
             onChanged={refreshCounts}
             onError={failed}
           />

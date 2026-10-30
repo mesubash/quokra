@@ -38,6 +38,16 @@ interface ConversationRepository extends JpaRepository<Conversation, UUID> {
         """)
     List<Conversation> findQueueAfter(Collection<UUID> tenantIds, int rank, Instant at, UUID id, String q, Limit limit);
 
+    // The same person's other conversations with this tenant: same contact (email) or same logged-in customer.
+    @Query("""
+        select c from Conversation c
+        where c.tenantId = :tenantId and c.id <> :exclude
+          and ((:contactId is not null and c.contactId = :contactId)
+            or (:customerSub is not null and c.customerSub = :customerSub))
+        order by c.createdAt desc
+        """)
+    List<Conversation> findHistory(UUID tenantId, UUID exclude, UUID contactId, String customerSub, Limit limit);
+
     long countByTenantIdInAndStatus(Collection<UUID> tenantIds, Status status);
 
     long countByTenantIdInAndStatusAndAssigneeSub(Collection<UUID> tenantIds, Status status, String assigneeSub);

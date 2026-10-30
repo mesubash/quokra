@@ -270,6 +270,14 @@ Any agent of the tenant. Notes are never sent to the customer.
 interface Note { id: string; author: { sub: string; name: string }; body: string; createdAt: string }
 ```
 
+### 4.17 `GET /agent/conversations/{id}/history`
+
+The same customer's other conversations with this tenant, newest first, at most 20: matched by their contact (email) or, for logged-in customers, their `sub`. Anonymous guests have none.
+
+```json
+200 { "items": [ConversationSummary, …], "nextCursor": null }
+```
+
 ### 4.16 `POST /agent/conversations/{id}/read`
 
 ```json

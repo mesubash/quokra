@@ -4,6 +4,7 @@ import {
   type AgentApi,
   type AgentConversation,
   type ConversationEvent,
+  type ConversationSummary,
   type Me,
   type Message,
   type Note,
@@ -26,6 +27,8 @@ interface Props {
   // In the dashboard drawer: close the whole console.
   onClose?: () => void;
   onExpand?: () => void;
+  // Opens another conversation, e.g. one from the customer's history.
+  onOpen?: (id: string) => void;
   onChanged: () => void;
   onError: (e: unknown) => void;
 }
@@ -35,7 +38,7 @@ const STATUS_LABEL = { BOT: "With the bot", WAITING: "Waiting", HUMAN: "Open", R
 type Mode = "reply" | "note";
 type Dialog = "transfer" | "block" | null;
 
-export function ConversationView({ id, api, me, socket, onBack, onClose, onExpand, onChanged, onError }: Props) {
+export function ConversationView({ id, api, me, socket, onBack, onClose, onExpand, onOpen, onChanged, onError }: Props) {
   const [conversation, setConversation] = useState<AgentConversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
@@ -272,6 +275,8 @@ export function ConversationView({ id, api, me, socket, onBack, onClose, onExpan
       </div>
 
       <Details
+        api={api}
+        onOpen={onOpen}
         conversation={conversation}
         events={events}
         busy={busy}
@@ -382,12 +387,16 @@ function Menu({
 }
 
 function Details({
+  api,
+  onOpen,
   conversation: c,
   events,
   busy,
   onUnblock,
   onClose,
 }: {
+  api: AgentApi;
+  onOpen?: (id: string) => void;
   conversation: AgentConversation;
   events: ConversationEvent[];
   busy: boolean;
@@ -466,6 +475,8 @@ function Details({
         </dl>
       </section>
 
+      <History api={api} conversationId={c.id} known={!!contact} onOpen={onOpen} />
+
       <section className="details-section">
         <h3>Activity</h3>
         <ol className="timeline">
@@ -481,6 +492,59 @@ function Details({
         </ol>
       </section>
     </aside>
+  );
+}
+
+// The same customer's earlier chats. Guests who never left an email have none we can find.
+function History({
+  api,
+  conversationId,
+  known,
+  onOpen,
+}: {
+  api: AgentApi;
+  conversationId: string;
+  known: boolean;
+  onOpen?: (id: string) => void;
+}) {
+  const [items, setItems] = useState<ConversationSummary[] | null>(null);
+
+  useEffect(() => {
+    if (!known) return;
+    let cancelled = false;
+    api
+      .history(conversationId)
+      .then((page) => !cancelled && setItems(page.items))
+      .catch(() => !cancelled && setItems([]));
+    return () => {
+      cancelled = true;
+    };
+  }, [api, conversationId, known]);
+
+  if (!known) return null;
+  return (
+    <section className="details-section">
+      <h3>Previous conversations</h3>
+      {items === null && <p className="muted details-note">Loading…</p>}
+      {items?.length === 0 && <p className="muted details-note">This is their first conversation.</p>}
+      {items && items.length > 0 && (
+        <ul className="history">
+          {items.map((h) => (
+            <li key={h.id}>
+              <button type="button" className="history-item" onClick={() => onOpen?.(h.id)} disabled={!onOpen}>
+                <span className="history-top">
+                  <span className={`badge status-${h.status.toLowerCase()}`}>{STATUS_LABEL[h.status]}</span>
+                  <time dateTime={h.lastMessageAt} title={dateTime(h.lastMessageAt)}>
+                    {shortTime(h.lastMessageAt)}
+                  </time>
+                </span>
+                {h.lastMessagePreview && <span className="history-preview">{h.lastMessagePreview}</span>}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 

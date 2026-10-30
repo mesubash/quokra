@@ -209,6 +209,7 @@ export function agentApi(getToken: () => string) {
     resolve: (id: string) => post<One>(`/conversations/${id}/resolve`),
     returnToBot: (id: string) => post<One>(`/conversations/${id}/return-to-bot`),
     reopen: (id: string) => post<One>(`/conversations/${id}/reopen`),
+    history: (id: string) => get<Page<ConversationSummary>>(`/conversations/${id}/history`),
     agents: (id: string) => get<Page<Person>>(`/conversations/${id}/agents`),
     // agentSub null puts it back in the queue.
     transfer: (id: string, agentSub: string | null) => post<One>(`/conversations/${id}/transfer`, { agentSub }),

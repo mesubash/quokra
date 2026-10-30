@@ -46,6 +46,7 @@ public class AgentController {
     static final int DEFAULT_LIMIT = 25;
     static final int MAX_LIMIT = 200;
     static final int HISTORY_LIMIT = 100;
+    static final int HISTORY_ITEMS = 20;
 
     record Me(String sub, String name, List<String> tenants) {}
 
@@ -175,6 +176,18 @@ public class AgentController {
     public One returnToBot(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
         visible(jwt, id);
         return new One(view(service.returnToBot(id, agent(jwt))));
+    }
+
+    // The same customer's other conversations, for the details panel.
+    @GetMapping("/conversations/{id}/history")
+    public Page<Summary> history(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
+        Conversation c = visible(jwt, id);
+        String slug = tenants.findById(c.getTenantId()).map(Tenant::getSlug).orElse(null);
+        // ponytail: one query per row for the preview, like the lists; at most 20 rows.
+        List<Summary> items = service.history(id, HISTORY_ITEMS).stream()
+            .map(h -> Summary.of(h, slug, service.lastMessage(h.getId()).orElse(null), 0))
+            .toList();
+        return new Page<>(items, null);
     }
 
     // The agent has seen the conversation up to this message.

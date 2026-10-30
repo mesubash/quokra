@@ -394,6 +394,16 @@ public class ConversationService {
             conversations.countByTenantIdInAndStatusAndAssigneeSub(tenantIds, Status.HUMAN, agentSub));
     }
 
+    // The customer's other conversations with this tenant, newest first. Empty for an anonymous guest.
+    @Transactional(readOnly = true)
+    public List<Conversation> history(UUID conversationId, int limit) {
+        Conversation c = get(conversationId);
+        if (c.getContactId() == null && c.getCustomerSub() == null) {
+            return List.of();
+        }
+        return conversations.findHistory(c.getTenantId(), c.getId(), c.getContactId(), c.getCustomerSub(), Limit.of(limit));
+    }
+
     @Transactional(readOnly = true)
     public Optional<Message> lastMessage(UUID conversationId) {
         return messages.findLatest(conversationId, Limit.of(1)).stream().findFirst();
