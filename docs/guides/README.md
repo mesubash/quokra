@@ -14,3 +14,4 @@ Step-by-step guides for the common tasks. For every option and endpoint, see the
 | [6. Connect your identity provider](06-connect-your-login.md) | Let agents sign in with your company login |
 | [7. Write the bot](07-write-the-bot.md) | Set the FAQ, the wording and when quiet chats close |
 | [8. Notifications](08-notifications.md) | Make sure agents notice new chats and replies |
+| [9. A free public demo](09-free-demo.md) | Put Quokra and the playground online on free plans (Render, Neon, Vercel) |

@@ -52,8 +52,15 @@ What changed, newest first. Each entry says what people notice; the commits have
 - **Image storage** on disk or in S3-compatible storage (AWS S3, Cloudflare R2, Garage, MinIO), with a
   storage check in Settings and in `/actuator/health`.
 
-**Docs**
+**Docs and deployment**
 - Step-by-step [guides](guides/README.md), and this changelog.
+- **A free public demo** on Render, Neon and Vercel: `render.yaml`, the `public-demo` profile (demo sign-in
+  for the playground's site, set with `QUOKRA_DEMO_ORIGINS`), and [a guide](guides/09-free-demo.md).
+- The Docker image's memory settings can be changed with `JAVA_TOOL_OPTIONS`.
+
+**Fixes**
+- Reopening an old chat while the customer has a newer one now says so (`409 NEWER_CHAT_OPEN`) instead of
+  failing.
 
 ---
 

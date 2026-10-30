@@ -1,0 +1,14 @@
+# A public demo on a free host (see docs/guides/09-free-demo.md), on top of the "demo" profile:
+# no identity provider, agents sign in with the demo sign-in (POST /dev/agent-token) from the playground.
+# Anyone who can reach it can act as a demo agent and admin, so never use it for real customers.
+quokra:
+  dev:
+    agent-tokens: true
+    # The playground's address(es), e.g. https://quokra-playground.pages.dev
+    agent-token-origins: ${QUOKRA_DEMO_ORIGINS}
+  demo:
+    # Added to the demo company's websites and dashboards on start (DemoOrigins).
+    origins: ${QUOKRA_DEMO_ORIGINS}
+  ws:
+    # Render sets RENDER_EXTERNAL_URL; elsewhere set PUBLIC_BASE_URL.
+    allowed-origins: ${PUBLIC_BASE_URL:${RENDER_EXTERNAL_URL:http://localhost:8080}}

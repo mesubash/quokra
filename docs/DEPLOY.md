@@ -21,6 +21,11 @@ stack (passwords, keys) is public: don't use it for real customers.
 
 ---
 
+For a free public demo instead (no real customers, no login provider), see
+[A free public demo](guides/09-free-demo.md).
+
+---
+
 ## 2. What you need
 
 | | |
@@ -61,6 +66,7 @@ All through environment variables. Generate random secrets with `openssl rand -b
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | for `s3` | The bucket's key (or the server's own role on AWS) |
 | `FORWARD_HEADERS_STRATEGY` | | Default `native` (trusts `X-Forwarded-For` from proxies on private networks); `none` if Quokra faces the internet directly |
 | `LOGGING_STRUCTURED_FORMAT_CONSOLE` | | The image logs JSON lines (`ecs`); set to empty for plain text |
+| `JAVA_TOOL_OPTIONS` | | JVM settings; the image uses `-XX:MaxRAMPercentage=75`. On small hosts (512 MB) use the values in `render.yaml` |
 | `APP_ENV` | | Set `production`: the server then refuses to start if dev agent tokens are turned on |
 
 Never set `SPRING_PROFILES_ACTIVE` to `dev` or `demo` in production: they load public demo data and keys.

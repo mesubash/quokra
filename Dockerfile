@@ -39,4 +39,6 @@ ENV QUOKRA_ATTACHMENTS_DIR=/data/attachments
 VOLUME /data
 HEALTHCHECK --interval=15s --timeout=3s --start-period=60s \
   CMD wget -qO- http://localhost:8080/actuator/health/liveness || exit 1
-ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-jar", "/app/quokra.jar"]
+# Memory and other JVM settings; override for small hosts (e.g. 512 MB: see docs/guides/09-free-demo.md).
+ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75"
+ENTRYPOINT ["java", "-jar", "/app/quokra.jar"]

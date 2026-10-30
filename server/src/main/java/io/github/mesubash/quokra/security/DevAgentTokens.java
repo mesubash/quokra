@@ -77,8 +77,9 @@ public class DevAgentTokens {
         return new AgentTokenIssuer(ISSUER, decoder);
     }
 
-    // A local dashboard on another port (like the test host) can sign in too.
-    @CrossOrigin(originPatterns = {"http://localhost:[*]", "http://127.0.0.1:[*]"})
+    // Local dashboards on another port (like the test host) can sign in too, and on a public demo the
+    // playground's own site (quokra.dev.agent-token-origins, comma-separated).
+    @CrossOrigin(originPatterns = "${quokra.dev.agent-token-origins:http://localhost:[*],http://127.0.0.1:[*]}")
     @PostMapping("/dev/agent-token")
     public TokenResponse token(@Valid @RequestBody TokenRequest request) throws JOSEException {
         List<String> tokenRoles = Boolean.TRUE.equals(request.admin()) ? List.of(roles.getFirst(), adminRole) : roles;

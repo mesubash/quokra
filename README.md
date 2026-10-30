@@ -68,7 +68,7 @@ Nothing to install but Docker:
 docker compose up --build
 ```
 
-Quokra, PostgreSQL and Keycloak start with a demo company and two demo agents (`sam` / `sam`, also an admin, and `alex` / `alex`). The customer chat is at http://localhost:8080/w/demo?pk=pk_test_demo; for the agent console, run the [playground](https://github.com/mesubash/quokra-playground) and sign in as an agent. To run it for real, see [Deploying](docs/DEPLOY.md).
+Quokra, PostgreSQL and Keycloak start with a demo company and two demo agents (`sam` / `sam`, also an admin, and `alex` / `alex`). The customer chat is at http://localhost:8080/w/demo?pk=pk_test_demo; for the agent console, run the [playground](https://github.com/mesubash/quokra-playground) and sign in as an agent. To run it for real, see [Deploying](docs/DEPLOY.md); for a free public demo, [this guide](docs/guides/09-free-demo.md).
 
 ## Run it for development
 

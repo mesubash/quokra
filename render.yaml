@@ -1,0 +1,39 @@
+# A public demo of Quokra on Render's free plan (see docs/guides/09-free-demo.md).
+# The database is a free Neon Postgres; Render asks for its connection details on the first deploy.
+# Demo only: anyone who can reach it can act as a demo agent and admin.
+services:
+  - type: web
+    name: quokra-demo
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /actuator/health/readiness
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: demo,public-demo
+      # Render sends traffic to this port.
+      - key: PORT
+        value: "8080"
+      # Fits the free 512 MB instance: smaller heap and code cache, a lighter collector, faster start.
+      - key: JAVA_TOOL_OPTIONS
+        value: -XX:MaxRAMPercentage=60 -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Xss512k -XX:ReservedCodeCacheSize=32m
+      - key: SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE
+        value: "3"
+      # From Neon: jdbc:postgresql://<host>/<database>?sslmode=require, and its user and password.
+      - key: SPRING_DATASOURCE_URL
+        sync: false
+      - key: SPRING_DATASOURCE_USERNAME
+        sync: false
+      - key: SPRING_DATASOURCE_PASSWORD
+        sync: false
+      # The playground's address, e.g. https://quokra-playground.pages.dev (several: comma-separated).
+      - key: QUOKRA_DEMO_ORIGINS
+        sync: false
+      - key: QUOKRA_SESSION_SIGNING_KEY
+        generateValue: true
+      # The demo company's secret is encrypted with this public, demo-only key (as in docker-compose.yml).
+      - key: TENANT_SECRET_ENCRYPTION_KEY
+        value: ZGV2LW9ubHktdGVuYW50LXNlY3JldC1rZXktMzJieXQ=
+      # Plain log lines are easier to read in Render's log view.
+      - key: LOGGING_STRUCTURED_FORMAT_CONSOLE
+        value: ""
