@@ -21,11 +21,14 @@ public class AgentJwtConverter implements Converter<Jwt, AbstractAuthenticationT
 
     private final String rolesClaim;
     private final String agentRole;
+    private final String nameClaim;
 
     public AgentJwtConverter(@Value("${quokra.agents.roles-claim}") String rolesClaim,
-                             @Value("${quokra.agents.role}") String agentRole) {
+                             @Value("${quokra.agents.role}") String agentRole,
+                             @Value("${quokra.agents.name-claim:}") String nameClaim) {
         this.rolesClaim = rolesClaim;
         this.agentRole = agentRole;
+        this.nameClaim = nameClaim;
     }
 
     @Override
@@ -36,8 +39,12 @@ public class AgentJwtConverter implements Converter<Jwt, AbstractAuthenticationT
         return new JwtAuthenticationToken(jwt, authorities, jwt.getSubject());
     }
 
-    public static String displayName(Jwt jwt) {
-        for (String claim : List.of("name", "preferred_username", "email")) {
+    public String displayName(Jwt jwt) {
+        // The configured claim first (QUOKRA_AGENT_NAME_CLAIM), then the usual ones.
+        for (String claim : List.of(nameClaim, "name", "preferred_username", "email")) {
+            if (claim.isBlank()) {
+                continue;
+            }
             String value = jwt.getClaimAsString(claim);
             if (value != null && !value.isBlank()) {
                 return value;

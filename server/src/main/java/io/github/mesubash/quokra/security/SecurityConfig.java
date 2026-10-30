@@ -40,8 +40,6 @@ public class SecurityConfig {
                 .jwt(jwt -> jwt.decoder(jwtDecoder).jwtAuthenticationConverter(converter))
                 .authenticationEntryPoint(UNAUTHORIZED)
                 .accessDeniedHandler(FORBIDDEN));
-        } else {
-            log.warn("No agent login configured (set OIDC_ISSUER_URI): agent endpoints will refuse every request");
         }
         http.authorizeHttpRequests(auth -> auth.anyRequest().hasRole(AgentJwtConverter.AGENT_ROLE));
         return http.build();

@@ -75,10 +75,12 @@ public class AgentController {
     private final TenantAgents tenantAgents;
     private final ContactRepository contacts;
     private final AgentReads reads;
+    private final AgentJwtConverter agentTokens;
 
     public AgentController(ConversationService service, TenantRepository tenants, TenantAgents tenantAgents,
-                           ContactRepository contacts, AgentReads reads) {
+                           ContactRepository contacts, AgentReads reads, AgentJwtConverter agentTokens) {
         this.reads = reads;
+        this.agentTokens = agentTokens;
         this.service = service;
         this.tenants = tenants;
         this.tenantAgents = tenantAgents;
@@ -87,8 +89,8 @@ public class AgentController {
 
     @GetMapping("/me")
     public Me me(@AuthenticationPrincipal Jwt jwt) {
-        tenantAgents.rememberName(jwt.getSubject(), AgentJwtConverter.displayName(jwt));
-        return new Me(jwt.getSubject(), AgentJwtConverter.displayName(jwt),
+        tenantAgents.rememberName(jwt.getSubject(), agentTokens.displayName(jwt));
+        return new Me(jwt.getSubject(), agentTokens.displayName(jwt),
             myTenants(jwt).values().stream().map(Tenant::getSlug).sorted().toList());
     }
 
@@ -261,8 +263,8 @@ public class AgentController {
             .collect(Collectors.toMap(Tenant::getId, Function.identity()));
     }
 
-    private static AgentRef agent(Jwt jwt) {
-        return new AgentRef(jwt.getSubject(), AgentJwtConverter.displayName(jwt));
+    private AgentRef agent(Jwt jwt) {
+        return new AgentRef(jwt.getSubject(), agentTokens.displayName(jwt));
     }
 
     private static ApiException notFound() {

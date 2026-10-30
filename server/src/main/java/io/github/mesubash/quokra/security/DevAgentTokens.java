@@ -22,7 +22,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -68,10 +67,10 @@ public class DevAgentTokens {
     }
 
     @Bean
-    JwtDecoder agentJwtDecoder() {
+    AgentTokenIssuer devIssuer() {
         NimbusJwtDecoder decoder = NimbusJwtDecoder.withPublicKey((RSAPublicKey) keys.getPublic()).build();
         decoder.setJwtValidator(OidcConfig.validator(ISSUER, audience));
-        return decoder;
+        return new AgentTokenIssuer(ISSUER, decoder);
     }
 
     // A local dashboard on another port (like the test host) can sign in too.

@@ -15,6 +15,10 @@ quokra:
   agents:
     # Identity provider that issues agent access tokens (leave empty to turn agent login off).
     issuer-uri: ${OIDC_ISSUER_URI:}
+    # Only if the provider has no discovery document (/.well-known/openid-configuration): its JWKS URL.
+    jwks-uri: ${OIDC_JWKS_URI:}
+    # Claim with the agent's display name, if not name / preferred_username / email.
+    name-claim: ${QUOKRA_AGENT_NAME_CLAIM:}
     audience: ${OIDC_AUDIENCE:quokra-api}
     # Where the roles are in the token, e.g. "roles" or "realm_access.roles".
     roles-claim: ${QUOKRA_AGENT_ROLES_CLAIM:roles}
