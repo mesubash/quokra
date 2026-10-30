@@ -721,6 +721,7 @@ function TransferDialog({
             <button type="button" onClick={() => onPick(a.sub)}>
               <span className="avatar avatar-agent">{initials(a.name)}</span>
               <strong>{a.name}</strong>
+              <span className={a.online ? "presence presence-online" : "presence"}>{a.online ? "Online" : "Away"}</span>
             </button>
           </li>
         ))}

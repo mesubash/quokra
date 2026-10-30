@@ -6,6 +6,7 @@ import { CloseIcon, ExpandIcon, SearchIcon, SettingsIcon } from "../lib/icons";
 import { loadPrefs, savePrefs, type NotifyPrefs } from "../lib/notifyPrefs";
 import { chime } from "../lib/sound";
 import { NotifyMenu, type HostNotifications } from "./NotifyMenu";
+import { PresenceMenu, usePresence } from "./PresenceMenu";
 import { noticeFor, type Notice } from "./notifications";
 import { openSocket, type QueueSnapshot, type Socket } from "../lib/realtime";
 import { ConversationView } from "./ConversationView";
@@ -71,6 +72,7 @@ export function ConsoleApp({ getToken, freshToken, onUnauthorized, onSignOut, on
   const admin = useAdmin(admins, me?.admin ?? false);
   // Admins without the agent role only get settings.
   const adminOnly = me !== null && me.admin && !me.agent;
+  const presence = usePresence(api, !!me?.agent);
   const showSettings = settingsOpen || adminOnly;
 
   const failed = useCallback(
@@ -224,10 +226,16 @@ export function ConsoleApp({ getToken, freshToken, onUnauthorized, onSignOut, on
     <main className={`console ${selected ? "has-selection" : ""}`}>
       <aside className="console-list-pane" aria-label="Conversations">
         <header className="pane-header">
-          <span className="avatar avatar-agent">{initials(me?.name ?? null)}</span>
+          {me?.agent ? (
+            <PresenceMenu name={me.name} status={presence.status} onChange={(s) => void presence.change(s)} />
+          ) : (
+            <span className="avatar avatar-agent">{initials(me?.name ?? null)}</span>
+          )}
           <div className="pane-title">
             <strong>{me?.name ?? "…"}</strong>
-            <span className="muted">Support</span>
+            <span className="muted">
+              {presence.status === "ONLINE" ? "Online" : presence.status === "AWAY" ? "Away" : "Support"}
+            </span>
           </div>
           <NotifyMenu prefs={prefs} onChange={setPrefs} host={hostNotify} onTurnOn={askPermission} />
           {me && (
@@ -242,7 +250,11 @@ export function ConsoleApp({ getToken, freshToken, onUnauthorized, onSignOut, on
             </button>
           )}
           {onSignOut && (
-            <button type="button" className="link-button" onClick={onSignOut}>
+            <button
+              type="button"
+              className="link-button"
+              onClick={() => void presence.change("AWAY").finally(onSignOut)}
+            >
               Sign out
             </button>
           )}

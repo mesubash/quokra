@@ -358,26 +358,28 @@ function StateBody({ message, onRetry }: { message: string; onRetry?: () => void
 
 function HeaderStatus({ conversation, online, tenant }: { conversation: Conversation | null; online: boolean; tenant: Tenant }) {
   const texts = tenant.texts;
+  // Someone can answer now: inside opening hours, and a person of the team is online.
+  const here = tenant.open && tenant.teamOnline;
   if (conversation && !online) return <p className="header-status">Reconnecting…</p>;
   switch (conversation?.status) {
     case "WAITING":
       return (
         <p className="header-status">
-          <span className={tenant.open ? "dot dot-waiting" : "dot dot-away"} />
-          {tenant.open ? texts.waiting : texts.offline}
+          <span className={here ? "dot dot-waiting" : "dot dot-away"} />
+          {here ? texts.waiting : texts.offline}
         </p>
       );
     case "HUMAN":
       return (
         <p className="header-status">
-          <span className="dot" />
+          <span className={here ? "dot" : "dot dot-away"} />
           {conversation.assignee ? `Chatting with ${conversation.assignee.name}` : "Chatting with our team"}
         </p>
       );
     case "RESOLVED":
       return <p className="header-status">{texts.closed}</p>;
     default:
-      return tenant.open ? (
+      return here ? (
         <p className="header-status"><span className="dot" />{texts.online}</p>
       ) : (
         <p className="header-status"><span className="dot dot-away" />{texts.offline}</p>

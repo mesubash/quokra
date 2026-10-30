@@ -9,6 +9,8 @@ export interface Tenant {
   open: boolean;
   // Images can be sent (the company allows them and storage works).
   attachments: boolean;
+  // Someone of the team is answering chats right now.
+  teamOnline: boolean;
 }
 
 export interface Session {
@@ -185,7 +187,11 @@ export type HandoffReason = "CUSTOMER_REQUEST" | "FALLBACK_LIMIT" | "URGENT" | "
 export interface Person {
   sub: string;
   name: string;
+  // Answering chats right now (in the transfer list).
+  online?: boolean;
 }
+
+export type PresenceStatus = "ONLINE" | "AWAY";
 
 export interface ConversationSummary {
   id: string;
@@ -304,7 +310,7 @@ export interface StorageStatus {
 }
 
 export interface AdminAgents {
-  agents: { sub: string; name: string; email: string | null }[];
+  agents: { sub: string; name: string; email: string | null; online: boolean }[];
   invites: { email: string; createdAt: string }[];
 }
 
@@ -427,6 +433,8 @@ export function agentApi(getToken: () => string, refresh?: FreshToken) {
     block: (id: string) => post<One>(`/conversations/${id}/block`),
     unblock: (contactId: string) => post<void>(`/contacts/${contactId}/unblock`),
     typing: (id: string) => post<void>(`/conversations/${id}/typing`),
+    // The console's check-in; with a status, also switches Online / Away.
+    presence: (status?: PresenceStatus) => post<{ status: PresenceStatus }>("/presence", status ? { status } : undefined),
     markRead: (id: string, messageId: string) => post<void>(`/conversations/${id}/read`, { messageId }),
     note: (id: string, body: string) => post<{ note: Note }>(`/conversations/${id}/notes`, { body }),
   };

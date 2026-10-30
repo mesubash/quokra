@@ -1494,6 +1494,80 @@ button {
   box-shadow: 0 10px 30px rgb(var(--shadow-rgb) / 0.12);
 }
 
+/* The agent's own status, on their avatar in the console header. */
+.presence-avatar {
+  position: relative;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+}
+
+.presence-avatar:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.presence-dot {
+  display: inline-block;
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--dot-off);
+}
+
+.presence-dot.is-online {
+  background: var(--dot-online);
+}
+
+.presence-avatar .presence-dot {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  box-shadow: 0 0 0 2px var(--bg);
+}
+
+.menu-list.presence-list {
+  right: auto;
+  left: 0;
+  width: 250px;
+}
+
+.menu-list.presence-list button {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.presence-list .presence-dot {
+  margin-top: 4px;
+}
+
+.presence-list small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.menu-list.presence-list button[aria-checked="true"] {
+  background: var(--hover);
+}
+
+/* "Online" / "Away" next to a name in lists. */
+.presence {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.presence-online {
+  color: var(--dot-online);
+}
+
 .menu-list button {
   display: block;
   width: 100%;

@@ -381,7 +381,9 @@ function AgentsCard({ api, tenant, onChanged }: { api: AdminApi; tenant: AdminTe
           <li key={a.sub}>
             <span className="avatar avatar-agent">{initials(a.name)}</span>
             <span className="admin-person">
-              <strong>{a.name}</strong>
+              <strong>
+                {a.name} <span className={a.online ? "presence presence-online" : "presence"}>{a.online ? "Online" : "Away"}</span>
+              </strong>
               <span className="muted">{a.email ?? a.sub}</span>
             </span>
             <button
