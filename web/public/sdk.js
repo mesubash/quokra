@@ -36,6 +36,9 @@
   var FRAME_ID = "quokra-chat-frame";
   var DEFAULT_COLOR = "#0051fb";
   var WAVE_EVERY_MS = 15000;
+  // Nothing is shown until the Quokra page inside says it's ready; if that doesn't happen in time,
+  // the "unavailable" event fires and the page keeps nothing broken on screen.
+  var READY_TIMEOUT_MS = 15000;
   var DEFAULT_TEASER_DELAY = 5000;
   var ROBOT_URL = ORIGIN + "/robot.svg";
   // The waving robot is an upgrade loaded after the page; until then (or without it) the still image shows.
@@ -119,6 +122,7 @@
       ".quokra-panel.popup.open{transform:translate(-50%,-50%)}" +
       "@media (max-width:480px){.quokra-panel,.quokra-panel.popup,.quokra-panel.popup.open{inset:0;width:100%;height:100%;" +
       "max-height:none;border-radius:0;transform:none}.quokra-teaser{max-width:calc(100vw - 40px)}}" +
+      ".quokra-pending{display:none!important}" +
       ".quokra-inline{display:block;width:100%;height:520px;border:1px solid #d0d7de;border-radius:12px}" +
       "@keyframes quokra-pop{0%{transform:scale(.4)}70%{transform:scale(1.15)}100%{transform:scale(1)}}" +
       "@keyframes quokra-rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}" +
@@ -367,6 +371,20 @@
 
   // ---- Messages from our frame ----
 
+  var escapeListening = false;
+  function listenForEscape() {
+    if (escapeListening) return;
+    escapeListening = true;
+    document.addEventListener("keydown", onKeydown);
+  }
+
+  // Escape on the host page closes whatever Quokra has open, even if the frame itself can't respond.
+  function onKeydown(event) {
+    if (event.key !== "Escape") return;
+    if (state && state.open && state.mode !== "inline") chat.close();
+    if (consoleState && consoleState.open && consoleState.mode === "bubble") agentConsole.close();
+  }
+
   function onMessage(event) {
     if (!state) return;
     // Only trust our own frame, from our own origin, speaking our protocol.
@@ -382,8 +400,17 @@
         state.teaserText = data.teaser.trim().slice(0, 140);
         scheduleTeaser();
       }
-      if (state.open) post("chat.open");
+      var wantOpen = state.open && state.mode !== "inline";
       state.ready = true;
+      clearTimeout(state.readyTimer);
+      state.frame.classList.remove("quokra-pending");
+      if (state.button) state.button.classList.remove("quokra-pending");
+      if (state.mode === "inline") post("chat.open");
+      // Opened before it was ready (e.g. from your own button): open it now.
+      if (wantOpen) {
+        state.open = false;
+        chat.open();
+      }
       sendIdentity();
       emit("ready");
     } else if (data.type === "chat.close") {
@@ -438,7 +465,7 @@
         var container =
           typeof options.container === "string" ? document.querySelector(options.container) : options.container;
         if (!container) throw new Error("Quokra: container not found");
-        frame.className = "quokra-inline";
+        frame.className = "quokra-inline quokra-pending";
         container.appendChild(frame);
       } else {
         frame.className = "quokra-panel " + (mode === "popup" ? "popup" : position);
@@ -446,7 +473,7 @@
         if (mode === "bubble") {
           var button = document.createElement("button");
           button.type = "button";
-          button.className = "quokra-button " + position;
+          button.className = "quokra-button quokra-pending " + position;
           button.setAttribute("aria-label", "Open chat");
           button.setAttribute("aria-expanded", "false");
           button.setAttribute("aria-controls", FRAME_ID);
@@ -479,11 +506,17 @@
         }
       }
       window.addEventListener("message", onMessage);
+      listenForEscape();
+      state.readyTimer = setTimeout(function () {
+        if (state && !state.ready) emit("unavailable");
+      }, READY_TIMEOUT_MS);
     },
 
     open: function () {
       if (!state || state.mode === "inline") return;
       state.open = true;
+      // Never show a frame that hasn't loaded: it may be a browser error page with no way to close it.
+      if (!state.ready) return;
       hideTeaser(true);
       state.frame.classList.add("open");
       if (state.button) {
@@ -538,6 +571,7 @@
     destroy: function () {
       if (!state) return;
       window.removeEventListener("message", onMessage);
+      clearTimeout(state.readyTimer);
       hideTeaser(false);
       clearInterval(state.waveTimer);
       if (state.animation) state.animation.destroy();
@@ -670,7 +704,13 @@
     var data = event.data;
     if (!data || data.source !== SOURCE) return;
 
-    if (data.type === "console.ready") consoleEmit("ready");
+    if (data.type === "console.ready") {
+      consoleState.ready = true;
+      clearTimeout(consoleState.readyTimer);
+      consoleState.frame.classList.remove("quokra-pending");
+      if (consoleState.button) consoleState.button.classList.remove("quokra-pending");
+      consoleEmit("ready");
+    }
     else if (data.type === "auth.request") sendToken();
     else if (data.type === "console.unread" && typeof data.count === "number") {
       setConsoleBadge(data.count);
@@ -703,8 +743,12 @@
     paintFrame(frame, applied);
     if (theme === "host") watchHost();
     consoleState = { frame: frame, button: null, mode: mode, open: mode === "full", getToken: options.getToken,
-      theme: theme, appliedTheme: applied, fullView: options.fullView || null };
+      theme: theme, appliedTheme: applied, fullView: options.fullView || null, ready: false };
     window.addEventListener("message", onConsoleMessage);
+    listenForEscape();
+    consoleState.readyTimer = setTimeout(function () {
+      if (consoleState && !consoleState.ready) consoleEmit("unavailable");
+    }, READY_TIMEOUT_MS);
     return frame;
   }
 
@@ -714,7 +758,7 @@
       if (!container) throw new Error("Quokra: console container not found");
       var frame = createConsole(options, "full");
       if (!frame) return;
-      frame.className = "quokra-console";
+      frame.className = "quokra-console quokra-pending";
       if (options && options.height) frame.style.height = options.height;
       container.appendChild(frame);
     },
@@ -725,12 +769,12 @@
       var frame = createConsole(options, "bubble");
       if (!frame) return;
       var position = options.position === "left" ? "left" : "right";
-      frame.className = "quokra-console-drawer " + position;
+      frame.className = "quokra-console-drawer quokra-pending " + position;
       document.body.appendChild(frame);
 
       var button = document.createElement("button");
       button.type = "button";
-      button.className = "quokra-console-button " + position;
+      button.className = "quokra-console-button quokra-pending " + position;
       button.setAttribute("aria-label", "Support console");
       button.setAttribute("aria-expanded", "false");
       button.setAttribute("aria-controls", frame.id);
@@ -743,7 +787,7 @@
     },
 
     open: function () {
-      if (!consoleState || consoleState.mode !== "bubble") return;
+      if (!consoleState || consoleState.mode !== "bubble" || !consoleState.ready) return;
       consoleState.open = true;
       consoleState.frame.classList.add("open");
       consoleState.button.setAttribute("aria-expanded", "true");
@@ -773,6 +817,7 @@
     unmount: function () {
       if (!consoleState) return;
       window.removeEventListener("message", onConsoleMessage);
+      clearTimeout(consoleState.readyTimer);
       consoleState.frame.remove();
       if (consoleState.button) consoleState.button.remove();
       consoleState = null;

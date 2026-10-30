@@ -477,8 +477,10 @@ The host side (`sdk.js`) only accepts messages from the Quokra origin. The panel
 | `Quokra.chat.logout()` | The customer logged out of your site: the chat forgets them and starts over as a guest. Call it on logout, especially on shared computers |
 | `Quokra.chat.setTheme(theme)` | Change the theme, e.g. when your site's dark mode is toggled |
 | `Quokra.chat.identify(token)` | Identify the customer (token from the host backend). Can be called before the panel has loaded; it's sent once the panel is ready |
-| `Quokra.chat.on(event, handler)` | Events: `ready`, `open`, `close`, `unread` (count), `identified`, `identifyfailed` (error code) |
+| `Quokra.chat.on(event, handler)` | Events: `ready`, `open`, `close`, `unread` (count), `identified`, `identifyfailed` (error code), `unavailable` (the chat didn't load within 15 seconds) |
 | `Quokra.chat.destroy()` | Remove bubble and iframe |
+
+Nothing is shown until the Quokra page inside the frame says it's ready, so a site never shows a broken frame when Quokra is down or the key is wrong: the bubble and console button stay hidden, `open()` waits, and `unavailable` fires after 15 seconds. Escape on the host page closes an open chat or console drawer.
 
 Declarative alternatives, no JavaScript needed:
 
@@ -496,7 +498,7 @@ Declarative alternatives, no JavaScript needed:
 | `Quokra.console.init({ mode: "bubble", tenant, getToken, position?, theme?, accent?, fullView? })` | **Bubble mode:** floating button with the waiting-chats badge; opens the console in a side drawer. `fullView`: your full-page console, as a URL or a function `(conversationId) => …`; the drawer then shows an "Open full view" button. `conversation` (mount): a conversation id to open first |
 | `Quokra.console.open()` / `Quokra.console.close()` | Open or close the drawer (bubble mode) |
 | `Quokra.console.setTheme(theme)` | Change the theme (`"host"`, `"light"`, `"dark"`, `"auto"`) |
-| `Quokra.console.on(event, handler)` | Events: `ready`, `unread` (waiting count), `open`, `close`, `expand` (conversation id) |
+| `Quokra.console.on(event, handler)` | Events: `ready`, `unread` (waiting count), `open`, `close`, `expand` (conversation id), `unavailable` (didn't load within 15 seconds) |
 | `Quokra.console.unmount()` | Remove it |
 
 ---

@@ -72,6 +72,8 @@ describe("sdk.js agent console", () => {
   it("opens the drawer from its button and closes when the console asks", () => {
     agentConsole().init({ mode: "bubble", tenant: "demo", getToken: () => "t" });
     const button = document.querySelector<HTMLButtonElement>(".quokra-console-button")!;
+    expect(button.classList.contains("quokra-pending")).toBe(true);
+    fromFrame({ source: "quokra", type: "console.ready" });
 
     button.click();
     expect(frame().classList.contains("open")).toBe(true);

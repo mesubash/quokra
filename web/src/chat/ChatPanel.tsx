@@ -54,7 +54,7 @@ export function ChatPanel({ slug }: { slug: string }) {
     renewed.current = false;
     getSession(pk)
       .then((session) => setSetup((s) => (s.status === "ready" ? { ...s, token: session.sessionToken } : s)))
-      .catch(() => setSetup({ status: "error", message: "Chat is unavailable right now." }));
+      .catch(() => setSetup({ status: "error", message: "We can't connect right now. Please try again in a moment." }));
   }, [pk]);
 
   // Listen before telling the host we're ready, so its "open" reply isn't missed.
@@ -95,7 +95,7 @@ export function ChatPanel({ slug }: { slug: string }) {
         setSetup({ status: "ready", tenant, token: session.sessionToken });
         postToHost({ type: "chat.ready", color, teaser: tenant.teaser });
       })
-      .catch(() => !cancelled && setSetup({ status: "error", message: "Chat is unavailable right now." }));
+      .catch(() => !cancelled && setSetup({ status: "error", message: "We can't connect right now. Please try again in a moment." }));
     return () => {
       cancelled = true;
     };
@@ -104,14 +104,14 @@ export function ChatPanel({ slug }: { slug: string }) {
   // A stored session can stop working (expired, or the server's key changed): start a new one, once.
   const renewSession = useCallback(() => {
     if (!pk || renewed.current) {
-      setSetup({ status: "error", message: "Chat is unavailable right now." });
+      setSetup({ status: "error", message: "We can't connect right now. Please try again in a moment." });
       return;
     }
     renewed.current = true;
     forgetSession(pk);
     getSession(pk)
       .then((session) => setSetup((s) => (s.status === "ready" ? { ...s, token: session.sessionToken } : s)))
-      .catch(() => setSetup({ status: "error", message: "Chat is unavailable right now." }));
+      .catch(() => setSetup({ status: "error", message: "We can't connect right now. Please try again in a moment." }));
   }, [pk]);
 
   if (setup.status === "loading") return <PanelState title="Chat" message="Loading…" />;

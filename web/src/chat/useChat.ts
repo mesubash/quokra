@@ -71,7 +71,7 @@ export function useChat(token: string | null, onUnauthorized?: () => void) {
       .catch((e) => {
         if (cancelled) return;
         if (e instanceof ApiError && e.status === 401 && onUnauthorized) onUnauthorized();
-        else setState((s) => ({ ...s, error: "Chat is unavailable right now." }));
+        else setState((s) => ({ ...s, error: "We can't connect right now. Please try again in a moment." }));
       });
 
     return () => {

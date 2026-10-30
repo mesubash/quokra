@@ -44,6 +44,7 @@ describe("sdk.js", () => {
   });
 
   it("opens and closes the panel from the bubble", () => {
+    fromFrame({ source: "quokra", type: "chat.ready" });
     const button = document.querySelector<HTMLButtonElement>(".quokra-button")!;
 
     button.click();
@@ -108,6 +109,7 @@ describe("sdk.js", () => {
   });
 
   it("tells screen readers whether the chat is open", () => {
+    fromFrame({ source: "quokra", type: "chat.ready" });
     const button = document.querySelector<HTMLButtonElement>(".quokra-button")!;
     expect(button.getAttribute("aria-expanded")).toBe("false");
 
@@ -164,6 +166,51 @@ describe("sdk.js identify", () => {
 
     expect(identified).toHaveBeenCalled();
     expect(failed).toHaveBeenCalledWith("IDENTITY_TOKEN_EXPIRED");
+  });
+});
+
+describe("sdk.js before the panel is ready", () => {
+  it("hides the bubble and won't open a panel that hasn't loaded", () => {
+    const button = document.querySelector<HTMLButtonElement>(".quokra-button")!;
+    expect(button.classList.contains("quokra-pending")).toBe(true);
+
+    chat().open();
+
+    expect(frame().classList.contains("open")).toBe(false);
+  });
+
+  it("opens once ready if it was asked to before", () => {
+    chat().open();
+
+    fromFrame({ source: "quokra", type: "chat.ready" });
+
+    expect(frame().classList.contains("open")).toBe(true);
+    expect(document.querySelector(".quokra-button")!.classList.contains("quokra-pending")).toBe(false);
+  });
+
+  it("says when Quokra can't be reached", () => {
+    vi.useFakeTimers();
+    try {
+      chat().destroy();
+      chat().init({ slug: "demo", pk: "pk_test_demo" });
+      const unavailable = vi.fn();
+      chat().on("unavailable", unavailable);
+
+      vi.advanceTimersByTime(15_000);
+
+      expect(unavailable).toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("closes on Escape from the host page", () => {
+    fromFrame({ source: "quokra", type: "chat.ready" });
+    chat().open();
+
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+
+    expect(frame().classList.contains("open")).toBe(false);
   });
 });
 
