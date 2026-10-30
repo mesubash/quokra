@@ -390,6 +390,7 @@ The host side (`sdk.js`) only accepts messages from the Quokra origin. The panel
 | host → console | `auth.token` | `token` | Agent access token |
 | console → host | `console.unread` | `count` | Waiting conversations (for a nav badge) |
 | console → host | `console.close` | | The agent closed the drawer (bubble mode) |
+| console → host | `console.expand` | `conversationId` (or `null`) | The agent wants the full view (bubble mode, only when the host gave `fullView`) |
 
 `/console?tenant=slug` can only be framed by that tenant's `console_origins` (`frame-ancestors`), and the console only accepts `auth.token` from its parent window. `sdk.js` sends tokens only to the Quokra origin, and only to its own frame.
 
@@ -424,11 +425,11 @@ Declarative alternatives, no JavaScript needed:
 
 | Call | Purpose |
 |---|---|
-| `Quokra.console.mount(target, { tenant, getToken, height?, theme? })` | **Full-page mode:** mount the console in `target`. `getToken`: function returning a fresh agent access token (or a Promise of one). `tenant`: slug, used to check which sites may frame the console |
-| `Quokra.console.init({ mode: "bubble", tenant, getToken, position?, theme? })` | **Bubble mode:** floating button with the waiting-chats badge; opens the console in a side drawer |
+| `Quokra.console.mount(target, { tenant, getToken, height?, theme?, conversation? })` | **Full-page mode:** mount the console in `target`. `getToken`: function returning a fresh agent access token (or a Promise of one). `tenant`: slug, used to check which sites may frame the console |
+| `Quokra.console.init({ mode: "bubble", tenant, getToken, position?, theme?, fullView? })` | **Bubble mode:** floating button with the waiting-chats badge; opens the console in a side drawer. `fullView`: your full-page console, as a URL or a function `(conversationId) => …`; the drawer then shows an "Open full view" button. `conversation` (mount): a conversation id to open first |
 | `Quokra.console.open()` / `Quokra.console.close()` | Open or close the drawer (bubble mode) |
 | `Quokra.console.setTheme(theme)` | Change the theme (`"light"`, `"dark"`, `"auto"`) |
-| `Quokra.console.on(event, handler)` | Events: `ready`, `unread` (waiting count), `open`, `close` |
+| `Quokra.console.on(event, handler)` | Events: `ready`, `unread` (waiting count), `open`, `close`, `expand` (conversation id) |
 | `Quokra.console.unmount()` | Remove it |
 
 ---

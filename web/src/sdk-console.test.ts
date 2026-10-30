@@ -101,4 +101,42 @@ describe("sdk.js agent console", () => {
 
     expect(post).toHaveBeenCalledWith({ type: "theme.set", theme: "light", source: "quokra" }, window.location.origin);
   });
+
+  it("opens the host's full view on the same conversation", () => {
+    const fullView = vi.fn();
+    agentConsole().init({ mode: "bubble", tenant: "demo", getToken: () => "t", fullView });
+    expect(frame().src).toContain("&expand=1");
+    document.querySelector<HTMLButtonElement>(".quokra-console-button")!.click();
+
+    fromFrame({ source: "quokra", type: "console.expand", conversationId: "01a1874a-d18e-7a66-86ba-aca69283f91c" });
+
+    expect(fullView).toHaveBeenCalledWith("01a1874a-d18e-7a66-86ba-aca69283f91c");
+    expect(frame().classList.contains("open")).toBe(false);
+  });
+
+  it("passes only real conversation ids to the host", () => {
+    const fullView = vi.fn();
+    agentConsole().init({ mode: "bubble", tenant: "demo", getToken: () => "t", fullView });
+
+    fromFrame({ source: "quokra", type: "console.expand", conversationId: "javascript:alert(1)" });
+
+    expect(fullView).toHaveBeenCalledWith(null);
+  });
+
+  it("has no expand button without a full view", () => {
+    agentConsole().init({ mode: "bubble", tenant: "demo", getToken: () => "t" });
+
+    expect(frame().src).not.toContain("expand");
+  });
+
+  it("opens a given conversation in full-page mode", () => {
+    document.body.innerHTML = '<div id="console"></div>';
+    agentConsole().mount("#console", {
+      tenant: "demo",
+      getToken: () => "t",
+      conversation: "01a1874a-d18e-7a66-86ba-aca69283f91c",
+    });
+
+    expect(frame().src).toContain("&conversation=01a1874a-d18e-7a66-86ba-aca69283f91c");
+  });
 });

@@ -26,7 +26,10 @@ function EmbeddedConsole() {
   const [token, setToken] = useState<string | null>(null);
   const tokenRef = useRef<string | null>(null);
   const getToken = useCallback(() => tokenRef.current ?? "", []);
-  const closable = new URLSearchParams(window.location.search).get("mode") === "bubble";
+  const params = new URLSearchParams(window.location.search);
+  const closable = params.get("mode") === "bubble";
+  // The host has a full-page console to open from the drawer.
+  const expandable = closable && params.get("expand") === "1";
 
   useEffect(
     () =>
@@ -63,6 +66,8 @@ function EmbeddedConsole() {
       getToken={getToken}
       onUnauthorized={unauthorized}
       onClose={closable ? () => postToHost({ type: "console.close" }) : undefined}
+      onExpand={expandable ? (conversationId) => postToHost({ type: "console.expand", conversationId }) : undefined}
+      initialConversation={params.get("conversation")}
     />
   );
 }

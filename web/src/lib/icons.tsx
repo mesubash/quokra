@@ -85,3 +85,14 @@ export function BellIcon({ size = 20, off = false }: { size?: number; off?: bool
     </svg>
   );
 }
+
+export function ExpandIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg {...base} width={size} height={size}>
+      <path d="M15 3h6v6" />
+      <path d="m21 3-7 7" />
+      <path d="m3 21 7-7" />
+      <path d="M9 21H3v-6" />
+    </svg>
+  );
+}

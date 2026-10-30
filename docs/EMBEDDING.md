@@ -201,6 +201,20 @@ For staff who answer chats now and then, show a floating button with the number 
 </script>
 ```
 
+To let agents jump from the drawer to your full-page console (like a messenger sidebar's "open in full"), pass `fullView`. A URL works anywhere; a function lets a single-page app use its own router. The open conversation comes along:
+
+```js
+Quokra.console.init({
+  mode: "bubble",
+  tenant: "demo",
+  getToken: () => auth.getAccessToken(),
+  fullView: (conversationId) => router.push(conversationId ? `/support?conversation=${conversationId}` : "/support"),
+});
+
+// On /support:
+Quokra.console.mount("#support-console", { tenant: "demo", getToken, conversation: params.get("conversation") });
+```
+
 Put it in your dashboard's main layout so it appears on every page. A page holds one console, so you can use bubble mode everywhere and full-page mode on `/support`, but not both on the same page.
 
 ---

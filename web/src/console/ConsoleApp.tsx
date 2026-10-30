@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { agentApi, ApiError, type ConversationSummary, type Me, type TenantItem } from "../lib/api";
 import { postToHost } from "../lib/bridge";
-import { BellIcon, CloseIcon } from "../lib/icons";
+import { BellIcon, CloseIcon, ExpandIcon } from "../lib/icons";
 import { chime, setSoundEnabled, soundEnabled } from "../lib/sound";
 import { openSocket, type QueueSnapshot, type Socket } from "../lib/realtime";
 import { ConversationView } from "./ConversationView";
@@ -20,16 +20,24 @@ interface Props {
   onUnauthorized: () => void;
   onSignOut?: () => void;
   onClose?: () => void;
+  // Opens the host's full-page console, on this conversation if one is open.
+  onExpand?: (conversationId: string | null) => void;
+  initialConversation?: string | null;
 }
 
-export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose }: Props) {
+// A conversation id from the host is only used if it looks like one.
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose, onExpand, initialConversation }: Props) {
   const api = useMemo(() => agentApi(getToken), [getToken]);
   const [me, setMe] = useState<Me | null>(null);
   const [tenants, setTenants] = useState<TenantItem[]>([]);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [tab, setTab] = useState<Tab>("queue");
   const [counts, setCounts] = useState({ waiting: 0, mine: 0 });
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(
+    initialConversation && UUID.test(initialConversation) ? initialConversation : null,
+  );
   const [error, setError] = useState<string | null>(null);
   const [sound, setSound] = useState(soundEnabled);
   const list = useConversationList(api, tab, me?.sub ?? null, tenants);
@@ -143,6 +151,17 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose }: Pro
               Sign out
             </button>
           )}
+          {onExpand && (
+            <button
+              type="button"
+              className="icon-button quiet"
+              aria-label="Open full view"
+              title="Open full view"
+              onClick={() => onExpand(selected)}
+            >
+              <ExpandIcon size={17} />
+            </button>
+          )}
           {onClose && (
             <button type="button" className="icon-button quiet" aria-label="Close console" onClick={onClose}>
               <CloseIcon size={18} />
@@ -201,6 +220,7 @@ export function ConsoleApp({ getToken, onUnauthorized, onSignOut, onClose }: Pro
             socket={socket}
             onBack={() => setSelected(null)}
             onClose={onClose}
+            onExpand={onExpand ? () => onExpand(selected) : undefined}
             onChanged={refreshCounts}
             onError={failed}
           />

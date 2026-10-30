@@ -501,8 +501,26 @@
     document.head.appendChild(style);
   }
 
-  function consoleUrl(tenant, mode, theme) {
-    return ORIGIN + "/console?tenant=" + encodeURIComponent(tenant || "") + "&mode=" + mode + "&theme=" + theme;
+  function consoleUrl(tenant, mode, theme, extra) {
+    return ORIGIN + "/console?tenant=" + encodeURIComponent(tenant || "") + "&mode=" + mode + "&theme=" + theme +
+      (extra || "");
+  }
+
+  // fullView: the host's full-page console, as a URL or a function(conversationId). Single-page apps pass a
+  // function so they can navigate with their own router.
+  function expand(conversationId) {
+    var fullView = consoleState && consoleState.fullView;
+    var id = typeof conversationId === "string" && /^[0-9a-f-]{36}$/i.test(conversationId) ? conversationId : null;
+    if (!fullView) return;
+    agentConsole.close();
+    consoleEmit("expand", id);
+    if (typeof fullView === "function") {
+      fullView(id);
+    } else {
+      var url = new URL(String(fullView), window.location.href);
+      if (id) url.searchParams.set("conversation", id);
+      window.location.assign(url.toString());
+    }
   }
 
   function postToConsole(message) {
@@ -553,6 +571,8 @@
     else if (data.type === "console.unread" && typeof data.count === "number") {
       setConsoleBadge(data.count);
       consoleEmit("unread", data.count);
+    } else if (data.type === "console.expand") {
+      expand(data.conversationId);
     } else if (data.type === "console.close") {
       agentConsole.close();
       if (consoleState && consoleState.button) consoleState.button.focus();
@@ -569,10 +589,15 @@
     frame.id = "quokra-console-frame";
     frame.title = "Support console";
     var theme = themeOf(options.theme);
-    frame.src = consoleUrl(options.tenant, mode, theme);
+    var extra = "";
+    if (mode === "bubble" && options.fullView) extra += "&expand=1";
+    if (mode === "full" && typeof options.conversation === "string" && /^[0-9a-f-]{36}$/i.test(options.conversation)) {
+      extra += "&conversation=" + options.conversation;
+    }
+    frame.src = consoleUrl(options.tenant, mode, theme, extra);
     paintFrame(frame, theme);
     consoleState = { frame: frame, button: null, mode: mode, open: mode === "full", getToken: options.getToken,
-      theme: theme };
+      theme: theme, fullView: options.fullView || null };
     window.addEventListener("message", onConsoleMessage);
     return frame;
   }
