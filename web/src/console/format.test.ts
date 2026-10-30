@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { ago, reasonLabel } from "./format";
+import { ago, eventLabel, reasonLabel } from "./format";
 
 describe("format", () => {
+  it("names who closed a chat", () => {
+    expect(eventLabel("RESOLVED", "Sam", null)).toBe("Sam resolved");
+    expect(eventLabel("RESOLVED", null, "AUTO")).toBe("Closed automatically (no reply)");
+    expect(eventLabel("RESOLVED", null, "CUSTOMER")).toBe("Customer started a new chat");
+  });
+
   it("says how long ago, roughly", () => {
     const minutesAgo = (m: number) => new Date(Date.now() - m * 60000).toISOString();
     expect(ago(minutesAgo(0))).toBe("now");

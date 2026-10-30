@@ -50,7 +50,8 @@ export function eventLabel(type: string, actorName: string | null, reason: strin
     case "ACCEPTED":
       return `${who} accepted`;
     case "RESOLVED":
-      return reason === "AUTO" ? "Closed automatically (no reply)" : `${who} resolved`;
+      if (reason === "AUTO") return "Closed automatically (no reply)";
+      return reason === "CUSTOMER" ? "Customer started a new chat" : `${who} resolved`;
     case "RETURNED_TO_BOT":
       return `${who} handed back to the bot`;
     case "REOPENED":

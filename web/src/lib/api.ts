@@ -80,6 +80,10 @@ export const widgetApi = {
   startConversation: (token: string) =>
     request<{ conversation: Conversation; messages: Message[] }>("/widget/conversation", { method: "POST", token }),
 
+  // Closes the current conversation (even with an agent) and starts over with the greeting.
+  newConversation: (token: string) =>
+    request<{ conversation: Conversation; messages: Message[] }>("/widget/conversation/new", { method: "POST", token }),
+
   messagesAfter: (token: string, after: string) =>
     request<{ items: Message[]; nextCursor: string | null }>(
       `/widget/conversation/messages?after=${encodeURIComponent(after)}&limit=200`,

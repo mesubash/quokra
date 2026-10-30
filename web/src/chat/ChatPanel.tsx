@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { embedded, onHostMessage, postToHost } from "../lib/bridge";
 import { accent, applyColor } from "../lib/theme";
-import { CloseIcon } from "../lib/icons";
+import { CloseIcon, MoreIcon } from "../lib/icons";
 import { ApiError, widgetApi, type Conversation, type Tenant } from "../lib/api";
 import { Composer } from "./Composer";
 import { MessageList } from "./MessageList";
@@ -180,6 +180,7 @@ function Chat({ tenant, token, visible, onUnauthorized }: ChatProps) {
           <h1>{tenant.displayName}</h1>
           <HeaderStatus conversation={chat.conversation} online={chat.online} tenant={tenant} />
         </div>
+        {!chat.error && <ChatMenu conversation={chat.conversation} onStartNew={chat.startNew} />}
         <CloseButton />
       </header>
       {chat.error ? (
@@ -214,6 +215,75 @@ function placeholder(conversation: Conversation | null, tenant: Tenant) {
   if (conversation?.asking === "NAME") return "Your name…";
   const name = conversation?.status === "HUMAN" && conversation.assignee ? conversation.assignee.name : tenant.displayName;
   return tenant.texts.placeholder.replace("{name}", name);
+}
+
+// "Start a new chat". With the team on this chat it asks first, since that ends their chat.
+function ChatMenu({ conversation, onStartNew }: { conversation: Conversation | null; onStartNew: () => Promise<boolean> }) {
+  const [open, setOpen] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const menu = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: Event) => {
+      if (e instanceof KeyboardEvent ? e.key === "Escape" : !menu.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", close);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", close);
+    };
+  }, [open]);
+
+  if (!conversation) return null;
+  const withTeam = conversation.status === "WAITING" || conversation.status === "HUMAN";
+
+  async function start() {
+    setBusy(true);
+    await onStartNew();
+    setBusy(false);
+    setOpen(false);
+  }
+
+  return (
+    <div className="chat-menu" ref={menu}>
+      <button
+        type="button"
+        className="icon-button"
+        aria-label="Chat options"
+        aria-expanded={open}
+        onClick={() => {
+          setOpen(!open);
+          setConfirming(false);
+        }}
+      >
+        <MoreIcon size={20} />
+      </button>
+      {open && (
+        <div className="chat-menu-list">
+          {confirming ? (
+            <>
+              <p>This ends your chat with our team. Start a new one?</p>
+              <div className="chat-menu-actions">
+                <button type="button" onClick={() => setOpen(false)}>
+                  Cancel
+                </button>
+                <button type="button" className="chat-menu-confirm" disabled={busy} onClick={() => void start()}>
+                  Start over
+                </button>
+              </div>
+            </>
+          ) : (
+            <button type="button" disabled={busy} onClick={() => (withTeam ? setConfirming(true) : void start())}>
+              Start a new chat
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function CloseButton() {

@@ -45,28 +45,12 @@ export function useChat(token: string | null, onUnauthorized?: () => void) {
 
   useEffect(() => {
     if (!token) return;
-    let stop: (() => void) | undefined;
     let cancelled = false;
 
     widgetApi
       .startConversation(token)
       .then(({ conversation, messages }) => {
-        if (cancelled) return;
-        setState((s) => ({ ...s, conversation, messages: mergeMessages(s.messages, messages) }));
-        stop = connectConversation(token, conversation.id, {
-          onEvent: (event) => {
-            if (event.type === "message.created") addMessages([event.data]);
-            else if (event.type === "conversation.updated") setState((s) => ({ ...s, conversation: event.data }));
-          },
-          onConnect: () => {
-            setState((s) => ({ ...s, online: true }));
-            const last = messagesRef.current[messagesRef.current.length - 1];
-            if (last) {
-              widgetApi.messagesAfter(token, last.id).then((page) => addMessages(page.items)).catch(() => {});
-            }
-          },
-          onDisconnect: () => setState((s) => ({ ...s, online: false })),
-        });
+        if (!cancelled) setState((s) => ({ ...s, conversation, messages: mergeMessages(s.messages, messages) }));
       })
       .catch((e) => {
         if (cancelled) return;
@@ -76,9 +60,47 @@ export function useChat(token: string | null, onUnauthorized?: () => void) {
 
     return () => {
       cancelled = true;
-      stop?.();
     };
-  }, [token, addMessages, onUnauthorized]);
+  }, [token, onUnauthorized]);
+
+  // Live updates for whichever conversation is current; starting a new chat switches over.
+  const conversationId = state.conversation?.id;
+  const currentId = useRef(conversationId);
+  currentId.current = conversationId;
+  useEffect(() => {
+    if (!token || !conversationId) return;
+    // Late events from the previous conversation are ignored.
+    const mine = () => currentId.current === conversationId;
+    return connectConversation(token, conversationId, {
+      onEvent: (event) => {
+        if (!mine()) return;
+        if (event.type === "message.created") addMessages([event.data]);
+        else if (event.type === "conversation.updated") setState((s) => ({ ...s, conversation: event.data }));
+      },
+      onConnect: () => {
+        setState((s) => ({ ...s, online: true }));
+        const last = messagesRef.current[messagesRef.current.length - 1];
+        if (last && mine()) {
+          widgetApi.messagesAfter(token, last.id).then((page) => mine() && addMessages(page.items)).catch(() => {});
+        }
+      },
+      onDisconnect: () => setState((s) => ({ ...s, online: false })),
+    });
+  }, [token, conversationId, addMessages]);
+
+  // "Start a new chat": the panel empties and the greeting shows again.
+  const startNew = useCallback(async (): Promise<boolean> => {
+    if (!token) return false;
+    try {
+      const { conversation, messages } = await widgetApi.newConversation(token);
+      currentId.current = conversation.id;
+      setState((s) => ({ ...s, conversation, messages, pending: [] }));
+      return true;
+    } catch (e) {
+      if (e instanceof ApiError && e.code === "CONTACT_BLOCKED") setState((s) => ({ ...s, error: BLOCKED }));
+      return false;
+    }
+  }, [token]);
 
   // Shows the message straight away as "sending", then swaps in the stored one.
   // A retry reuses the same clientMessageId, so the server never stores it twice.
@@ -131,5 +153,5 @@ export function useChat(token: string | null, onUnauthorized?: () => void) {
     [state.pending, deliver],
   );
 
-  return { ...state, send, retry };
+  return { ...state, send, retry, startNew };
 }
