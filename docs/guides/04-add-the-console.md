@@ -43,7 +43,9 @@ Use one of the two per page: the button everywhere, and the full console on `/su
 
 ## What agents can do
 
-Accept a waiting chat by replying to it; reply to a particular message (the ↩ next to it); send images if
+Set yourself **Online** or **Away** from your avatar: customers see the team as online only while
+someone is, and closing the console counts as away after a couple of minutes. Accept a waiting chat by
+replying to it; reply to a particular message (the ↩ next to it); send images if
 the company allows them; type `/` for saved replies; add private notes; transfer, resolve, reopen, hand back
 to the bot or block a contact from the ⋯ menu. The details panel shows the customer and their earlier chats.
 

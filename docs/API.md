@@ -65,11 +65,12 @@ WebSocket: send the same bearer token in the STOMP `CONNECT` frame header `Autho
     "offline": "Away now · we'll reply when we're back"
   },
   "open": true,
-  "attachments": false
+  "attachments": false,
+  "teamOnline": true
 }
 ```
 
-`attachments` is true when the company allows images and the server's storage works; the chat shows its image button only then. `open` is false outside the tenant's opening hours (always true without any); the chat then shows `texts.offline` in its header. `teaser` and `texts` come from the tenant's bot file (see ARCHITECTURE.md §6); `texts` always has every field, with defaults for any the file leaves out. `404 TENANT_NOT_FOUND` for unknown keys.
+`teamOnline` is true while someone of the company's team is online (see 4.21); the chat shows `texts.online` / `texts.waiting` only then, and `texts.offline` otherwise. `attachments` is true when the company allows images and the server's storage works; the chat shows its image button only then. `open` is false outside the tenant's opening hours (always true without any); the chat then shows `texts.offline` in its header. `teaser` and `texts` come from the tenant's bot file (see ARCHITECTURE.md §6); `texts` always has every field, with defaults for any the file leaves out. `404 TENANT_NOT_FOUND` for unknown keys.
 
 ### 3.2 `POST /widget/sessions`: start a guest session
 
@@ -333,6 +334,15 @@ Saved replies of the conversation's tenant, by title. The console fills in `{nam
 ```json
 200 { "items": [{ "id": "…", "title": "Refunds", "body": "Hi {name}, refunds take 5 days." }], "nextCursor": null }
 ```
+
+### 4.21 `POST /agent/presence`
+
+```json
+{ "status": "AWAY" }          // or "ONLINE"; no body keeps the current status (ONLINE the first time)
+// 200 { "status": "AWAY" }
+```
+
+The console calls it every minute while it's open. An agent is online while their status is `ONLINE` and they checked in within the last 2 minutes, so closing the console makes them offline without a call. Signing out sets `AWAY`. `GET /agent/conversations/{id}/agents` and `GET /admin/tenants/{slug}/agents` include `online` for each agent.
 
 ### 4.20 `POST /agent/conversations/{id}/typing`
 

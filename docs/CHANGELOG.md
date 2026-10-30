@@ -11,6 +11,9 @@ What changed, newest first. Each entry says what people notice; the commits have
 ### 2026-10-30
 
 **Customers and agents**
+- **Online and away.** Agents set their status from their avatar; the open console checks in every minute,
+  so closing it counts as away. The chat says the team is online only while someone is, and the transfer
+  list and Settings → Agents show who's online.
 - **Typing indicator.** The customer sees "Sam is typing…" while the agent writes a reply, and the agent sees
   the customer typing. Nothing is stored.
 

@@ -25,6 +25,7 @@
 **For agents**
 - A console for your dashboard: full page, or a drawer opened from a floating button, with "open full view".
 - Queue, my chats and resolved lists with unread counts, search, and live updates, including when the customer is typing.
+- Online / Away status; customers see the team as online only while someone is.
 - Reply (which also accepts the chat), reply to a particular message, images, saved replies picked with `/`, private notes, transfer to a colleague or back to the queue, return to the bot, resolve, reopen, block a contact.
 - Notifications: sounds, toasts and browser notifications for new chats, replies in my chats, transfers and notes.
 - Quiet chats close by themselves after a time each company sets.

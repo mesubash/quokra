@@ -60,7 +60,7 @@ AI answers · WhatsApp / Instagram / email · reports · automations · file att
 | Version | Theme | Contents | Rough size |
 |---|---|---|---|
 | **v1** | **FAQ bot + handoff** | Chat panel + console (full-page or bubble), both embeddable via `sdk.js`; FAQ bot; handoff; realtime; tenants by publishable key; guests + identified customers; agents via OIDC | 3–4 weeks |
-| v2 | Daily operations | **Done:** notifications in the console and browser, auto-resolve after silence, saved replies, business hours + offline message, the bot and its wording edited in Settings, Settings behind a gear (scoped to the console's company), images (disk or S3), "start a new chat", replying to a message. **Next:** deploying for the first real company, retention job. **Later, on demand:** email notifications, more languages, mobile push, standalone console login | 2–3 weeks |
+| v2 | Daily operations | **Done:** notifications in the console and browser, auto-resolve after silence, saved replies, business hours + offline message, the bot and its wording edited in Settings, Settings behind a gear (scoped to the console's company), images (disk or S3), "start a new chat", replying to a message, typing indicator, agent online / away. **Next:** deploying for the first real company, retention job. **Later, on demand:** email notifications, more languages, mobile push, standalone console login | 2–3 weeks |
 | v3 | AI answers | Knowledge documents, search with sources, grounded LLM answers, evaluation set, AI summary on handoff | 3–4 weeks |
 | v4 | Channels + lookups | WhatsApp Cloud API, email; identity-verified lookups through backend-validated tools | 3–4 weeks |
 | v5 | Platform | Tenant self-service, per-tenant identity providers, analytics, CSAT, public release | later |
