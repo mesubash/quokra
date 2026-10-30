@@ -8,5 +8,6 @@ public enum Transition {
     REOPEN,
     AUTO_RESOLVE,
     AGENT_REOPEN,
-    TRANSFER_TO_QUEUE
+    TRANSFER_TO_QUEUE,
+    CUSTOMER_END
 }

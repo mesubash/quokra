@@ -85,7 +85,38 @@ public class ConversationService {
         if (latest.isPresent()) {
             return new Started(latest.get(), false);
         }
+        return new Started(create(tenantId, visitorId, customer, clock.instant()), true);
+    }
+
+    public static final String CUSTOMER_ENDED = "CUSTOMER";
+
+    // The customer starts over: the open conversation closes (the team keeps it in their history) and a new one
+    // begins with the greeting. The contact carries over, so guests aren't asked for their email again and a
+    // blocked contact stays blocked.
+    @Transactional
+    public Conversation startNew(UUID tenantId, UUID visitorId, CustomerIdentity customer) {
+        Optional<Conversation> latest = current(tenantId, visitorId, customer == null ? null : customer.sub());
         Instant now = clock.instant();
+        latest.ifPresent(this::requireNotBlocked);
+        latest.filter(c -> c.getStatus() != Status.RESOLVED).ifPresent(c -> {
+            c.moveTo(StateMachine.next(c.getStatus(), Transition.CUSTOMER_END), now);
+            c.touch(now);
+            events.save(ConversationEvent.of(c.getId(), EventType.RESOLVED, SenderType.CUSTOMER, null, CUSTOMER_ENDED,
+                now));
+            save(Message.create(c.getId(), SenderType.SYSTEM, null, null, "The customer started a new chat.", null,
+                null, now));
+            publishUpdate(c);
+        });
+        // The old one must be closed in the database before the new one is inserted (one open per visitor).
+        conversations.flush();
+        Conversation started = create(tenantId, visitorId, customer, now);
+        latest.map(Conversation::getContactId).flatMap(contacts::findById).ifPresent(contact -> {
+            started.linkContact(contact.getId(), contact.getName(), contact.getEmail(), now);
+        });
+        return started;
+    }
+
+    private Conversation create(UUID tenantId, UUID visitorId, CustomerIdentity customer, Instant now) {
         Conversation started = Conversation.start(tenantId, visitorId, now);
         if (customer != null) {
             started.identify(customer, now);
@@ -96,7 +127,7 @@ public class ConversationService {
         Optional<BotConfig> bot = botFor(tenantId);
         save(Message.create(conversation.getId(), SenderType.BOT, null, null,
             bot.map(BotConfig::greeting).orElse(GREETING), null, bot.map(BotConfig::options).orElse(null), now));
-        return new Started(conversation, true);
+        return conversation;
     }
 
     // Stores the message, then lets the bot reply while the conversation is with the bot.

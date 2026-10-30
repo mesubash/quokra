@@ -12,17 +12,20 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 class StateMachineTests {
 
-    static final Map<String, Status> ALLOWED = Map.of(
-        "BOT HANDOFF", Status.WAITING,
-        "WAITING ACCEPT", Status.HUMAN,
-        "WAITING RESOLVE", Status.RESOLVED,
-        "HUMAN RESOLVE", Status.RESOLVED,
-        "HUMAN RETURN_TO_BOT", Status.BOT,
-        "HUMAN TRANSFER_TO_QUEUE", Status.WAITING,
-        "BOT AUTO_RESOLVE", Status.RESOLVED,
-        "HUMAN AUTO_RESOLVE", Status.RESOLVED,
-        "RESOLVED REOPEN", Status.BOT,
-        "RESOLVED AGENT_REOPEN", Status.HUMAN);
+    static final Map<String, Status> ALLOWED = Map.ofEntries(
+        Map.entry("BOT HANDOFF", Status.WAITING),
+        Map.entry("WAITING ACCEPT", Status.HUMAN),
+        Map.entry("WAITING RESOLVE", Status.RESOLVED),
+        Map.entry("HUMAN RESOLVE", Status.RESOLVED),
+        Map.entry("HUMAN RETURN_TO_BOT", Status.BOT),
+        Map.entry("HUMAN TRANSFER_TO_QUEUE", Status.WAITING),
+        Map.entry("BOT AUTO_RESOLVE", Status.RESOLVED),
+        Map.entry("HUMAN AUTO_RESOLVE", Status.RESOLVED),
+        Map.entry("RESOLVED REOPEN", Status.BOT),
+        Map.entry("RESOLVED AGENT_REOPEN", Status.HUMAN),
+        Map.entry("BOT CUSTOMER_END", Status.RESOLVED),
+        Map.entry("WAITING CUSTOMER_END", Status.RESOLVED),
+        Map.entry("HUMAN CUSTOMER_END", Status.RESOLVED));
 
     static Stream<Arguments> everyCombination() {
         return Stream.of(Status.values())

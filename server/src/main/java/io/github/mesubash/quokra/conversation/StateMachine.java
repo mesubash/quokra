@@ -14,19 +14,27 @@ final class StateMachine {
 
     private record Key(Status from, Transition transition) {}
 
-    private static final Map<Key, Status> ALLOWED = Map.of(
-        new Key(BOT, Transition.HANDOFF), WAITING,
-        new Key(WAITING, Transition.ACCEPT), HUMAN,
-        new Key(WAITING, Transition.RESOLVE), RESOLVED,
-        new Key(HUMAN, Transition.RESOLVE), RESOLVED,
-        new Key(HUMAN, Transition.RETURN_TO_BOT), BOT,
-        new Key(HUMAN, Transition.TRANSFER_TO_QUEUE), WAITING,
+    private static final Map<Key, Status> ALLOWED = Map.ofEntries(
+        entry(BOT, Transition.HANDOFF, WAITING),
+        entry(WAITING, Transition.ACCEPT, HUMAN),
+        entry(WAITING, Transition.RESOLVE, RESOLVED),
+        entry(HUMAN, Transition.RESOLVE, RESOLVED),
+        entry(HUMAN, Transition.RETURN_TO_BOT, BOT),
+        entry(HUMAN, Transition.TRANSFER_TO_QUEUE, WAITING),
         // Quiet chats close by themselves; waiting ones never do (it's the team's turn).
-        new Key(BOT, Transition.AUTO_RESOLVE), RESOLVED,
-        new Key(HUMAN, Transition.AUTO_RESOLVE), RESOLVED,
+        entry(BOT, Transition.AUTO_RESOLVE, RESOLVED),
+        entry(HUMAN, Transition.AUTO_RESOLVE, RESOLVED),
         // The customer writes again: the bot picks it up. An agent reopens it: it's theirs.
-        new Key(RESOLVED, Transition.REOPEN), BOT,
-        new Key(RESOLVED, Transition.AGENT_REOPEN), HUMAN);
+        entry(RESOLVED, Transition.REOPEN, BOT),
+        entry(RESOLVED, Transition.AGENT_REOPEN, HUMAN),
+        // The customer starts a new chat, whoever has this one.
+        entry(BOT, Transition.CUSTOMER_END, RESOLVED),
+        entry(WAITING, Transition.CUSTOMER_END, RESOLVED),
+        entry(HUMAN, Transition.CUSTOMER_END, RESOLVED));
+
+    private static Map.Entry<Key, Status> entry(Status from, Transition transition, Status to) {
+        return Map.entry(new Key(from, transition), to);
+    }
 
     private StateMachine() {}
 

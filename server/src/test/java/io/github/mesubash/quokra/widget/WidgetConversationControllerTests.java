@@ -82,6 +82,19 @@ class WidgetConversationControllerTests {
     }
 
     @Test
+    void startingANewChatGivesAFreshConversation() {
+        MvcTestResult first = post(BASE, null);
+        post(BASE + "/messages", "{\"clientMessageId\":\"c-1\",\"body\":\"hello\"}");
+
+        MvcTestResult fresh = post(BASE + "/new", null);
+
+        assertThat(fresh).hasStatus(HttpStatus.CREATED);
+        assertThat(id(fresh, "$.conversation.id")).isNotEqualTo(id(first, "$.conversation.id"));
+        assertThat(fresh).bodyJson().extractingPath("$.messages.length()").isEqualTo(1);
+        assertThat(id(get(BASE), "$.conversation.id")).isEqualTo(id(fresh, "$.conversation.id"));
+    }
+
+    @Test
     void sendsAMessage() {
         post(BASE, null);
 

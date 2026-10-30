@@ -79,6 +79,17 @@ public class WidgetConversationController {
             .body(new StartResponse(CustomerConversationView.of(conversation), messages));
     }
 
+    // "Start a new chat": closes the current one (even with an agent) and starts over with the greeting.
+    @PostMapping("/new")
+    @ResponseStatus(HttpStatus.CREATED)
+    public StartResponse startNew(@AuthenticationPrincipal Session session) {
+        rateLimiter.check("messages:" + session.visitorId(), RateLimiter.MESSAGES_PER_MINUTE);
+        Conversation conversation = service.startNew(session.tenantId(), session.visitorId(), session.customer());
+        List<MessageView> messages = service.messages(conversation.getId(), null, DEFAULT_LIMIT).stream()
+            .map(MessageView::of).toList();
+        return new StartResponse(CustomerConversationView.of(conversation), messages);
+    }
+
     @GetMapping("/messages")
     public MessagePage messages(@AuthenticationPrincipal Session session,
                                 @RequestParam(required = false) UUID after,

@@ -372,6 +372,37 @@ class ConversationServiceTests {
     }
 
     @Test
+    void startingANewChatClosesTheOldOneAndKeepsTheContact() {
+        UUID old = start();
+        service.handoff(old, HandoffReason.CUSTOMER_REQUEST, SenderType.CUSTOMER);
+        service.accept(old, new AgentRef("sam", "Sam"));
+
+        Conversation fresh = service.startNew(TENANT, visitor, null);
+
+        assertThat(fresh.getId()).isNotEqualTo(old);
+        assertThat(fresh.getStatus()).isEqualTo(Status.BOT);
+        assertThat(fresh.getCustomerEmail()).isEqualTo("pat@example.test");
+        assertThat(history(fresh.getId())).singleElement().extracting(Message::getBody).isEqualTo("Hello from the test bot.");
+        assertThat(service.get(old).getStatus()).isEqualTo(Status.RESOLVED);
+        assertThat(service.events(old)).last().satisfies(e -> {
+            assertThat(e.getType()).isEqualTo(EventType.RESOLVED);
+            assertThat(e.getReason()).isEqualTo(ConversationService.CUSTOMER_ENDED);
+        });
+        assertThat(service.current(TENANT, visitor)).get().extracting(Conversation::getId).isEqualTo(fresh.getId());
+    }
+
+    @Test
+    void blockedContactCantStartOver() {
+        start();
+        entityManager.flush();
+        jdbc.update("update contacts set blocked_at = now()");
+        entityManager.clear();
+
+        assertThatThrownBy(() -> service.startNew(TENANT, visitor, null))
+            .isInstanceOfSatisfying(ApiException.class, e -> assertThat(e.code()).isEqualTo("CONTACT_BLOCKED"));
+    }
+
+    @Test
     void blockedContactCantChat() {
         UUID id = start();
         entityManager.flush();
