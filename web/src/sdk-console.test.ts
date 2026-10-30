@@ -30,6 +30,7 @@ beforeEach(() => {
 
 afterEach(() => {
   agentConsole().unmount();
+  document.documentElement.className = "";
   delete (window as unknown as { Quokra?: unknown }).Quokra;
   document.body.innerHTML = "";
 });
@@ -138,5 +139,26 @@ describe("sdk.js agent console", () => {
     });
 
     expect(frame().src).toContain("&conversation=01a1874a-d18e-7a66-86ba-aca69283f91c");
+  });
+
+  it("follows the host page's dark mode by default, also when it changes", async () => {
+    document.documentElement.classList.add("dark");
+    agentConsole().init({ mode: "bubble", tenant: "demo", getToken: () => "t" });
+    expect(frame().src).toContain("&theme=dark");
+    const post = vi.spyOn(frame().contentWindow!, "postMessage");
+
+    document.documentElement.classList.remove("dark");
+    await flush();
+
+    expect(post).toHaveBeenCalledWith({ type: "theme.set", theme: "light", source: "quokra" }, window.location.origin);
+  });
+
+  it("passes a valid accent colour and ignores anything else", () => {
+    agentConsole().init({ mode: "bubble", tenant: "demo", getToken: () => "t", accent: "#0f766e" });
+    expect(frame().src).toContain("&accent=%230f766e");
+    agentConsole().unmount();
+
+    agentConsole().init({ mode: "bubble", tenant: "demo", getToken: () => "t", accent: "red;}" });
+    expect(frame().src).not.toContain("accent");
   });
 });

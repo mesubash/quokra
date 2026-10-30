@@ -418,7 +418,7 @@ The host side (`sdk.js`) only accepts messages from the Quokra origin. The panel
 
 | Call | Purpose |
 |---|---|
-| `Quokra.chat.init({ slug, pk, mode?, container?, position?, theme? })` | Mount the chat. `theme`: `"light"` (default), `"dark"` or `"auto"` (follows the visitor's system setting). `mode`: `"bubble"` (default), `"inline"`, `"popup"`. `container`: element or selector for inline. `position`: `"right"` (default) or `"left"` |
+| `Quokra.chat.init({ slug, pk, mode?, container?, position?, theme?, accent? })` | Mount the chat. `theme`: `"host"` (default: follows your page's light/dark mode, also when it changes), `"light"`, `"dark"` or `"auto"` (the visitor's system setting). `accent`: `#rrggbb` brand colour instead of the tenant's. `mode`: `"bubble"` (default), `"inline"`, `"popup"`. `container`: element or selector for inline. `position`: `"right"` (default) or `"left"` |
 | `Quokra.chat.open()` / `Quokra.chat.close()` | Open or close the panel |
 | `Quokra.chat.logout()` | The customer logged out of your site: the chat forgets them and starts over as a guest. Call it on logout, especially on shared computers |
 | `Quokra.chat.setTheme(theme)` | Change the theme, e.g. when your site's dark mode is toggled |
@@ -438,10 +438,10 @@ Declarative alternatives, no JavaScript needed:
 
 | Call | Purpose |
 |---|---|
-| `Quokra.console.mount(target, { tenant, getToken, height?, theme?, conversation? })` | **Full-page mode:** mount the console in `target`. `getToken`: function returning a fresh agent access token (or a Promise of one). `tenant`: slug, used to check which sites may frame the console |
-| `Quokra.console.init({ mode: "bubble", tenant, getToken, position?, theme?, fullView? })` | **Bubble mode:** floating button with the waiting-chats badge; opens the console in a side drawer. `fullView`: your full-page console, as a URL or a function `(conversationId) => …`; the drawer then shows an "Open full view" button. `conversation` (mount): a conversation id to open first |
+| `Quokra.console.mount(target, { tenant, getToken, height?, theme?, accent?, conversation? })` | **Full-page mode:** mount the console in `target`. `getToken`: function returning a fresh agent access token (or a Promise of one). `tenant`: slug, used to check which sites may frame the console |
+| `Quokra.console.init({ mode: "bubble", tenant, getToken, position?, theme?, accent?, fullView? })` | **Bubble mode:** floating button with the waiting-chats badge; opens the console in a side drawer. `fullView`: your full-page console, as a URL or a function `(conversationId) => …`; the drawer then shows an "Open full view" button. `conversation` (mount): a conversation id to open first |
 | `Quokra.console.open()` / `Quokra.console.close()` | Open or close the drawer (bubble mode) |
-| `Quokra.console.setTheme(theme)` | Change the theme (`"light"`, `"dark"`, `"auto"`) |
+| `Quokra.console.setTheme(theme)` | Change the theme (`"host"`, `"light"`, `"dark"`, `"auto"`) |
 | `Quokra.console.on(event, handler)` | Events: `ready`, `unread` (waiting count), `open`, `close`, `expand` (conversation id) |
 | `Quokra.console.unmount()` | Remove it |
 

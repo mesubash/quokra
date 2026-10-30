@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { embedded, onHostMessage, postToHost } from "../lib/bridge";
-import { textOn } from "../lib/color";
+import { accent, applyColor } from "../lib/theme";
 import { CloseIcon } from "../lib/icons";
 import { ApiError, widgetApi, type Conversation, type Tenant } from "../lib/api";
 import { Composer } from "./Composer";
@@ -89,12 +89,11 @@ export function ChatPanel({ slug }: { slug: string }) {
           setSetup({ status: "error", message: "This chat isn't set up for this page." });
           return;
         }
-        if (tenant.branding.primaryColor) {
-          document.documentElement.style.setProperty("--primary", tenant.branding.primaryColor);
-          document.documentElement.style.setProperty("--on-primary", textOn(tenant.branding.primaryColor));
-        }
+        // The host's accent wins over the tenant's colour.
+        const color = accent ?? tenant.branding.primaryColor;
+        if (color) applyColor(color);
         setSetup({ status: "ready", tenant, token: session.sessionToken });
-        postToHost({ type: "chat.ready", color: tenant.branding.primaryColor, teaser: tenant.teaser });
+        postToHost({ type: "chat.ready", color, teaser: tenant.teaser });
       })
       .catch(() => !cancelled && setSetup({ status: "error", message: "Chat is unavailable right now." }));
     return () => {

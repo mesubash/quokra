@@ -12,7 +12,8 @@
  *
  * JavaScript: Quokra.chat.init({ slug, pk, mode, container, position, teaserDelay }), open(), close(),
  *             identify(token), logout(), setTheme(theme), on(event, fn), destroy()
- * Theme: { theme: "light" | "dark" | "auto" } (or data-quokra-theme), default "light".
+ * Theme: { theme: "host" | "light" | "dark" | "auto", accent: "#rrggbb" } (or data-quokra-theme / data-quokra-accent).
+ *        "host" (default) follows the page's own light or dark mode, also when it changes.
  *
  * Agent console (in your dashboard; getToken returns the agent's access token or a Promise of it):
  *   Quokra.console.mount("#console", { tenant: "slug", getToken })
@@ -132,14 +133,62 @@
     document.head.appendChild(style);
   }
 
-  function frameUrl(slug, pk, mode, theme) {
+  function frameUrl(slug, pk, mode, theme, accent) {
     return ORIGIN + "/w/" + encodeURIComponent(slug) + "?pk=" + encodeURIComponent(pk) + "&mode=" + mode +
-      "&theme=" + theme;
+      "&theme=" + theme + accentParam(accent);
   }
 
-  // "light" (default), "dark", or "auto" (follow the visitor's system setting).
+  // ---- Theme ----
+  // "host" (default): follow the page this is embedded in, and keep following it when it changes.
+  // "light" / "dark": fixed. "auto": the visitor's system setting.
   function themeOf(value) {
-    return value === "dark" || value === "auto" ? value : "light";
+    return value === "light" || value === "dark" || value === "auto" ? value : "host";
+  }
+
+  // An optional brand colour (#rrggbb) that replaces the tenant's.
+  function accentParam(accent) {
+    return typeof accent === "string" && /^#[0-9a-fA-F]{6}$/.test(accent) ? "&accent=" + encodeURIComponent(accent) : "";
+  }
+
+  function luminance(rgb) {
+    var c = rgb.map(function (v) {
+      v /= 255;
+      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  }
+
+  function backgroundOf(el) {
+    if (!el || !window.getComputedStyle) return null;
+    var m = /rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?\)/.exec(getComputedStyle(el).backgroundColor || "");
+    if (!m || (m[4] !== undefined && Number(m[4]) === 0)) return null;
+    return [Number(m[1]), Number(m[2]), Number(m[3])];
+  }
+
+  // Reads the host page's theme the way most sites mark it: a "dark" class, a data-theme style attribute,
+  // the color-scheme property, and as a last resort how dark the page background is.
+  function hostTheme() {
+    var nodes = [document.documentElement, document.body];
+    for (var i = 0; i < nodes.length; i++) {
+      var n = nodes[i];
+      if (!n) continue;
+      if (n.classList.contains("dark")) return "dark";
+      if (n.classList.contains("light")) return "light";
+      var attr = n.getAttribute("data-theme") || n.getAttribute("data-mode") || n.getAttribute("data-color-scheme") ||
+        n.getAttribute("data-bs-theme") || "";
+      if (/dark/i.test(attr)) return "dark";
+      if (/light/i.test(attr)) return "light";
+    }
+    var scheme = (window.getComputedStyle && getComputedStyle(document.documentElement).colorScheme) || "";
+    if (/^\s*dark\s*$/.test(scheme)) return "dark";
+    var bg = backgroundOf(document.body) || backgroundOf(document.documentElement);
+    if (bg) return luminance(bg) < 0.4 ? "dark" : "light";
+    return /dark/.test(scheme) ? "auto" : "light";
+  }
+
+  // What the frame is told: "host" becomes the host's current light or dark.
+  function resolveTheme(mode) {
+    return mode === "host" ? hostTheme() : mode;
   }
 
   function isDark(theme) {
@@ -150,6 +199,36 @@
   // The frame's own background shows while it loads, so it matches the theme too.
   function paintFrame(frame, theme) {
     frame.style.background = isDark(theme) ? "#0c0c0e" : "#fff";
+  }
+
+  // One watcher for the whole page: when the host switches theme, every "host" widget follows.
+  var watchingHost = false;
+  function watchHost() {
+    if (watchingHost) return;
+    watchingHost = true;
+    var sync = function () {
+      if (state) applyChatTheme();
+      if (consoleState) applyConsoleTheme();
+    };
+    if (window.MutationObserver) {
+      var observer = new MutationObserver(sync);
+      var options = { attributes: true, attributeFilter: ["class", "style", "data-theme", "data-mode", "data-color-scheme", "data-bs-theme"] };
+      observer.observe(document.documentElement, options);
+      if (document.body) observer.observe(document.body, options);
+    }
+    if (window.matchMedia) {
+      var media = window.matchMedia("(prefers-color-scheme: dark)");
+      if (media.addEventListener) media.addEventListener("change", sync);
+    }
+  }
+
+  function applyChatTheme() {
+    var theme = resolveTheme(state.theme);
+    if (theme === state.appliedTheme) return;
+    state.appliedTheme = theme;
+    paintFrame(state.frame, theme);
+    if (state.teaser) state.teaser.classList.toggle("dark", isDark(theme));
+    post("theme.set", { theme: theme });
   }
 
   function post(type, fields) {
@@ -252,7 +331,7 @@
   function showTeaser() {
     if (!state || state.open || state.teaser || storage(teaserKey())) return;
     var teaser = document.createElement("div");
-    teaser.className = "quokra-teaser " + state.position + (isDark(state.theme) ? " dark" : "");
+    teaser.className = "quokra-teaser " + state.position + (isDark(state.appliedTheme) ? " dark" : "");
     var text = document.createElement("button");
     text.type = "button";
     text.className = "quokra-teaser-text";
@@ -334,8 +413,10 @@
       frame.id = FRAME_ID;
       frame.title = "Chat";
       var theme = themeOf(options.theme);
-      frame.src = frameUrl(options.slug, options.pk, mode, theme);
-      paintFrame(frame, theme);
+      var applied = resolveTheme(theme);
+      frame.src = frameUrl(options.slug, options.pk, mode, applied, options.accent);
+      paintFrame(frame, applied);
+      if (theme === "host") watchHost();
       state = {
         frame: frame,
         button: null,
@@ -347,6 +428,7 @@
         teaserText: null,
         ready: false,
         theme: theme,
+        appliedTheme: applied,
         animation: null,
         waveTimer: null,
         teaserDelay: options.teaserDelay === "off" ? -1 : isFinite(delay) && options.teaserDelay !== undefined ? delay : DEFAULT_TEASER_DELAY,
@@ -431,9 +513,8 @@
     setTheme: function (value) {
       if (!state) return;
       state.theme = themeOf(value);
-      paintFrame(state.frame, state.theme);
-      if (state.teaser) state.teaser.classList.toggle("dark", isDark(state.theme));
-      post("theme.set", { theme: state.theme });
+      if (state.theme === "host") watchHost();
+      applyChatTheme();
     },
 
     // token: a short-lived identity token from your backend, signed with your secret key.
@@ -514,6 +595,14 @@
     style.id = CONSOLE_STYLE_ID;
     style.textContent = css;
     document.head.appendChild(style);
+  }
+
+  function applyConsoleTheme() {
+    var theme = resolveTheme(consoleState.theme);
+    if (theme === consoleState.appliedTheme) return;
+    consoleState.appliedTheme = theme;
+    paintFrame(consoleState.frame, theme);
+    postToConsole({ type: "theme.set", theme: theme });
   }
 
   function consoleUrl(tenant, mode, theme, extra) {
@@ -604,15 +693,17 @@
     frame.id = "quokra-console-frame";
     frame.title = "Support console";
     var theme = themeOf(options.theme);
-    var extra = "";
+    var applied = resolveTheme(theme);
+    var extra = accentParam(options.accent);
     if (mode === "bubble" && options.fullView) extra += "&expand=1";
     if (mode === "full" && typeof options.conversation === "string" && /^[0-9a-f-]{36}$/i.test(options.conversation)) {
       extra += "&conversation=" + options.conversation;
     }
-    frame.src = consoleUrl(options.tenant, mode, theme, extra);
-    paintFrame(frame, theme);
+    frame.src = consoleUrl(options.tenant, mode, applied, extra);
+    paintFrame(frame, applied);
+    if (theme === "host") watchHost();
     consoleState = { frame: frame, button: null, mode: mode, open: mode === "full", getToken: options.getToken,
-      theme: theme, fullView: options.fullView || null };
+      theme: theme, appliedTheme: applied, fullView: options.fullView || null };
     window.addEventListener("message", onConsoleMessage);
     return frame;
   }
@@ -675,8 +766,8 @@
     setTheme: function (value) {
       if (!consoleState) return;
       consoleState.theme = themeOf(value);
-      paintFrame(consoleState.frame, consoleState.theme);
-      postToConsole({ type: "theme.set", theme: consoleState.theme });
+      if (consoleState.theme === "host") watchHost();
+      applyConsoleTheme();
     },
 
     unmount: function () {
@@ -697,6 +788,7 @@
         pk: script.dataset.quokraPk,
         position: script.dataset.quokraPosition,
         theme: script.dataset.quokraTheme,
+        accent: script.dataset.quokraAccent,
         teaserDelay: script.dataset.quokraTeaserDelay,
       });
       return;

@@ -34,7 +34,7 @@ Add one line before `</body>`:
 
 A chat bubble appears in the bottom-right corner. Branding (logo, colour, name) comes from your tenant settings; no code change is needed when it changes.
 
-Optional attributes: `data-quokra-theme` is `light` (default), `dark` or `auto` (follows the visitor's system setting); `data-quokra-position="left"` puts the bubble on the left; `data-quokra-teaser-delay` sets when the greeting card appears next to the bubble, in milliseconds (default `5000`, `off` to never show it). The card's text is the `teaser` in your bot file.
+Optional attributes: `data-quokra-theme` is `host` (default), `light`, `dark` or `auto`; `data-quokra-accent="#0f766e"` replaces the brand colour; `data-quokra-position="left"` puts the bubble on the left; `data-quokra-teaser-delay` sets when the greeting card appears next to the bubble, in milliseconds (default `5000`, `off` to never show it). The card's text is the `teaser` in your bot file.
 
 ---
 
@@ -188,7 +188,7 @@ export function SupportPage() {
 }
 ```
 
-Pass `theme: "dark"` (or `"auto"`) to match a dark dashboard, and call `Quokra.console.setTheme(…)` when the user switches.
+The console and chat follow your page's light/dark mode by themselves (`theme: "host"`, the default), and switch when your page does. They recognise a `dark`/`light` class or a `data-theme`/`data-mode`/`data-bs-theme` attribute on `<html>` or `<body>`, the CSS `color-scheme`, and otherwise how dark your page background is. To force one, pass `theme: "light"`, `"dark"` or `"auto"`, or call `setTheme(…)`. Pass `accent: "#rrggbb"` to use your own brand colour.
 
 `getToken` is called when the console starts and whenever its token expires. Return your current access token, refreshing it first if needed.
 
