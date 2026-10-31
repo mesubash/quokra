@@ -32,7 +32,7 @@ jobs:
         working-directory: web
     steps:
       - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 10.12.4
       - uses: actions/setup-node@v5
@@ -51,7 +51,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - run: docker compose -f docker-compose.yml -f e2e/docker-compose.e2e.yml up -d --build --wait postgres quokra
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 10.12.4
       - uses: actions/setup-node@v5
