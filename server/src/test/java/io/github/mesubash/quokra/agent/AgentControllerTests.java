@@ -101,8 +101,10 @@ class AgentControllerTests {
     void requiresTheAgentRole() throws Exception {
         String noRole = devTokens.sign("alice", "Alice", List.of("SOMETHING_ELSE"));
 
-        assertThat(get(noRole, "/me")).hasStatus(HttpStatus.FORBIDDEN)
+        assertThat(get(noRole, "/tenants")).hasStatus(HttpStatus.FORBIDDEN)
             .bodyJson().extractingPath("$.error.code").isEqualTo("FORBIDDEN");
+        // /me needs no role (company admins can come from the token alone); it says what they may use.
+        assertThat(get(noRole, "/me")).bodyJson().extractingPath("$.agent").isEqualTo(false);
     }
 
     @Test
