@@ -39,8 +39,12 @@ quokra:
     roles-claim: ${QUOKRA_AGENT_ROLES_CLAIM:roles}
     role: ${QUOKRA_AGENT_ROLE:SUPPORT_AGENT}
   admins:
-    # People with this role (in the same roles claim) manage companies, keys, sites and agents.
+    # Server admins: people with this role (in the same roles claim) manage every company and create new ones.
     role: ${QUOKRA_ADMIN_ROLE:QUOKRA_ADMIN}
+    # Company admins can also come from the token: a claim (dotted path, e.g. "permissions" or "scope") whose
+    # values look like company-value, with {tenant} the company's slug. Empty: only the Admin switch in Settings.
+    company-claim: ${QUOKRA_COMPANY_ADMIN_CLAIM:}
+    company-value: ${QUOKRA_COMPANY_ADMIN_VALUE:quokra:{tenant}:admin}
   tenant-secrets:
     # 32 random bytes, base64. Encrypts tenant secret keys in the database. Empty: identify is off.
     encryption-key: ${TENANT_SECRET_ENCRYPTION_KEY:}

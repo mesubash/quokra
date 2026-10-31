@@ -20,6 +20,7 @@ import io.github.mesubash.quokra.conversation.NoteView;
 import io.github.mesubash.quokra.conversation.PageCursor;
 import io.github.mesubash.quokra.conversation.Status;
 import io.github.mesubash.quokra.security.AgentJwtConverter;
+import io.github.mesubash.quokra.security.TenantAccess;
 import io.github.mesubash.quokra.tenant.Tenant;
 import io.github.mesubash.quokra.tenant.TenantAgents;
 import io.github.mesubash.quokra.tenant.TenantRepository;
@@ -59,8 +60,9 @@ public class AgentController {
     static final int HISTORY_LIMIT = 100;
     static final int HISTORY_ITEMS = 20;
 
-    // agent / admin: which parts of the console this person may use.
-    record Me(String sub, String name, List<String> tenants, boolean agent, boolean admin) {}
+    // agent / admin: which parts of the console this person may use (admin: server admin, every company).
+    // manages: the companies whose settings they may change as company admin.
+    record Me(String sub, String name, List<String> tenants, boolean agent, boolean admin, List<String> manages) {}
 
     // attachments: agents can send images in this tenant's chats. primaryColor: the company's brand colour.
     record TenantItem(UUID id, String slug, String displayName, boolean attachments, String primaryColor) {}
@@ -103,11 +105,13 @@ public class AgentController {
     private final TypingSignals typing;
     private final RateLimiter rateLimiter;
     private final AgentPresence presence;
+    private final TenantAccess access;
 
     public AgentController(ConversationService service, TenantRepository tenants, TenantAgents tenantAgents,
                            ContactRepository contacts, AgentReads reads, AgentJwtConverter agentTokens,
                            CannedReplies replies, TypingSignals typing, RateLimiter rateLimiter,
-                           AgentPresence presence) {
+                           AgentPresence presence, TenantAccess access) {
+        this.access = access;
         this.presence = presence;
         this.replies = replies;
         this.typing = typing;
@@ -130,7 +134,8 @@ public class AgentController {
         }
         tenantAgents.rememberProfile(jwt.getSubject(), name, email);
         return new Me(jwt.getSubject(), name, myTenants(jwt).values().stream().map(Tenant::getSlug).sorted().toList(),
-            hasRole(auth, AgentJwtConverter.AGENT_ROLE), hasRole(auth, AgentJwtConverter.ADMIN_ROLE));
+            hasRole(auth, AgentJwtConverter.AGENT_ROLE), hasRole(auth, AgentJwtConverter.ADMIN_ROLE),
+            List.copyOf(access.managed(auth)));
     }
 
     private static boolean hasRole(Authentication auth, String role) {

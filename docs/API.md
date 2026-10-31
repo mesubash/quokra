@@ -356,9 +356,14 @@ No body; `204`. The customer sees "<agent name> is typing…" (event `typing`). 
 
 ## 4b. Admin endpoints
 
-For people with the admin role (`QUOKRA_ADMIN`, set with `QUOKRA_ADMIN_ROLE`, in the same roles claim as the agent role). Same token as the agent API; everything else gets `403`. The console shows these under **Settings** (the gear icon in its header).
+Same token as the agent API. The console shows these under **Settings** (the gear icon in its header). Two kinds of admin:
 
-**The admin role runs the whole server:** an admin can see and change every company (its keys, sites, agents and bot), not only the one a console is embedded for. Give it only to the people who operate the Quokra server, not to each company's staff.
+- **Server admins** have the admin role (`QUOKRA_ADMIN`, set with `QUOKRA_ADMIN_ROLE`, in the same roles claim as the agent role). They see and change every company and are the only ones who can create companies. Give it only to the people who operate the Quokra server.
+- **Company admins** manage one company: everything under `/admin/tenants/{slug}`, plus the read-only `/admin/bots`, `/admin/storage`, `/admin/mail` and `/admin/retention`. Someone is company admin of a company when
+  - their membership has `admin: true` (the **Admin** switch in Settings → Agents, or an invite with `admin: true`), or
+  - their token names it, when `QUOKRA_COMPANY_ADMIN_CLAIM` is set: a claim (dotted path, e.g. `permissions`, `groups` or `scope`) with a value like `QUOKRA_COMPANY_ADMIN_VALUE` (default `quokra:{tenant}:admin`, `{tenant}` being the slug). The claim may be a list or one space-separated string. This lets your identity provider decide, without a role per company.
+
+Either counts. Anything else gets `403`, including another company's slug.
 
 ```ts
 interface Tenant {
@@ -387,13 +392,14 @@ interface Tenant {
 | `GET /admin/retention` | What companies may choose for `retentionMonths`: `{ "minMonths": 1, "maxMonths": 60 }`; `maxMonths: 0` means 0 (forever) is allowed too. Anything else is `400 VALIDATION_ERROR` |
 | `GET /admin/storage` | Whether image storage works: `{ "ok": true, "store": "disk", "problem": null }`. Checked by writing and reading a small file, at most every 5 minutes |
 | `GET /admin/bots` | Bot files the server has: `{ "items": ["demo", …] }` |
-| `GET /admin/tenants` | All tenants: `{ "items": [Tenant, …] }` |
-| `POST /admin/tenants` | Create one: `{ slug, displayName, widgetOrigins, consoleOrigins, logoUrl?, primaryColor?, botConfig, autoResolveMinutes?, openingHours? }` → `201 Tenant` with a new publishable key. `409 SLUG_TAKEN` |
+| `GET /admin/tenants` | The tenants the caller manages (all of them for server admins): `{ "items": [Tenant, …] }` |
+| `POST /admin/tenants` | Server admins only. Create one: `{ slug, displayName, widgetOrigins, consoleOrigins, logoUrl?, primaryColor?, botConfig, autoResolveMinutes?, openingHours? }` → `201 Tenant` with a new publishable key. `409 SLUG_TAKEN` |
 | `GET /admin/tenants/{slug}` | One tenant |
 | `PUT /admin/tenants/{slug}` | Replace its settings (same body; the slug can't change) |
 | `POST /admin/tenants/{slug}/secret` | New secret key for identifying customers: `{ "secretKey": "sk_…" }`, shown only this once; the old one stops working. `409 SECRETS_DISABLED` without `TENANT_SECRET_ENCRYPTION_KEY` |
-| `GET /admin/tenants/{slug}/agents` | `{ "agents": [{ sub, name, email }], "invites": [{ email, createdAt }] }` |
-| `POST /admin/tenants/{slug}/agents` | `{ "email": "…" }` → `{ "result": "ADDED" }` if someone already signed in with that verified email, else `"INVITED"` |
+| `GET /admin/tenants/{slug}/agents` | `{ "agents": [{ sub, name, email, admin, online }], "invites": [{ email, admin, createdAt }] }`. `admin` is the switch only; people who are admins through their token aren't listed unless they're agents here too |
+| `POST /admin/tenants/{slug}/agents` | `{ "email": "…", "admin": false }` → `{ "result": "ADDED" }` if someone already signed in with that verified email, else `"INVITED"`. `admin: true` makes them company admin (adding someone again never takes it away) |
+| `PUT /admin/tenants/{slug}/agents/{sub}` | `{ "admin": true }` makes an agent company admin, `false` a plain agent again (`204`). `404 AGENT_NOT_FOUND` |
 | `DELETE /admin/tenants/{slug}/agents/{sub}` | Remove an agent (`204`) |
 | `DELETE /admin/tenants/{slug}/invites/{email}` | Cancel an invite (`204`) |
 | `GET /admin/tenants/{slug}/bot` | `{ "custom": false, "file": "demo", "bot": { greeting, teaser?, menu: [{ id, title, keywords, answer }], human, urgent, fallback, max_fallbacks, handoff_message, texts } }`: the same fields as a bot file. `custom` is true once edited here |
@@ -408,7 +414,7 @@ Validation (`400 VALIDATION_ERROR`, the message names the field): slug of 2–40
 
 **Invites:** an invited agent joins on their first `GET /agent/me` whose token has that `email` with `email_verified: true`. Unverified emails never match.
 
-`GET /agent/me` also says what the caller may use: `{ …, "agent": true, "admin": true }`. Admins without the agent role only get Settings.
+`GET /agent/me` also says what the caller may use: `{ …, "agent": true, "admin": false, "manages": ["acme"] }`. `admin` is server admin; `manages` lists the companies they're company admin of. Admins without the agent role only get Settings. It needs no role, so company admins named only in their token can call it.
 
 ---
 

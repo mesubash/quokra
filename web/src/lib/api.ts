@@ -255,9 +255,11 @@ export interface Me {
   sub: string;
   name: string;
   tenants: string[];
-  // Which parts of the console this person may use.
+  // Which parts of the console this person may use. admin: server admin, every company.
   agent: boolean;
   admin: boolean;
+  // Companies whose settings they may change as company admin.
+  manages: string[];
 }
 
 // ---- Admin ----
@@ -334,8 +336,9 @@ export interface StorageStatus {
 }
 
 export interface AdminAgents {
-  agents: { sub: string; name: string; email: string | null; online: boolean }[];
-  invites: { email: string; createdAt: string }[];
+  // admin: company admin, may change this company's settings.
+  agents: { sub: string; name: string; email: string | null; admin: boolean; online: boolean }[];
+  invites: { email: string; admin: boolean; createdAt: string }[];
 }
 
 // A saved answer; {name} becomes the customer's name when it's inserted.
@@ -384,8 +387,10 @@ export function adminApi(getToken: () => string, refresh?: FreshToken) {
     update: (s: string, form: TenantForm) => call<AdminTenant>("PUT", `/tenants/${slug(s)}`, form),
     rotateSecret: (s: string) => call<{ secretKey: string }>("POST", `/tenants/${slug(s)}/secret`),
     agents: (s: string) => call<AdminAgents>("GET", `/tenants/${slug(s)}/agents`),
-    addAgent: (s: string, email: string) =>
-      call<{ result: "ADDED" | "INVITED" }>("POST", `/tenants/${slug(s)}/agents`, { email }),
+    addAgent: (s: string, email: string, admin: boolean) =>
+      call<{ result: "ADDED" | "INVITED" }>("POST", `/tenants/${slug(s)}/agents`, { email, admin }),
+    setAgentAdmin: (s: string, sub: string, admin: boolean) =>
+      call<void>("PUT", `/tenants/${slug(s)}/agents/${encodeURIComponent(sub)}`, { admin }),
     removeAgent: (s: string, sub: string) => call<void>("DELETE", `/tenants/${slug(s)}/agents/${encodeURIComponent(sub)}`),
     removeInvite: (s: string, email: string) =>
       call<void>("DELETE", `/tenants/${slug(s)}/invites/${encodeURIComponent(email)}`),

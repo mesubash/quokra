@@ -57,8 +57,9 @@ to the bot or block a contact from the ⋯ menu. The details panel shows the cus
   and that call is retried once, so `getToken` should refresh silently (e.g. with your OIDC library's
   refresh token). If no token arrives, the console says "Couldn't sign you in" with Try again.
 
-The console follows your dashboard's light or dark mode by itself. Agents who also have the
-`QUOKRA_ADMIN` role also see the company's sections in **Settings** (the gear icon); everyone gets
+The console follows your dashboard's light or dark mode by itself. Company admins (the **Admin** switch in
+Settings → Agents) and server admins (the `QUOKRA_ADMIN` role) also see the company's sections in
+**Settings** (the gear icon); everyone gets
 **Notifications** there. Settings only show the company in `tenant`; to manage all companies, see
 [Set up a company](02-set-up-a-company.md).
 

@@ -1,9 +1,10 @@
 # A public demo on a free host (see docs/guides/09-free-demo.md), on top of the "demo" profile:
 # no identity provider, agents sign in with the demo sign-in (POST /dev/agent-token) from the playground.
-# Anyone who can reach it can act as a demo agent and admin, so never use it for real customers.
+# Anyone who can reach it can act as a demo agent and admin of the demo company, so never use it for real
+# customers.
 spring:
   mail:
-    # No email from a public demo: anyone can sign in as an admin and choose who gets alerts.
+    # No email from a public demo: anyone can sign in as an admin of the demo company and choose who gets alerts.
     host: ""
 
 quokra:
@@ -11,6 +12,8 @@ quokra:
     from: ""
   dev:
     agent-tokens: true
+    # Demo sign-ins are company admins of the demo company (db/dev), never server admins.
+    agent-token-server-admin: false
     # The playground's address(es), e.g. https://quokra-playground.pages.dev
     agent-token-origins: ${QUOKRA_DEMO_ORIGINS}
   demo:

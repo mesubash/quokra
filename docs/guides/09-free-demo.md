@@ -12,7 +12,8 @@ What to expect from free plans: Quokra sleeps after about 15 minutes without vis
 the free CPU takes a few minutes. To keep it awake, have an uptime monitor (e.g. UptimeRobot) open
 `https://<your-quokra-address>/actuator/health/liveness` every 5 to 10 minutes; one always-on service fits
 in Render's monthly free hours. Images are off, and email can't be turned on (the `public-demo` profile
-keeps it off, since anyone can sign in as an admin there).
+keeps it off, since anyone can sign in as an admin of the demo company there). Demo sign-ins are company
+admins of the demo company only, never server admins, so visitors can't add companies.
 
 ## 1. The database (Neon)
 

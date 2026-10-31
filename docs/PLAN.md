@@ -61,6 +61,7 @@ AI answers · WhatsApp / Instagram / email · reports · automations · file att
 |---|---|---|---|
 | **v1** | **FAQ bot + handoff** | Chat panel + console (full-page or bubble), both embeddable via `sdk.js`; FAQ bot; handoff; realtime; tenants by publishable key; guests + identified customers; agents via OIDC | 3–4 weeks |
 | **v2** | **Daily operations (done)** | Notifications in the console and browser, email alerts (when SMTP is set up), auto-resolve after silence, saved replies, business hours + offline message, the bot and its wording edited in Settings, Settings behind a gear (scoped to the console's company), images (disk or S3), "start a new chat", replying to a message, typing indicator, agent online / away, retention per company within server limits. **Later, when someone asks:** more languages, mobile push, standalone console login | 2–3 weeks |
+| **v2.1** | **Company admins** | Admins per company (Admin switch in Settings → Agents, or a claim in the identity provider's token) next to the server-wide admin role, so one server can host many companies, or many products of one company, each managing itself | days |
 | v3 | AI answers | Knowledge documents, search with sources, grounded LLM answers, evaluation set, AI summary on handoff | 3–4 weeks |
 | v4 | Channels + lookups | WhatsApp Cloud API, email; identity-verified lookups through backend-validated tools | 3–4 weeks |
 | v5 | Platform | Tenant self-service, per-tenant identity providers, analytics, CSAT, public release | later |

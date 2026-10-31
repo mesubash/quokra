@@ -11,6 +11,7 @@ import io.github.mesubash.quokra.common.ApiException;
 import io.github.mesubash.quokra.conversation.RetentionLimits;
 import io.github.mesubash.quokra.mail.MailCheck;
 import io.github.mesubash.quokra.conversation.Message;
+import io.github.mesubash.quokra.security.TenantAccess;
 import io.github.mesubash.quokra.tenant.Tenant;
 import io.github.mesubash.quokra.tenant.TenantAgents;
 import io.github.mesubash.quokra.tenant.TenantRepository;
@@ -23,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -35,7 +37,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-// Admin endpoints: set up the companies that use Quokra. Needs the admin role (see SecurityConfig).
+// Admin endpoints: set up the companies that use Quokra. Server admins manage every company, company
+// admins only their own (TenantAccess, checked in SecurityConfig).
 @RestController
 @RequestMapping("/api/v1/admin")
 public class AdminController {
@@ -44,11 +47,14 @@ public class AdminController {
 
     record SecretResponse(String secretKey) {}
 
-    record AgentView(String sub, String name, String email, boolean online) {}
+    record AgentView(String sub, String name, String email, boolean admin, boolean online) {}
 
     record AgentsResponse(List<AgentView> agents, List<TenantAgents.Invite> invites) {}
 
-    record AddAgentRequest(@NotBlank @Email @Size(max = 254) String email) {}
+    // admin: as company admin.
+    record AddAgentRequest(@NotBlank @Email @Size(max = 254) String email, boolean admin) {}
+
+    record AgentForm(boolean admin) {}
 
     record AddAgentResponse(TenantAgents.Added result) {}
 
@@ -69,11 +75,13 @@ public class AdminController {
     private final AgentPresence presence;
     private final RetentionLimits retention;
     private final MailCheck mail;
+    private final TenantAccess access;
 
     public AdminController(TenantAdmin tenants, TenantAgents agents, TenantSecrets secrets, BotConfigRegistry bots,
                            CannedReplies replies, TenantBots tenantBots, TenantRepository tenantRepository,
                            StorageCheck storage, AgentPresence presence, RetentionLimits retention,
-                           MailCheck mail) {
+                           MailCheck mail, TenantAccess access) {
+        this.access = access;
         this.mail = mail;
         this.retention = retention;
         this.storage = storage;
@@ -110,9 +118,14 @@ public class AdminController {
         return retention;
     }
 
+    // Every company for server admins; for company admins, only theirs.
     @GetMapping("/tenants")
-    public Items<TenantView> list() {
-        return new Items<>(tenants.list());
+    public Items<TenantView> list(Authentication auth) {
+        if (TenantAccess.serverAdmin(auth)) {
+            return new Items<>(tenants.list());
+        }
+        var managed = access.managed(auth);
+        return new Items<>(tenants.list().stream().filter(t -> managed.contains(t.slug())).toList());
     }
 
     @PostMapping("/tenants")
@@ -148,7 +161,7 @@ public class AdminController {
         List<TenantAgents.Agent> list = agents.agents(tenant.id());
         var online = presence.online(list.stream().map(TenantAgents.Agent::sub).toList());
         return new AgentsResponse(list.stream()
-            .map(a -> new AgentView(a.sub(), a.name(), a.email(), online.contains(a.sub()))).toList(),
+            .map(a -> new AgentView(a.sub(), a.name(), a.email(), a.admin(), online.contains(a.sub()))).toList(),
             agents.invites(tenant.id()));
     }
 
@@ -156,7 +169,17 @@ public class AdminController {
     public AddAgentResponse addAgent(@AuthenticationPrincipal Jwt jwt, @PathVariable String slug,
                                      @Valid @RequestBody AddAgentRequest request) {
         var tenant = tenants.get(slug);
-        return new AddAgentResponse(agents.addByEmail(tenant.id(), request.email().strip(), jwt.getSubject()));
+        return new AddAgentResponse(agents.addByEmail(tenant.id(), request.email().strip(), request.admin(),
+            jwt.getSubject()));
+    }
+
+    // Makes an agent company admin, or a plain agent again.
+    @PutMapping("/tenants/{slug}/agents/{agentSub}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void updateAgent(@PathVariable String slug, @PathVariable String agentSub, @RequestBody AgentForm form) {
+        if (!agents.setAdmin(tenants.get(slug).id(), agentSub, form.admin())) {
+            throw ApiException.notFound("AGENT_NOT_FOUND", "That agent isn't in this company");
+        }
     }
 
     @DeleteMapping("/tenants/{slug}/agents/{agentSub}")

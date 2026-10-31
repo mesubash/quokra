@@ -8,6 +8,14 @@ What changed, newest first. Each entry says what people notice; the commits have
 
 ## Unreleased
 
+**Company admins**
+- Someone can now manage one company's settings without managing the whole server: turn on **Admin** for
+  them in Settings → Agents (or invite them as admin). They only see their own company and can't create
+  new ones. Server admins (the admin role) still manage everything.
+- Or let the identity provider decide: with `QUOKRA_COMPANY_ADMIN_CLAIM` set, a token value like
+  `quokra:shop:admin` makes someone company admin of `shop`.
+- The public demo's sign-in is now company admin of the demo company only.
+
 **Fixes** (from a code and security review of 2.0)
 - An agent can only reopen the customer's latest chat; reopening an older one (after "Start a new chat")
   could leave replies the customer never sees and break their next message.

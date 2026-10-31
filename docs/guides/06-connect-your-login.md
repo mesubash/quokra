@@ -4,7 +4,8 @@ Agents sign in with your company's own login (any OIDC provider: Keycloak, Auth0
 own). Quokra never sees passwords; it only checks the access tokens your dashboard hands it.
 
 1. **In your identity provider:**
-   - Create a role for support staff, `SUPPORT_AGENT`, and one for Quokra admins, `QUOKRA_ADMIN`.
+   - Create a role for support staff, `SUPPORT_AGENT`, and one for the people who run Quokra,
+     `QUOKRA_ADMIN` (server admins, every company).
    - Make access tokens include the audience `quokra-api` and the roles (in a claim like `roles` or
      `realm_access.roles`).
    - Give your dashboard a client that signs agents in (for a single-page app: public client with PKCE).
@@ -17,6 +18,16 @@ own). Quokra never sees passwords; it only checks the access tokens your dashboa
 
    Optional: `OIDC_AUDIENCE`, `QUOKRA_AGENT_ROLE`, `QUOKRA_ADMIN_ROLE`, `QUOKRA_AGENT_NAME_CLAIM`, and
    `OIDC_JWKS_URI` if the provider has no discovery document.
+
+   **Company admins from your provider** (optional): if it already knows who manages which company, as a
+   permission, group or scope, point Quokra at it instead of switching **Admin** on in Settings → Agents:
+
+   ```bash
+   QUOKRA_COMPANY_ADMIN_CLAIM=permissions            # or groups, scope, resource_access.quokra.roles, …
+   QUOKRA_COMPANY_ADMIN_VALUE=quokra:{tenant}:admin  # {tenant} is the company's slug
+   ```
+
+   A token with `"permissions": ["quokra:shop:admin"]` then manages the company `shop`, and only it.
 3. **In your dashboard**, pass the signed-in agent's token: `getToken: () => auth.getAccessToken()`.
 4. **Check it** with a real token: `GET /api/v1/agent/me` answers `200` with the agent's name; `401`
    means the token didn't pass (issuer, audience, signature or expiry), `403` that the role is missing.

@@ -69,9 +69,11 @@ export function ConsoleApp({ getToken, freshToken, onUnauthorized, onSignOut, on
   const [query, setQuery] = useState("");
   const search = useDebounced(query.trim(), 300);
   const list = useConversationList(api, tab, me?.sub ?? null, tenants, search);
-  const admin = useAdmin(admins, me?.admin ?? false);
+  // Server admins manage every company; company admins the ones in manages.
+  const manages = me !== null && (me.admin || me.manages.length > 0);
+  const admin = useAdmin(admins, manages);
   // Admins without the agent role only get settings.
-  const adminOnly = me !== null && me.admin && !me.agent;
+  const adminOnly = me !== null && manages && !me.agent;
   const presence = usePresence(api, !!me?.agent);
   const showSettings = settingsOpen || adminOnly;
 
@@ -365,8 +367,9 @@ export function ConsoleApp({ getToken, freshToken, onUnauthorized, onSignOut, on
       </section>
       {showSettings && (
         <Settings
-          admin={me?.admin ? admin : undefined}
-          api={me?.admin ? admins : undefined}
+          admin={manages ? admin : undefined}
+          api={manages ? admins : undefined}
+          canCreate={me?.admin ?? false}
           scope={SCOPE}
           notifications={{ prefs, onChange: setPrefs, host: hostNotify, onTurnOn: askPermission }}
           onClose={adminOnly ? undefined : () => setSettingsOpen(false)}

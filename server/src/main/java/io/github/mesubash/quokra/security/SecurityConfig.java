@@ -28,11 +28,12 @@ public class SecurityConfig {
     static final AccessDeniedHandler FORBIDDEN = (request, response, e) ->
         writeError(response, HttpServletResponse.SC_FORBIDDEN, "FORBIDDEN", "Not allowed");
 
-    // Agent and admin endpoints: OIDC access tokens with the agent or admin role.
+    // Agent and admin endpoints: OIDC access tokens. Agents need the agent role; settings need the server
+    // admin role or being admin of that company (TenantAccess).
     @Bean
     @Order(1)
-    SecurityFilterChain agentChain(HttpSecurity http, ObjectProvider<JwtDecoder> decoder, AgentJwtConverter converter)
-            throws Exception {
+    SecurityFilterChain agentChain(HttpSecurity http, ObjectProvider<JwtDecoder> decoder, AgentJwtConverter converter,
+                                   TenantAccess access) throws Exception {
         common(http.securityMatcher("/api/v1/agent/**", "/api/v1/admin/**"));
         JwtDecoder jwtDecoder = decoder.getIfAvailable();
         if (jwtDecoder != null) {
@@ -42,9 +43,12 @@ public class SecurityConfig {
                 .accessDeniedHandler(FORBIDDEN));
         }
         http.authorizeHttpRequests(auth -> auth
-            .requestMatchers("/api/v1/admin/**").hasRole(AgentJwtConverter.ADMIN_ROLE)
-            // Admins who aren't agents still need to know who they are.
-            .requestMatchers("/api/v1/agent/me").hasAnyRole(AgentJwtConverter.AGENT_ROLE, AgentJwtConverter.ADMIN_ROLE)
+            // New companies only by server admins.
+            .requestMatchers(HttpMethod.POST, "/api/v1/admin/tenants").hasRole(AgentJwtConverter.ADMIN_ROLE)
+            .requestMatchers("/api/v1/admin/tenants/{slug}/**").access(access.forTenant())
+            .requestMatchers("/api/v1/admin/**").access(access.anyCompany())
+            // Admins who aren't agents (including company admins named in the token) still need to know who they are.
+            .requestMatchers("/api/v1/agent/me").authenticated()
             .anyRequest().hasRole(AgentJwtConverter.AGENT_ROLE));
         return http.build();
     }
