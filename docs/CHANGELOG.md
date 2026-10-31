@@ -6,7 +6,7 @@ What changed, newest first. Each entry says what people notice; the commits have
 
 ---
 
-## Unreleased
+## 2.1.0 (company admins and review fixes), 2026-10-31
 
 **Company admins**
 - Someone can now manage one company's settings without managing the whole server: turn on **Admin** for
