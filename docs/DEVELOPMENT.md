@@ -21,12 +21,13 @@ How to work on this repository: setup, layout, conventions, and what "done" mean
 ## 2. Repository layout
 
 ```text
-support-agent-platform/
+quokra/
 ├── README.md
 ├── docs/                    PLAN, ARCHITECTURE, API, EMBEDDING, DEVELOPMENT
 ├── server/                  Spring Boot 4.1 (Maven): API, realtime, bot; serves the built web UI
 │   └── compose.yaml         PostgreSQL for local development
 ├── web/                     React + TypeScript (Vite): chat panel, console, sdk.js
+├── e2e/                     Playwright: the whole chat flow in a browser
 └── test-host/               static pages on another port, for embedding tests
 ```
 
@@ -110,7 +111,7 @@ Real secrets never go in the repo; use `.env` files (git-ignored) or the deploym
 
 - `main` holds released versions only; the public demo deploys from it, and real deployments run a version tag.
 - `develop` is where work comes together. Branch from it (`feat/<topic>`, `fix/<topic>`, `chore/<topic>`,
-  `docs/<topic>`) and merge back into it. CI runs the server and web tests on every push and pull request.
+  `docs/<topic>`) and merge back into it. CI runs the server, web and end-to-end tests on every push and pull request.
 - An urgent fix for a released version: branch `fix/<topic>` from `main`, release it as a patch (below), and
   merge `main` back into `develop`.
 - Commit messages: [Conventional Commits](https://www.conventionalcommits.org/) (`feat(server): add conversation state machine`), present tense, explaining *why* when it isn't obvious.
@@ -147,6 +148,7 @@ Real secrets never go in the repo; use `.env` files (git-ignored) or the deploym
 | Server unit tests | JUnit 5 | `server/src/test/…` |
 | Server integration tests | Spring Boot Test + Testcontainers (PostgreSQL) | `server/src/test/…` |
 | Web UI | Vitest + Testing Library | `web/**/*.test.ts(x)` |
+| End to end | Playwright, against the Docker image | `e2e/tests/…` (see `e2e/README.md`) |
 | Embedding (manual) | `test-host/` pages | Before each release |
 
 Commands (CI runs the same, see `.github/workflows/ci.yml`):
@@ -154,6 +156,7 @@ Commands (CI runs the same, see `.github/workflows/ci.yml`):
 ```bash
 cd server && ./mvnw verify
 cd web && pnpm test
+cd e2e && pnpm test        # needs Quokra running, see e2e/README.md
 ```
 
 ---
