@@ -13,6 +13,7 @@ import io.github.mesubash.quokra.conversation.MessageView;
 import io.github.mesubash.quokra.conversation.Status;
 import io.github.mesubash.quokra.realtime.TypingSignals;
 import io.github.mesubash.quokra.session.SessionTokens.Session;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 import java.io.IOException;
@@ -126,9 +127,11 @@ public class WidgetConversationController {
     @ResponseStatus(HttpStatus.CREATED)
     public SendResponse sendImage(@AuthenticationPrincipal Session session, @RequestParam MultipartFile file,
                                   @RequestParam(required = false) @Size(max = 64) String clientMessageId,
-                                  @RequestParam(required = false) UUID replyTo)
+                                  @RequestParam(required = false) UUID replyTo, HttpServletRequest http)
             throws IOException {
         rateLimiter.check("messages:" + session.visitorId(), RateLimiter.MESSAGES_PER_MINUTE);
+        // Per address too: one person can open several sessions.
+        rateLimiter.check("uploads:" + http.getRemoteAddr(), RateLimiter.UPLOADS_PER_MINUTE);
         UUID id = openConversation(session).getId();
         Message message = service.addCustomerImage(id, clientMessageId, file.getOriginalFilename(), file.getBytes(),
             replyTo);

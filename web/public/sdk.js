@@ -139,7 +139,12 @@
 
   function frameUrl(slug, pk, mode, theme, accent) {
     return ORIGIN + "/w/" + encodeURIComponent(slug) + "?pk=" + encodeURIComponent(pk) + "&mode=" + mode +
-      "&theme=" + theme + accentParam(accent);
+      "&theme=" + theme + accentParam(accent) + hostParam();
+  }
+
+  // The page's own origin, so the frame sends its messages only here (frame-ancestors decides who may embed).
+  function hostParam() {
+    return /^https?:\/\//.test(location.origin) ? "&host=" + encodeURIComponent(location.origin) : "";
   }
 
   // ---- Theme ----
@@ -641,7 +646,7 @@
 
   function consoleUrl(tenant, mode, theme, extra) {
     return ORIGIN + "/console?tenant=" + encodeURIComponent(tenant || "") + "&mode=" + mode + "&theme=" + theme +
-      (extra || "");
+      hostParam() + (extra || "");
   }
 
   // fullView: the host's full-page console, as a URL or a function(conversationId). Single-page apps pass a

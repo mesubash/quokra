@@ -13,6 +13,7 @@ import { useChat } from "./useChat";
 // Bubble and popup panels start hidden and are opened by sdk.js; inline and full-page ones are always shown.
 const mode = new URLSearchParams(window.location.search).get("mode") ?? "full";
 const startsHidden = embedded && (mode === "bubble" || mode === "popup");
+const TENANT_REFRESH_MS = 5 * 60_000;
 
 type Setup =
   | { status: "loading" }
@@ -71,7 +72,8 @@ export function ChatPanel({ slug }: { slug: string }) {
   // Escape closes a bubble or popup panel, like any dialog.
   useEffect(() => {
     if (!startsHidden) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && postToHost({ type: "chat.close" });
+    // Not when something inside handled it first (cancelling a quote, closing an image).
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !e.defaultPrevented && postToHost({ type: "chat.close" });
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
@@ -100,6 +102,21 @@ export function ChatPanel({ slug }: { slug: string }) {
       cancelled = true;
     };
   }, [pk, slug, attempt]);
+
+  // Whether the team is online and inside opening hours changes over the day: read it again when the panel
+  // is opened, and every few minutes while it's shown.
+  const ready = setup.status === "ready";
+  useEffect(() => {
+    if (!pk || !ready || !visible) return;
+    const refresh = () =>
+      widgetApi
+        .tenant(pk)
+        .then((tenant) => setSetup((s) => (s.status === "ready" ? { ...s, tenant } : s)))
+        .catch(() => {});
+    refresh();
+    const timer = setInterval(refresh, TENANT_REFRESH_MS);
+    return () => clearInterval(timer);
+  }, [pk, ready, visible]);
 
   // A stored session can stop working (expired, or the server's key changed): start a new one, once.
   const renewSession = useCallback(() => {
@@ -143,6 +160,8 @@ function Chat({ tenant, token, visible, onUnauthorized }: ChatProps) {
   const [awaitingBot, setAwaitingBot] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [replyingTo, setReplyingTo] = useState<TimelineItem | null>(null);
+  // A quote belongs to one conversation; starting a new chat drops it.
+  useEffect(() => setReplyingTo(null), [chat.conversation?.id]);
   const last = chat.messages[chat.messages.length - 1];
   const lastId = last?.id ?? null;
   const unread = visible ? 0 : countUnread(chat.messages, seenUpTo);

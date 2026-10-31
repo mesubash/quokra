@@ -100,7 +100,8 @@ docker run -d --name quokra -p 8080:8080 \
 ## 5. First steps after it runs
 
 1. In your identity provider, give yourself the `QUOKRA_ADMIN` role, and your support staff the
-   `SUPPORT_AGENT` role. Tokens for Quokra need the `quokra-api` audience.
+   `SUPPORT_AGENT` role. The admin role manages every company on the server, so keep it for the people
+   who run Quokra. Tokens for Quokra need the `quokra-api` audience.
 2. Open the console from your dashboard (see the [embedding guide](EMBEDDING.md)) and open **Settings** (the gear icon).
 3. Create a company: name, colour, bot file, the websites that show the chat and the dashboards that show
    the console. Copy the publishable key and embed snippets for the site's developers.

@@ -18,7 +18,8 @@ import org.springframework.test.web.servlet.assertj.MockMvcTester;
 
 // The public demo (profiles demo + public-demo): the playground's site may use the demo sign-in, and the
 // demo company allows it.
-@SpringBootTest(properties = {"QUOKRA_DEMO_ORIGINS=https://play.example.test/", "TENANT_SECRET_ENCRYPTION_KEY=ZGV2LW9ubHktdGVuYW50LXNlY3JldC1rZXktMzJieXQ="})
+@SpringBootTest(properties = {"QUOKRA_DEMO_ORIGINS=https://play.example.test/", "TENANT_SECRET_ENCRYPTION_KEY=ZGV2LW9ubHktdGVuYW50LXNlY3JldC1rZXktMzJieXQ=",
+    "SMTP_HOST=smtp.example.test", "QUOKRA_MAIL_FROM=demo@example.test"})
 @ActiveProfiles({"demo", "public-demo"})
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
@@ -31,6 +32,14 @@ class PublicDemoTests {
 
     @Autowired
     JdbcTemplate jdbc;
+
+    @Autowired
+    io.github.mesubash.quokra.mail.MailCheck mail;
+
+    @Test
+    void thePublicDemoNeverSendsEmailEvenWithSmtpSet() {
+        assertThat(mail.configured()).isFalse();
+    }
 
     @Test
     void thePlaygroundSiteIsAllowed() {

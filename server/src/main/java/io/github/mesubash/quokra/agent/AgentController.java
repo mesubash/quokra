@@ -223,6 +223,7 @@ public class AgentController {
                                    @RequestParam(required = false) UUID replyTo)
             throws IOException {
         visible(jwt, id);
+        rateLimiter.check("uploads:agent:" + jwt.getSubject(), RateLimiter.UPLOADS_PER_MINUTE);
         return new ReplyResponse(MessageView.of(service.addAgentImage(id, agent(jwt), clientMessageId,
             file.getOriginalFilename(), file.getBytes(), replyTo)));
     }

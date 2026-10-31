@@ -177,7 +177,7 @@ The email isn't verified, so it only groups conversations for agents: a customer
 { "message": Message, "conversation": Conversation }   // message.attachment: { name, contentType, size }
 ```
 
-PNG, JPEG, GIF or WebP up to 5 MB, recognised by the file's first bytes (not its name or declared type; SVG is refused). Errors: `403 ATTACHMENTS_OFF` (the company hasn't allowed images), `415 UNSUPPORTED_FILE`, `413 FILE_TOO_LARGE`, `503 STORAGE_UNAVAILABLE`, `429 RATE_LIMITED` (shares the message limit). The bot doesn't answer images.
+PNG, JPEG, GIF or WebP up to 5 MB, recognised by the file's first bytes (not its name or declared type; SVG is refused). Errors: `403 ATTACHMENTS_OFF` (the company hasn't allowed images), `415 UNSUPPORTED_FILE`, `413 FILE_TOO_LARGE`, `409 TOO_MANY_IMAGES` (30 per chat), `503 STORAGE_UNAVAILABLE`, `429 RATE_LIMITED` (the message limit per session, and 20 uploads a minute per IP address). The bot doesn't answer images.
 
 `GET /widget/conversation/messages/{messageId}/attachment` returns the image itself, only for the current conversation. It needs the session token, so pages fetch it and show it from a blob. Served inline with `nosniff` and a `sandbox` Content-Security-Policy.
 
@@ -358,6 +358,8 @@ No body; `204`. The customer sees "<agent name> is typing…" (event `typing`). 
 
 For people with the admin role (`QUOKRA_ADMIN`, set with `QUOKRA_ADMIN_ROLE`, in the same roles claim as the agent role). Same token as the agent API; everything else gets `403`. The console shows these under **Settings** (the gear icon in its header).
 
+**The admin role runs the whole server:** an admin can see and change every company (its keys, sites, agents and bot), not only the one a console is embedded for. Give it only to the people who operate the Quokra server, not to each company's staff.
+
 ```ts
 interface Tenant {
   id: string; slug: string; displayName: string;
@@ -436,9 +438,8 @@ Every event has this envelope:
 | `conversation.activity` | queue | `{ id, lastMessagePreview, lastMessageAt, senderType, assigneeSub, customerName }` for every new message, so lists update their preview and unread count live, and the assigned agent is notified |
 | `conversation.transferred` | queue | `{ id, toSub, toName, byName, customerName }`: a chat was handed to an agent |
 | `note.added` | queue | `{ id, authorSub, authorName, assigneeSub, customerName, preview }`: a private note on a chat (the note itself goes to the notes topic) |
-| `typing` | conversation | `{ "senderType": "AGENT" \| "CUSTOMER", "on": true }` |
 
-Typing is sent by clients to `/app/conversations/{id}/typing` with `{ "on": true }`; the server relays it. It is never stored. *(Not built yet: until then the server rejects any client `SEND` over the socket.)*
+Typing is sent over REST (3.11, 4.20), not over the socket; the server rejects any client `SEND`.
 
 Rules enforced today:
 
@@ -632,6 +633,7 @@ Envelope:
 | 403 | `ATTACHMENTS_OFF` | Images aren't allowed for this company |
 | 404 | `ATTACHMENT_NOT_FOUND` | No image for that message in this conversation |
 | 413 | `FILE_TOO_LARGE` | Image over 5 MB |
+| 409 | `TOO_MANY_IMAGES` | The chat already has 30 images |
 | 415 | `UNSUPPORTED_FILE` | Not a PNG, JPEG, GIF or WebP |
 | 503 | `STORAGE_UNAVAILABLE` | Image storage isn't working |
 | 429 | `RATE_LIMITED` | Too many requests (`Retry-After` header set): 5 new chat sessions a minute per IP address, 20 customer messages a minute per session |
