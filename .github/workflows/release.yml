@@ -35,6 +35,13 @@ jobs:
             exit 1
           fi
 
+      # Rebuilding an older version must not move :latest.
+      - id: newest
+        name: Is this the newest version?
+        run: |
+          newest="$(git ls-remote --tags --refs origin 'v*.*.*' | sed 's|.*refs/tags/||' | sort -V | tail -1)"
+          echo "latest=$([ "$TAG" = "$newest" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
@@ -48,7 +55,7 @@ jobs:
           tags: |
             type=semver,pattern={{version}},value=${{ env.TAG }}
             type=semver,pattern={{major}}.{{minor}},value=${{ env.TAG }}
-            type=raw,value=latest
+            type=raw,value=latest,enable=${{ steps.newest.outputs.latest }}
       - uses: docker/build-push-action@v6
         with:
           context: .

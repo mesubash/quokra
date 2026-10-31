@@ -169,7 +169,7 @@ Versions follow [SemVer](https://semver.org/): `2.1.0` for new features, `2.0.1`
    version in `server/pom.xml` and `web/package.json`.
 2. Merge `develop` into `main` (fast-forward) and push.
 3. Tag and push: `git tag v2.1.0 && git push origin v2.1.0`. The release workflow checks the tag matches
-   `server/pom.xml` and publishes `ghcr.io/mesubash/quokra:2.1.0` (also `:2.1` and `:latest`).
+   `server/pom.xml` and publishes `ghcr.io/mesubash/quokra:2.1.0` (also `:2.1`, and `:latest` if it is the newest version).
 4. Create the GitHub Release for the tag, with the changelog section as notes:
    `gh release create v2.1.0 --title "Quokra 2.1.0" --notes-file <notes>`.
 
