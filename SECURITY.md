@@ -15,8 +15,9 @@ if you'd like it.
 
 ## Good to know
 
-- The admin role (`QUOKRA_ADMIN`) operates the whole server: admins can see and change every company. Give
-  it only to the people who run Quokra; company staff get the agent role.
+- The admin role (`QUOKRA_ADMIN`) operates the whole server: server admins can see and change every company.
+  Give it only to the people who run Quokra. A company's own staff get the agent role, and company admins
+  (Settings → Agents, or a claim in their token) manage only their company.
 - The demo profiles (`dev`, `demo`, `public-demo`) and the keys in this repository are public on purpose,
   for local use and demos. They are not vulnerabilities; never use them with real customers.
 - How Quokra handles tokens, sessions, keys and embedding is described in

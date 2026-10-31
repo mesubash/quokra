@@ -17,8 +17,8 @@ import { NotifyOptions, type NotifyOptionsProps } from "../NotifyMenu";
 import { BotCard } from "./BotCard";
 import { Row } from "./Row";
 
-// Settings for admins: the companies (tenants) that use Quokra and everything about each one.
-// Only shown to people with the admin role; the server checks that role on every call anyway.
+// Settings for admins: the companies (tenants) that use Quokra and everything about each one. Server admins
+// see every company and can add new ones; company admins only see theirs. The server checks every call anyway.
 
 export type AdminSelection = string | "new" | null;
 
@@ -68,24 +68,27 @@ const INTRO: Record<Section, (company: string) => string> = {
   general: (c) => `How ${c} looks in the chat, and when chats are answered.`,
   bot: () => "The questions and answers customers can pick from before they reach a person.",
   replies: () => "Answers agents insert by typing / in the reply box. {name} becomes the customer's name.",
-  agents: (c) => `People who answer chats for ${c}. They sign in with your own login and need the agent role there.`,
+  agents: (c) =>
+    `People who answer chats for ${c}. They sign in with your own login and need the agent role there. Admins can also change these settings.`,
   embed: () => "Code for the website and the dashboard, and the key for identifying signed-in customers.",
 };
 
 // Settings, opened from the gear in the console header. Everyone gets their notifications; admins also get the
 // company's sections. A console embedded for one company (scope) only ever shows that company; the company
 // picker and "New company" are for Quokra's own console page. onClose is missing for admins without the agent
-// role, who only have settings.
+// role, who only have settings. canCreate: server admins, who may add companies.
 export function Settings({
   admin,
   api,
   scope,
+  canCreate = false,
   notifications,
   onClose,
 }: {
   admin?: Admin;
   api?: AdminApi;
   scope?: string | null;
+  canCreate?: boolean;
   notifications: NotifyOptionsProps;
   onClose?: () => void;
 }) {
@@ -101,7 +104,7 @@ export function Settings({
   const tenants = (admin?.tenants ?? []).filter((t) => !scope || t.slug === scope);
   const selected = scope ?? admin?.selected ?? tenants[0]?.slug ?? null;
   const tenant = tenants.find((t) => t.slug === selected);
-  const creating = !scope && selected === "new";
+  const creating = canCreate && !scope && selected === "new";
   // General first, then your own notifications, then the rest of the company's sections.
   const sections: { id: Section; label: string }[] =
     admin && api && tenant
@@ -146,7 +149,7 @@ export function Settings({
               {x.label}
             </NavItem>
           ))}
-          {admin && api && !scope && (
+          {admin && api && !scope && canCreate && (
             <button type="button" className="settings-new" onClick={() => admin.select("new")}>
               + New company
             </button>
@@ -314,6 +317,7 @@ function SecretCard({ api, tenant, onChanged }: { api: AdminApi; tenant: AdminTe
 function AgentsCard({ api, tenant, onChanged }: { api: AdminApi; tenant: AdminTenant; onChanged: () => void }) {
   const [data, setData] = useState<AdminAgents | null>(null);
   const [email, setEmail] = useState("");
+  const [asAdmin, setAsAdmin] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -331,13 +335,14 @@ function AgentsCard({ api, tenant, onChanged }: { api: AdminApi; tenant: AdminTe
     setBusy(true);
     setMessage(null);
     try {
-      const { result } = await api.addAgent(tenant.slug, email.trim());
+      const { result } = await api.addAgent(tenant.slug, email.trim(), asAdmin);
       setMessage(
         result === "ADDED"
           ? `${email.trim()} was added.`
           : `${email.trim()} is invited and joins when they first sign in with that email.`,
       );
       setEmail("");
+      setAsAdmin(false);
       load();
       onChanged();
     } catch (err) {
@@ -349,6 +354,11 @@ function AgentsCard({ api, tenant, onChanged }: { api: AdminApi; tenant: AdminTe
     } finally {
       setBusy(false);
     }
+  }
+
+  async function setAdmin(sub: string, admin: boolean) {
+    await api.setAgentAdmin(tenant.slug, sub, admin).catch(() => setMessage("Couldn't change that."));
+    load();
   }
 
   async function remove(action: () => Promise<void>) {
@@ -368,6 +378,10 @@ function AgentsCard({ api, tenant, onChanged }: { api: AdminApi; tenant: AdminTe
           placeholder="name@company.com"
           aria-label="Agent's email"
         />
+        <label className="admin-check">
+          <input type="checkbox" checked={asAdmin} onChange={(e) => setAsAdmin(e.target.checked)} />
+          Admin
+        </label>
         <button type="submit" className="button" disabled={busy || !email.trim()}>
           Add agent
         </button>
@@ -388,6 +402,16 @@ function AgentsCard({ api, tenant, onChanged }: { api: AdminApi; tenant: AdminTe
               </strong>
               <span className="muted">{a.email ?? a.sub}</span>
             </span>
+            <label className="admin-check">
+              <input
+                type="checkbox"
+                role="switch"
+                checked={a.admin}
+                onChange={(e) => void setAdmin(a.sub, e.target.checked)}
+                aria-label={`${a.name} is an admin`}
+              />
+              Admin
+            </label>
             <button
               type="button"
               className="link-button"
@@ -402,7 +426,7 @@ function AgentsCard({ api, tenant, onChanged }: { api: AdminApi; tenant: AdminTe
             <span className="avatar">?</span>
             <span className="admin-person">
               <strong>{i.email}</strong>
-              <span className="badge">Invited</span>
+              <span className="badge">{i.admin ? "Invited as admin" : "Invited"}</span>
             </span>
             <button
               type="button"

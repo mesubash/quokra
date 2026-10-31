@@ -71,13 +71,18 @@ public class AgentJwtConverter implements Converter<Jwt, AbstractAuthenticationT
     }
 
     private Collection<?> roles(Jwt jwt) {
+        return claim(jwt, rolesClaim) instanceof Collection<?> c ? c : List.of();
+    }
+
+    // A claim by its dotted path, e.g. "realm_access.roles"; null if it isn't there.
+    static Object claim(Jwt jwt, String path) {
         Object value = jwt.getClaims();
-        for (String part : rolesClaim.split("\\.")) {
+        for (String part : path.split("\\.")) {
             if (!(value instanceof Map<?, ?> map)) {
-                return List.of();
+                return null;
             }
             value = map.get(part);
         }
-        return value instanceof Collection<?> c ? c : List.of();
+        return value;
     }
 }

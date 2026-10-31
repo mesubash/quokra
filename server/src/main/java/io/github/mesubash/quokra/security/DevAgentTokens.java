@@ -17,6 +17,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -38,7 +39,8 @@ public class DevAgentTokens {
 
     static final String ISSUER = "quokra-dev";
 
-    // admin: also give the admin role. email: a verified email, for testing invites.
+    // admin: also give the server admin role (unless quokra.dev.agent-token-server-admin is false).
+    // email: a verified email, for testing invites.
     public record TokenRequest(@NotBlank String sub, String name, Boolean admin, String email) {}
 
     public record TokenResponse(String accessToken) {}
@@ -48,6 +50,7 @@ public class DevAgentTokens {
     private final List<String> roles;
     private final String rolesClaim;
     private final String adminRole;
+    private final boolean serverAdmin;
     private final Clock clock;
 
     public DevAgentTokens(@Value("${APP_ENV:}") String appEnv,
@@ -55,6 +58,7 @@ public class DevAgentTokens {
                           @Value("${quokra.agents.role}") String role,
                           @Value("${quokra.agents.roles-claim}") String rolesClaim,
                           @Value("${quokra.admins.role:QUOKRA_ADMIN}") String adminRole,
+                          @Value("${quokra.dev.agent-token-server-admin:true}") boolean serverAdmin,
                           Clock clock) throws NoSuchAlgorithmException {
         if ("production".equalsIgnoreCase(appEnv)) {
             throw new IllegalStateException("quokra.dev.agent-tokens must not be enabled when APP_ENV=production");
@@ -67,6 +71,7 @@ public class DevAgentTokens {
         this.roles = List.of(role);
         this.rolesClaim = rolesClaim;
         this.adminRole = adminRole;
+        this.serverAdmin = serverAdmin;
         this.clock = clock;
     }
 
@@ -82,7 +87,7 @@ public class DevAgentTokens {
     @CrossOrigin(originPatterns = "${quokra.dev.agent-token-origins:http://localhost:[*],http://127.0.0.1:[*]}")
     @PostMapping("/dev/agent-token")
     public TokenResponse token(@Valid @RequestBody TokenRequest request) throws JOSEException {
-        List<String> tokenRoles = Boolean.TRUE.equals(request.admin()) ? List.of(roles.getFirst(), adminRole) : roles;
+        List<String> tokenRoles = serverAdmin && Boolean.TRUE.equals(request.admin()) ? List.of(roles.getFirst(), adminRole) : roles;
         return new TokenResponse(sign(request.sub(), request.name() == null ? request.sub() : request.name(), tokenRoles,
             request.email()));
     }
@@ -93,8 +98,15 @@ public class DevAgentTokens {
     }
 
     public String sign(String sub, String name, List<String> tokenRoles, String verifiedEmail) throws JOSEException {
+        return sign(sub, name, tokenRoles, verifiedEmail, Map.of());
+    }
+
+    // extra: more claims, e.g. permissions for company admins named in the token.
+    public String sign(String sub, String name, List<String> tokenRoles, String verifiedEmail, Map<String, Object> extra)
+            throws JOSEException {
         Instant now = clock.instant();
         JWTClaimsSet.Builder builder = new JWTClaimsSet.Builder();
+        extra.forEach(builder::claim);
         if (verifiedEmail != null) {
             builder.claim("email", verifiedEmail).claim("email_verified", true);
         }

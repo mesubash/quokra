@@ -52,7 +52,8 @@ All through environment variables. Generate random secrets with `openssl rand -b
 | `OIDC_JWKS_URI` | sometimes | Only if the provider has no discovery document, or Quokra must reach it at another address than the issuer |
 | `OIDC_AUDIENCE` | | Default `quokra-api` |
 | `QUOKRA_AGENT_ROLES_CLAIM` | | Default `roles`; e.g. `realm_access.roles` |
-| `QUOKRA_AGENT_ROLE` / `QUOKRA_ADMIN_ROLE` | | Defaults `SUPPORT_AGENT` / `QUOKRA_ADMIN` |
+| `QUOKRA_AGENT_ROLE` / `QUOKRA_ADMIN_ROLE` | | Defaults `SUPPORT_AGENT` / `QUOKRA_ADMIN` (server admin: every company) |
+| `QUOKRA_COMPANY_ADMIN_CLAIM` / `QUOKRA_COMPANY_ADMIN_VALUE` | | Company admins from the token: the claim (e.g. `permissions`, `groups`, `scope`) and the value with `{tenant}` for the slug, default `quokra:{tenant}:admin`. Empty claim: only the Admin switch in Settings → Agents. See [API 4b](API.md#4b-admin-endpoints) |
 | `QUOKRA_BOTS_DIR` | | A folder with your bot files (`*.yml`), mounted into the container |
 | `SMTP_HOST` / `SMTP_PORT` | for email | Your mail server or provider (e.g. port 587 with STARTTLS). Without `SMTP_HOST` and `QUOKRA_MAIL_FROM`, email is simply off |
 | `SMTP_USERNAME` / `SMTP_PASSWORD` | for email | Its login, if it needs one. `SMTP_STARTTLS=false` for a server without STARTTLS |
@@ -105,5 +106,8 @@ docker run -d --name quokra -p 8080:8080 \
 2. Open the console from your dashboard (see the [embedding guide](EMBEDDING.md)) and open **Settings** (the gear icon).
 3. Create a company: name, colour, bot file, the websites that show the chat and the dashboards that show
    the console. Copy the publishable key and embed snippets for the site's developers.
-4. Add agents by work email. They join when they first sign in.
+4. Add agents by work email. They join when they first sign in. Turn on **Admin** for the people who
+   should manage that company's settings themselves; they don't see other companies. If your identity
+   provider already says who manages what, set `QUOKRA_COMPANY_ADMIN_CLAIM` instead (or as well).
+   One server holds many companies, so several products of one business are simply several companies.
 5. If the company identifies logged-in customers, create its secret key and give it to their backend team.

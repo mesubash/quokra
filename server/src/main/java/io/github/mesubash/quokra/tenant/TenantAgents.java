@@ -19,9 +19,10 @@ public class TenantAgents {
 
     public record Member(String sub, String name) {}
 
-    public record Agent(String sub, String name, String email) {}
+    // admin: company admin of this tenant (see TenantAccess).
+    public record Agent(String sub, String name, String email, boolean admin) {}
 
-    public record Invite(String email, Instant createdAt) {}
+    public record Invite(String email, boolean admin, Instant createdAt) {}
 
     public enum Added { ADDED, INVITED }
 
@@ -46,9 +47,9 @@ public class TenantAgents {
     // Turns invites for this verified email into memberships. Returns how many tenants were joined.
     public int acceptInvites(String agentSub, String name, String verifiedEmail) {
         int joined = jdbc.update("""
-            insert into tenant_agents (tenant_id, agent_sub, name, email)
-            select tenant_id, ?, ?, ? from agent_invites where lower(email) = lower(?)
-            on conflict (tenant_id, agent_sub) do nothing
+            insert into tenant_agents (tenant_id, agent_sub, name, email, admin)
+            select tenant_id, ?, ?, ?, admin from agent_invites where lower(email) = lower(?)
+            on conflict (tenant_id, agent_sub) do update set admin = tenant_agents.admin or excluded.admin
             """, agentSub, name, verifiedEmail, verifiedEmail);
         jdbc.update("delete from agent_invites where lower(email) = lower(?)", verifiedEmail);
         return joined;
@@ -56,35 +57,40 @@ public class TenantAgents {
 
     public List<Agent> agents(UUID tenantId) {
         return jdbc.query("""
-            select agent_sub, coalesce(name, agent_sub), email from tenant_agents where tenant_id = ? order by 2
-            """, (rs, i) -> new Agent(rs.getString(1), rs.getString(2), rs.getString(3)), tenantId);
+            select agent_sub, coalesce(name, agent_sub), email, admin from tenant_agents where tenant_id = ? order by 2
+            """, (rs, i) -> new Agent(rs.getString(1), rs.getString(2), rs.getString(3), rs.getBoolean(4)), tenantId);
     }
 
     public List<Invite> invites(UUID tenantId) {
-        return jdbc.query("select email, created_at from agent_invites where tenant_id = ? order by email",
-            (rs, i) -> new Invite(rs.getString(1), rs.getTimestamp(2).toInstant()), tenantId);
+        return jdbc.query("select email, admin, created_at from agent_invites where tenant_id = ? order by email",
+            (rs, i) -> new Invite(rs.getString(1), rs.getBoolean(2), rs.getTimestamp(3).toInstant()), tenantId);
     }
 
     // Someone who has already signed in with this verified email is added straight away; anyone else is
-    // invited and joins on their first sign-in.
+    // invited and joins on their first sign-in. admin: as company admin (an existing admin stays one).
     @Transactional
-    public Added addByEmail(UUID tenantId, String email, String invitedBy) {
+    public Added addByEmail(UUID tenantId, String email, boolean admin, String invitedBy) {
         List<Agent> known = jdbc.query("""
             select agent_sub, name, email from tenant_agents where lower(email) = lower(?) limit 1
-            """, (rs, i) -> new Agent(rs.getString(1), rs.getString(2), rs.getString(3)), email);
+            """, (rs, i) -> new Agent(rs.getString(1), rs.getString(2), rs.getString(3), false), email);
         if (!known.isEmpty()) {
             Agent agent = known.getFirst();
             jdbc.update("""
-                insert into tenant_agents (tenant_id, agent_sub, name, email) values (?, ?, ?, ?)
-                on conflict (tenant_id, agent_sub) do nothing
-                """, tenantId, agent.sub(), agent.name(), agent.email());
+                insert into tenant_agents (tenant_id, agent_sub, name, email, admin) values (?, ?, ?, ?, ?)
+                on conflict (tenant_id, agent_sub) do update set admin = tenant_agents.admin or excluded.admin
+                """, tenantId, agent.sub(), agent.name(), agent.email(), admin);
             return Added.ADDED;
         }
         jdbc.update("""
-            insert into agent_invites (tenant_id, email, invited_by) values (?, ?, ?)
-            on conflict (tenant_id, lower(email)) do nothing
-            """, tenantId, email, invitedBy);
+            insert into agent_invites (tenant_id, email, invited_by, admin) values (?, ?, ?, ?)
+            on conflict (tenant_id, lower(email)) do update set admin = agent_invites.admin or excluded.admin
+            """, tenantId, email, invitedBy, admin);
         return Added.INVITED;
+    }
+
+    public boolean setAdmin(UUID tenantId, String agentSub, boolean admin) {
+        return jdbc.update("update tenant_agents set admin = ? where tenant_id = ? and agent_sub = ?",
+            admin, tenantId, agentSub) > 0;
     }
 
     public boolean remove(UUID tenantId, String agentSub) {
