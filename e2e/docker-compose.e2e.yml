@@ -1,0 +1,8 @@
+# On top of the root docker-compose.yml: Quokra with the demo data and the demo sign-in instead of
+# Keycloak, so the tests can sign in as an agent. Test use only.
+#   docker compose -f docker-compose.yml -f e2e/docker-compose.e2e.yml up -d --build --wait postgres quokra
+services:
+  quokra:
+    environment:
+      SPRING_PROFILES_ACTIVE: demo,public-demo
+      QUOKRA_DEMO_ORIGINS: http://localhost:8080

@@ -44,3 +44,31 @@ jobs:
       - run: pnpm test
       # Typechecks and builds the chat, console and sdk.js.
       - run: pnpm build
+
+  # The chat and the console in a real browser, against the Docker image with the demo data.
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: docker compose -f docker-compose.yml -f e2e/docker-compose.e2e.yml up -d --build --wait postgres quokra
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: e2e/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: e2e
+      - run: pnpm exec playwright install --with-deps chromium
+        working-directory: e2e
+      - run: pnpm test
+        working-directory: e2e
+      - if: failure()
+        run: docker compose logs quokra
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: e2e/playwright-report
