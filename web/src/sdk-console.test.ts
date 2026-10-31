@@ -41,7 +41,7 @@ describe("sdk.js agent console", () => {
     agentConsole().mount("#console", { tenant: "demo", getToken: () => "t" });
 
     expect(frame().parentElement?.id).toBe("console");
-    expect(frame().src).toBe(`${window.location.origin}/console?tenant=demo&mode=full&theme=light`);
+    expect(frame().src).toBe(`${window.location.origin}/console?tenant=demo&mode=full&theme=light&host=${encodeURIComponent(window.location.origin)}`);
   });
 
   it("needs a token getter", () => {

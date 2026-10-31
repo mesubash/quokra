@@ -16,10 +16,16 @@ export type HostMessage =
 
 export const embedded = window.parent !== window;
 
-// Only non-sensitive data (colour, unread count) goes to the host, so "*" is fine as the target.
-// Which sites can embed the panel at all is limited by frame-ancestors on the server.
+// Messages go only to the page that embedded us: sdk.js passes its origin as ?host=. Which sites may embed
+// the panel at all is limited by frame-ancestors on the server. Without ?host= (an older sdk.js) they go to
+// any parent, as before.
+const HOST = (() => {
+  const host = new URLSearchParams(window.location.search).get("host");
+  return host && /^https?:\/\/[^/]+$/.test(host) ? host : "*";
+})();
+
 export function postToHost(message: { type: string; [key: string]: unknown }) {
-  if (embedded) window.parent.postMessage({ source: SOURCE, ...message }, "*");
+  if (embedded) window.parent.postMessage({ source: SOURCE, ...message }, HOST);
 }
 
 export function onHostMessage(handler: (message: HostMessage) => void): () => void {

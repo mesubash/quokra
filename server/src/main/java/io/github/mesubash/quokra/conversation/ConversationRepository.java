@@ -13,8 +13,6 @@ interface ConversationRepository extends JpaRepository<Conversation, UUID> {
 
     Optional<Conversation> findFirstByTenantIdAndVisitorIdOrderByCreatedAtDesc(UUID tenantId, UUID visitorId);
 
-    // Another open (not resolved) conversation of the same visitor, if any.
-    boolean existsByTenantIdAndVisitorIdAndStatusNotAndIdNot(UUID tenantId, UUID visitorId, Status status, UUID id);
 
     Optional<Conversation> findFirstByTenantIdAndCustomerSubOrderByCreatedAtDesc(UUID tenantId, String customerSub);
 

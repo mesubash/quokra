@@ -303,6 +303,7 @@ public class ConversationService {
     }
 
     static final int QUOTE_LENGTH = 100;
+    static final int MAX_IMAGES_PER_CHAT = 30;
 
     // The quote for a reply: only to a customer's or agent's message in the same conversation.
     private Message.Quote quoteOf(Conversation conversation, UUID replyTo) {
@@ -348,6 +349,11 @@ public class ConversationService {
         if (!storage.ok()) {
             throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "STORAGE_UNAVAILABLE",
                 "Images can't be sent right now");
+        }
+        // Keeps one chat from filling the store; open chats aren't removed by retention.
+        if (messages.countByConversationIdAndAttachmentKeyIsNotNull(conversation.getId()) >= MAX_IMAGES_PER_CHAT) {
+            throw new ApiException(HttpStatus.CONFLICT, "TOO_MANY_IMAGES",
+                "This chat has reached its limit of " + MAX_IMAGES_PER_CHAT + " images");
         }
         String type = Images.typeOf(bytes);
         String key = conversation.getTenantId() + "/" + conversation.getId() + "/" + UUID.randomUUID();
@@ -487,9 +493,11 @@ public class ConversationService {
     public Conversation reopen(UUID conversationId, AgentRef agent) {
         Conversation conversation = get(conversationId);
         requireNotBlocked(conversation);
-        // The customer started a new chat since: there can only be one open chat per visitor, so answer there.
-        if (conversations.existsByTenantIdAndVisitorIdAndStatusNotAndIdNot(conversation.getTenantId(),
-                conversation.getVisitorId(), Status.RESOLVED, conversationId)) {
+        // The customer started a new chat since: their chat shows only the latest one (and there can only be one
+        // open), so an older chat can't be reopened; answer them in the newer one.
+        boolean latest = current(conversation.getTenantId(), conversation.getVisitorId(), conversation.getCustomerSub())
+            .map(c -> c.getId().equals(conversationId)).orElse(false);
+        if (!latest) {
             throw new ApiException(HttpStatus.CONFLICT, "NEWER_CHAT_OPEN",
                 "This customer has a newer chat open. Answer them there.");
         }
@@ -750,6 +758,9 @@ public class ConversationService {
     private void handOff(Conversation conversation, HandoffReason reason, SenderType actor, String text, Instant now) {
         if (conversation.needsContact()) {
             if (conversation.getPendingHandoff() == null) {
+                // An email given in an earlier, unfinished try (e.g. before the chat closed itself) is asked
+                // for again, so the answer must be read as the email, not as the name.
+                conversation.rememberEmail(null, now);
                 conversation.awaitContact(reason, now);
                 conversation.touch(now);
                 botMessage(conversation, textsFor(conversation).askEmail(), null, now);

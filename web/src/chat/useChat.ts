@@ -124,10 +124,11 @@ export function useChat(token: string | null, onUnauthorized?: () => void) {
           ...(item.optionId ? { optionId: item.optionId } : { body: item.body }),
           replyTo: item.replyTo?.id,
         });
+        // The customer may have started a new chat meanwhile; an answer about the old one is dropped.
+        const stale = currentId.current !== undefined && conversation.id !== currentId.current;
         setState((s) => ({
           ...s,
-          conversation,
-          messages: mergeMessages(s.messages, [saved]),
+          ...(stale ? {} : { conversation, messages: mergeMessages(s.messages, [saved]) }),
           pending: s.pending.filter((p) => p.clientMessageId !== item.clientMessageId),
         }));
         return true;
@@ -168,7 +169,9 @@ export function useChat(token: string | null, onUnauthorized?: () => void) {
       if (file.size > MAX_IMAGE_BYTES) return "Images can be up to 5 MB.";
       try {
         const { message, conversation } = await widgetApi.sendImage(token, file, crypto.randomUUID(), replyTo?.id);
-        setState((s) => ({ ...s, conversation, messages: mergeMessages(s.messages, [message]) }));
+        if (currentId.current === undefined || conversation.id === currentId.current) {
+          setState((s) => ({ ...s, conversation, messages: mergeMessages(s.messages, [message]) }));
+        }
         return null;
       } catch (e) {
         if (e instanceof ApiError && e.code === "CONTACT_BLOCKED") setState((s) => ({ ...s, error: BLOCKED }));

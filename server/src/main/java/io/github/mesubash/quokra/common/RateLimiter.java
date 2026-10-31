@@ -15,6 +15,8 @@ public class RateLimiter {
     public static final int MESSAGES_PER_MINUTE = 20;
     // Clients send "typing" at most every 3 seconds; this leaves room for a couple of tabs.
     public static final int TYPING_PER_MINUTE = 40;
+    // Image uploads, per IP address (customers can open several sessions) and per agent.
+    public static final int UPLOADS_PER_MINUTE = 20;
     public static final int SESSIONS_PER_MINUTE = 5;
 
     static final Duration WINDOW = Duration.ofMinutes(1);

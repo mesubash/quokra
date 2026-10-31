@@ -38,7 +38,7 @@ afterEach(() => {
 
 describe("sdk.js", () => {
   it("adds a bubble and a hidden panel pointing at the chat", () => {
-    expect(frame().src).toBe(`${window.location.origin}/w/demo?pk=pk_test_demo&mode=bubble&theme=light`);
+    expect(frame().src).toBe(`${window.location.origin}/w/demo?pk=pk_test_demo&mode=bubble&theme=light&host=${encodeURIComponent(window.location.origin)}`);
     expect(frame().classList.contains("open")).toBe(false);
     expect(document.querySelector(".quokra-button")).not.toBeNull();
   });

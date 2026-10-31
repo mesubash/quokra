@@ -429,6 +429,41 @@ class ConversationServiceTests {
     }
 
     @Test
+    void cantReopenAnOldChatEvenWhenTheNewerOneIsClosedToo() {
+        UUID old = start();
+        AgentRef sam = new AgentRef("sam", "Sam");
+        service.handoff(old, HandoffReason.CUSTOMER_REQUEST, SenderType.CUSTOMER);
+        service.accept(old, sam);
+        service.resolve(old, sam);
+        UUID newer = service.startNew(TENANT, visitor, null).getId();
+        service.handoff(newer, HandoffReason.CUSTOMER_REQUEST, SenderType.CUSTOMER);
+        service.resolve(newer, sam);
+
+        // The customer only ever sees their latest chat, so replies in the old one would never reach them.
+        assertThatThrownBy(() -> service.reopen(old, sam))
+            .isInstanceOfSatisfying(ApiException.class, e -> assertThat(e.code()).isEqualTo("NEWER_CHAT_OPEN"));
+    }
+
+    @Test
+    void anEmailAskedForAgainIsReadAsTheEmailNotTheName() {
+        UUID id = startAsGuest();
+        service.handoff(id, HandoffReason.CUSTOMER_REQUEST, SenderType.CUSTOMER);
+        service.addCustomerMessage(id, "c-1", "pat@example.test", null);
+        // They leave before giving their name; the quiet chat closes by itself.
+        entityManager.flush();
+        jdbc.update("update conversations set last_message_at = now() - interval '2 days' where id = ?", id);
+        entityManager.clear();
+        assertThat(service.autoResolve(id, java.time.Duration.ofHours(1))).isTrue();
+
+        service.addCustomerMessage(id, "c-2", "hello again", null);
+        service.handoff(id, HandoffReason.CUSTOMER_REQUEST, SenderType.CUSTOMER);
+        service.addCustomerMessage(id, "c-3", "pat@example.test", null);
+
+        assertThat(history(id).getLast().getBody()).isEqualTo(ConversationService.ASK_NAME);
+        assertThat(service.get(id).getCustomerName()).isNull();
+    }
+
+    @Test
     void cantReplyToTheBotOrAnotherChat() {
         UUID id = start();
         Message greeting = history(id).getFirst();

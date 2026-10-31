@@ -118,7 +118,30 @@ class EmailAlertsTests {
         SimpleMailMessage mail = sent();
         assertThat(mail.getTo()).containsExactly("pat-" + id + "@example.test");
         assertThat(mail.getFrom()).isEqualTo("Support <support@example.test>");
-        assertThat(mail.getText()).contains("Hi Pat,").contains("Sam: Your refund is on its way.");
+        assertThat(mail.getText()).startsWith("Hi,").contains("Sam: Your refund is on its way.").doesNotContain("Pat");
+    }
+
+    @Test
+    void aFailedSendIsTriedAgainAndFollowUpsOnlyHaveNewReplies() {
+        sql("update tenants set email_customers = true where id = ?", tenant);
+        UUID id = waitingChat();
+        service.accept(id, sam);
+        service.addAgentMessage(id, sam, "a-1", "First answer.");
+        sql("update messages set created_at = now() - interval '10 minutes' where conversation_id = ?", id);
+
+        org.mockito.Mockito.doThrow(new org.springframework.mail.MailSendException("server down"))
+            .doNothing().when(sender).send(any(SimpleMailMessage.class));
+        assertThat(alerts.emailUnseenReplies()).isZero();
+        assertThat(alerts.emailUnseenReplies()).isOne();
+
+        service.addAgentMessage(id, sam, "a-2", "Second answer.");
+        sql("update messages set created_at = now() - interval '10 minutes' where conversation_id = ?", id);
+        assertThat(alerts.emailUnseenReplies()).isOne();
+
+        var mails = ArgumentCaptor.forClass(SimpleMailMessage.class);
+        verify(sender, times(3)).send(mails.capture());
+        assertThat(mails.getValue().getText()).contains("Second answer.").doesNotContain("First answer.")
+            .doesNotContain("Pat");
     }
 
     @Test

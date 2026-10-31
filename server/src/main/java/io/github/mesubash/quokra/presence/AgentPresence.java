@@ -18,7 +18,7 @@ public class AgentPresence {
 
     public enum Status { ONLINE, AWAY }
 
-    static final Duration GONE_AFTER = Duration.ofMinutes(2);
+    public static final Duration GONE_AFTER = Duration.ofMinutes(2);
 
     private final JdbcTemplate jdbc;
     private final Clock clock;

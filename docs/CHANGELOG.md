@@ -6,6 +6,27 @@ What changed, newest first. Each entry says what people notice; the commits have
 
 ---
 
+## Unreleased
+
+**Fixes** (from a code and security review of 2.0)
+- An agent can only reopen the customer's latest chat; reopening an older one (after "Start a new chat")
+  could leave replies the customer never sees and break their next message.
+- A guest asked for their email a second time (after a chat closed itself) no longer has it saved as their
+  name.
+- Waiting-chat emails: a busy company with an agent online can no longer hold up other companies' alerts,
+  and an email that fails to send is tried again.
+- Customer emails only contain replies not emailed before, and no longer include the customer's typed name.
+- In the chat: a reply quote is dropped when starting a new chat, a late answer about the old chat can't
+  switch back to it, Escape on a quote or an image no longer closes the whole chat, and the online / away
+  header refreshes while the chat is open.
+
+**Security**
+- Image uploads are limited per IP address (20 a minute) and per chat (30), and agents' uploads per agent.
+- The public demo profile never sends email.
+- The chat and console send their messages to the embedding page's own origin only (`sdk.js` passes it).
+- One company failing in the nightly retention run no longer stops the others.
+- Docs say clearly that the admin role operates the whole server.
+
 ## 2.0.0 (v2, daily operations), 2026-10-30
 
 ### 2026-10-30

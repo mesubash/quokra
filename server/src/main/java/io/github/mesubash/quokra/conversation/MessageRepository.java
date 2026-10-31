@@ -14,6 +14,8 @@ interface MessageRepository extends JpaRepository<Message, UUID> {
 
     Optional<Message> findByConversationIdAndClientMessageId(UUID conversationId, String clientMessageId);
 
+    long countByConversationIdAndAttachmentKeyIsNotNull(UUID conversationId);
+
     List<Message> findByConversationIdAndIdGreaterThanOrderByIdAsc(UUID conversationId, UUID after, Limit limit);
 
     @Modifying

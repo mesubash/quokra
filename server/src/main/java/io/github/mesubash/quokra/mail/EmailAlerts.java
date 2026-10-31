@@ -32,19 +32,17 @@ public class EmailAlerts {
     private record Waiting(UUID id, UUID tenantId, String company, String customer, String alertEmail,
                            Timestamp waitingSince) {}
 
-    private record Unseen(UUID id, String company, String customer, String email) {}
+    private record Unseen(UUID id, String company, String email, UUID emailedUpTo) {}
 
     private final JdbcTemplate jdbc;
     private final Mailer mailer;
     private final MailCheck check;
-    private final AgentPresence presence;
     private final Clock clock;
 
-    public EmailAlerts(JdbcTemplate jdbc, Mailer mailer, MailCheck check, AgentPresence presence, Clock clock) {
+    public EmailAlerts(JdbcTemplate jdbc, Mailer mailer, MailCheck check, Clock clock) {
         this.jdbc = jdbc;
         this.mailer = mailer;
         this.check = check;
-        this.presence = presence;
         this.clock = clock;
     }
 
@@ -66,34 +64,42 @@ public class EmailAlerts {
             where c.status = 'WAITING' and t.waiting_alert_minutes > 0
               and c.waiting_since < ?::timestamptz - make_interval(mins => t.waiting_alert_minutes)
               and (c.waiting_alert_sent_at is null or c.waiting_alert_sent_at < c.waiting_since)
+              -- Someone of the team is online and sees it in the console. Left out here, not just skipped below,
+              -- so one busy tenant can't keep filling the batch and starve the others.
+              and not exists (select 1 from tenant_agents a join agent_presence p on p.agent_sub = a.agent_sub
+                              where a.tenant_id = c.tenant_id and p.status = 'ONLINE' and p.last_seen > ?)
             order by c.waiting_since
             limit ?
             """, (rs, i) -> new Waiting(rs.getObject(1, UUID.class), rs.getObject(2, UUID.class), rs.getString(3),
                 rs.getString(4), rs.getString(5), rs.getTimestamp(6)),
-            Timestamp.from(now), BATCH);
+            Timestamp.from(now), Timestamp.from(now.minus(AgentPresence.GONE_AFTER)), BATCH);
         int sent = 0;
         for (Waiting w : waiting) {
-            // Someone is here and will see it in the console.
-            if (presence.anyoneOnline(w.tenantId())) {
-                continue;
-            }
             List<String> to = w.alertEmail() != null && !w.alertEmail().isBlank()
                 ? Arrays.stream(w.alertEmail().split(",")).map(String::strip).filter(s -> !s.isEmpty()).toList()
                 : jdbc.queryForList("select email from tenant_agents where tenant_id = ? and email is not null",
                     String.class, w.tenantId());
             long minutes = Duration.between(w.waitingSince().toInstant(), now).toMinutes();
             String who = w.customer() != null ? w.customer() : "A customer";
-            if (mailer.send(to, w.company() + ": a chat is waiting", """
-                %s has been waiting for %d minutes, and nobody of the team is online.
-
-                Open the console to answer.
-                """.formatted(who, minutes))) {
-                sent++;
-            } else if (to.isEmpty()) {
+            boolean done;
+            if (to.isEmpty()) {
                 log.warn("Nobody to tell about a waiting chat of {}: no alert email, no agent emails", w.company());
+                // Marked anyway, so a missing address doesn't mean trying every minute.
+                done = true;
+            } else {
+                done = mailer.send(to, w.company() + ": a chat is waiting", """
+                    %s has been waiting for %d minutes, and nobody of the team is online.
+
+                    Open the console to answer.
+                    """.formatted(who, minutes));
+                if (done) {
+                    sent++;
+                }
             }
-            // Marked either way, so a missing address doesn't mean trying every minute.
-            jdbc.update("update conversations set waiting_alert_sent_at = ? where id = ?", Timestamp.from(now), w.id());
+            // A failed send (mail server down) is tried again on the next run.
+            if (done) {
+                jdbc.update("update conversations set waiting_alert_sent_at = ? where id = ?", Timestamp.from(now), w.id());
+            }
         }
         return sent;
     }
@@ -102,7 +108,7 @@ public class EmailAlerts {
     int emailUnseenReplies() {
         Instant now = clock.instant();
         List<Unseen> unseen = jdbc.query("""
-            select c.id, t.display_name, c.customer_name, c.customer_email
+            select c.id, t.display_name, c.customer_email, c.customer_emailed_message_id
             from conversations c join tenants t on t.id = c.tenant_id
             cross join lateral (
                 select m.id, m.sender_type, m.created_at from messages m
@@ -114,19 +120,21 @@ public class EmailAlerts {
               and c.customer_emailed_message_id is distinct from last.id
             limit ?
             """, (rs, i) -> new Unseen(rs.getObject(1, UUID.class), rs.getString(2), rs.getString(3),
-                rs.getString(4)),
+                rs.getObject(4, UUID.class)),
             Timestamp.from(now.minus(UNSEEN_AFTER)), Timestamp.from(now.minus(TOO_OLD)), BATCH);
         int sent = 0;
         for (Unseen u : unseen) {
-            // Everything the team wrote since the customer's last message.
+            // What the team wrote since the customer's last message, and since the last email.
             List<Reply> replies = jdbc.query("""
                 select id, sender_name, body, attachment_key is not null from messages
                 where conversation_id = ? and sender_type = 'AGENT'
-                  and id > coalesce((select id from messages where conversation_id = ? and sender_type = 'CUSTOMER'
-                                     order by id desc limit 1), '00000000-0000-0000-0000-000000000000'::uuid)
+                  and id > greatest(
+                      coalesce((select id from messages where conversation_id = ? and sender_type = 'CUSTOMER'
+                                order by id desc limit 1), '00000000-0000-0000-0000-000000000000'::uuid),
+                      coalesce(?, '00000000-0000-0000-0000-000000000000'::uuid))
                 order by id
                 """, (rs, i) -> new Reply(rs.getObject(1, UUID.class), rs.getString(2), rs.getString(3),
-                    rs.getBoolean(4)), u.id(), u.id());
+                    rs.getBoolean(4)), u.id(), u.id(), u.emailedUpTo());
             if (replies.isEmpty()) {
                 continue;
             }
@@ -134,19 +142,21 @@ public class EmailAlerts {
             String text = replies.stream()
                 .map(r -> (r.senderName() != null ? r.senderName() : "The team") + ": " + (r.image() ? "(an image)" : r.body()))
                 .reduce((a, b) -> a + "\n\n" + b).orElse("");
-            String greeting = u.customer() != null ? "Hi " + u.customer() + "," : "Hi,";
+            // Only the team's own words go out: the customer's typed name and email aren't verified, so they
+            // stay out of the text.
             if (mailer.send(List.of(u.email()), "New reply from " + u.company(), """
-                %s
+                Hi,
 
                 You have a new reply in your chat with %s:
 
                 %s
 
                 Open the chat on our website to answer.
-                """.formatted(greeting, u.company(), text))) {
+                """.formatted(u.company(), text))) {
                 sent++;
+                // A failed send is tried again on the next run.
+                jdbc.update("update conversations set customer_emailed_message_id = ? where id = ?", last.id(), u.id());
             }
-            jdbc.update("update conversations set customer_emailed_message_id = ? where id = ?", last.id(), u.id());
         }
         return sent;
     }

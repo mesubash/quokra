@@ -52,11 +52,16 @@ public class RetentionJob {
             }
             Timestamp before = Timestamp.from(clock.instant().atOffset(ZoneOffset.UTC).minusMonths(months).toInstant());
             int deleted = 0;
-            int batch;
-            do {
-                batch = deleteBatch(rule.id(), before);
-                deleted += batch;
-            } while (batch == BATCH);
+            try {
+                int batch;
+                do {
+                    batch = deleteBatch(rule.id(), before);
+                    deleted += batch;
+                } while (batch == BATCH);
+            } catch (RuntimeException e) {
+                // One tenant's problem doesn't stop the others; it's tried again tomorrow night.
+                log.error("Retention failed for {} after deleting {} chats", rule.slug(), deleted, e);
+            }
             if (deleted > 0) {
                 log.info("Deleted {} chats of {} older than {} months", deleted, rule.slug(), months);
             }
