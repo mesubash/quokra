@@ -51,8 +51,8 @@ public class AdminController {
 
     record AgentsResponse(List<AgentView> agents, List<TenantAgents.Invite> invites) {}
 
-    // admin: as company admin.
-    record AddAgentRequest(@NotBlank @Email @Size(max = 254) String email, boolean admin) {}
+    // admin: as company admin (missing: no).
+    record AddAgentRequest(@NotBlank @Email @Size(max = 254) String email, Boolean admin) {}
 
     record AgentForm(boolean admin) {}
 
@@ -169,8 +169,8 @@ public class AdminController {
     public AddAgentResponse addAgent(@AuthenticationPrincipal Jwt jwt, @PathVariable String slug,
                                      @Valid @RequestBody AddAgentRequest request) {
         var tenant = tenants.get(slug);
-        return new AddAgentResponse(agents.addByEmail(tenant.id(), request.email().strip(), request.admin(),
-            jwt.getSubject()));
+        return new AddAgentResponse(agents.addByEmail(tenant.id(), request.email().strip(),
+            Boolean.TRUE.equals(request.admin()), jwt.getSubject()));
     }
 
     // Makes an agent company admin, or a plain agent again.
