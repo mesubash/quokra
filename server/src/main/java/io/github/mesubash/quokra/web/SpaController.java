@@ -22,6 +22,12 @@ public class SpaController {
         this.tenants = tenants;
     }
 
+    // Customers only ever see the chat inside a company's site; whoever opens the server's address is an agent.
+    @GetMapping("/")
+    public String home() {
+        return "redirect:/console";
+    }
+
     @GetMapping("/w/{slug}")
     public String chat(@PathVariable String slug, HttpServletResponse response) {
         List<String> origins = tenants.findBySlug(slug).map(t -> t.getWidgetOrigins()).orElse(List.of());

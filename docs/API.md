@@ -688,6 +688,7 @@ Declarative alternatives, no JavaScript needed:
 | `/sdk.js` | Embed loader |
 | `/w/{slug}?pk={pk}&mode={bubble\|inline\|popup\|full}` | Customer chat panel (`full` = whole page, e.g. a mobile WebView) |
 | `/console?tenant={slug}` | Agent console (expects a token via postMessage in v1) |
+| `/` | Redirects to `/console` |
 
 ---
 
