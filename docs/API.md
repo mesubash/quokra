@@ -218,10 +218,11 @@ conversation's `hasEmail` are true.
 The email is plain text, from `QUOKRA_MAIL_FROM`, subject "Your chat with {company} on {date}". It lists the
 messages in order as "Name (HH:mm): text": the customer as "You", agents by their stored name, the bot as the company.
 System lines ("Sam joined the chat") appear as they are, images as "[image]" (no attachments). Private notes are never
-included. Times are in the tenant's opening-hours time zone, or UTC without one.
+included. Times are in the tenant's opening-hours time zone, or UTC without one. It ends with a line saying it was sent
+because someone asked for a copy and gave this address.
 
 Errors: `409 NO_OPEN_CONVERSATION` (no conversation yet), `409 EMAIL_OFF`, `409 NO_CUSTOMER_EMAIL`,
-`503 EMAIL_FAILED` (the mail server refused it), `429 RATE_LIMITED` (3 an hour per conversation, 10 an hour per IP address).
+`503 EMAIL_FAILED` (the mail server refused it), `429 RATE_LIMITED` (3 an hour per conversation, 10 an hour per IP address, 3 a day to any one email address).
 
 ### 3.13 `POST /widget/conversation/rating`: rate the chat
 
@@ -728,5 +729,5 @@ Envelope:
 | 409 | `TOO_MANY_IMAGES` | The chat already has 30 images |
 | 415 | `UNSUPPORTED_FILE` | Not a PNG, JPEG, GIF or WebP |
 | 503 | `STORAGE_UNAVAILABLE` | Image storage isn't working |
-| 429 | `RATE_LIMITED` | Too many requests (`Retry-After` header set): 5 new chat sessions a minute per IP address, 20 customer messages a minute per session, 3 transcripts an hour per conversation (10 per IP address) |
+| 429 | `RATE_LIMITED` | Too many requests (`Retry-After` header set): 5 new chat sessions a minute per IP address, 20 customer messages a minute per session, 3 transcripts an hour per conversation (10 per IP address, 3 a day to any one email address) |
 | 500 | `INTERNAL_ERROR` | Unexpected; logged with the request id |

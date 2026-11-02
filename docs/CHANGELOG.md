@@ -24,6 +24,7 @@ What changed, newest first. Each entry says what people notice; the commits have
   Settings → Ratings.
 - **Email me this chat** in the chat's **⋯** menu sends customers their chat, to the email they gave in it.
   Needs email set up on the server.
+  At most 3 a day go to any one address, and each says why it was sent, since anyone can type an address.
 - An emoji button in the message box, with tabs and recently used ones first.
 - Louder notification sounds, with a Low / Medium / High volume and a Test button in the bell menu.
 - Console: keyboard shortcuts (`?` lists them), a colour per customer avatar, search matches marked in the

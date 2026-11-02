@@ -42,6 +42,8 @@ public class Transcripts {
         this.rateLimiter = rateLimiter;
     }
 
+    static final int TRANSCRIPTS_PER_ADDRESS_PER_DAY = 3;
+
     // Mail is set up. Deliberately not the live server check: the public chat config asks this on every page
     // load and mustn't wait on SMTP; a send that fails anyway answers 503 EMAIL_FAILED.
     public boolean available() {
@@ -59,12 +61,18 @@ public class Transcripts {
         }
         rateLimiter.check("transcript:" + conversation.getId(), RateLimiter.TRANSCRIPTS_PER_HOUR, Duration.ofHours(1));
         rateLimiter.check("transcript-ip:" + ip, RateLimiter.TRANSCRIPTS_PER_HOUR_PER_IP, Duration.ofHours(1));
+        // The address is whatever the visitor typed, so cap what any one inbox can get from us.
+        rateLimiter.check("transcript-to:" + to.strip().toLowerCase(Locale.ROOT),
+            TRANSCRIPTS_PER_ADDRESS_PER_DAY, Duration.ofDays(1));
 
         Tenant tenant = tenants.findById(conversation.getTenantId()).orElseThrow();
         String company = tenant.getDisplayName();
         ZoneId zone = zone(tenant);
         String date = DATE.format(conversation.getCreatedAt().atZone(zone));
-        String text = "Hi,\n\nHere is your chat with %s on %s (times are %s).\n\n%s\n".formatted(
+        // Says where it came from: someone could have typed another person's address into the chat.
+        String text = ("Hi,\n\nHere is your chat with %s on %s (times are %s).\n\n%s\n\n"
+            + "You're getting this because someone asked for a copy of this chat and gave this address. "
+            + "If that wasn't you, you can ignore it; nothing else will be sent.\n").formatted(
             company, date, zone.getId(), lines(conversation.getId(), company, zone));
         if (!mailer.send(List.of(to), "Your chat with " + company + " on " + date, text)) {
             throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "EMAIL_FAILED", "The email couldn't be sent");
