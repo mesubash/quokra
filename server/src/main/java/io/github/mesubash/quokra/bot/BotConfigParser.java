@@ -45,12 +45,22 @@ final class BotConfigParser {
         }
         var ids = new HashSet<String>();
         for (MenuItem item : menu) {
-            if (item.id().equals(BotConfig.HUMAN_OPTION)) {
-                throw error("menu id '" + BotConfig.HUMAN_OPTION + "' is reserved");
+            if (item.id().equals(BotConfig.HUMAN_OPTION) || item.id().equals(BotConfig.MENU_OPTION)) {
+                throw error("menu id '" + item.id() + "' is reserved");
             }
             if (!ids.add(item.id())) {
                 throw error("menu id '" + item.id() + "' is used twice");
             }
+        }
+        for (MenuItem item : menu) {
+            for (String followUp : item.followUps()) {
+                if (!ids.contains(followUp) || followUp.equals(item.id())) {
+                    throw error("menu[" + item.id() + "].follow_ups: '" + followUp + "' isn't another topic's id");
+                }
+            }
+        }
+        if (menu.stream().noneMatch(MenuItem::inMenu)) {
+            throw error("at least one menu item needs in_menu: true");
         }
 
         Map<String, Object> human = map(map.get("human"), "human");
@@ -115,8 +125,13 @@ final class BotConfigParser {
     private MenuItem menuItem(Object item) {
         Map<String, Object> map = map(item, "menu item");
         String id = text(map, "menu.id");
+        Object inMenu = map.getOrDefault("in_menu", true);
+        if (!(inMenu instanceof Boolean)) {
+            throw error("menu[" + id + "].in_menu must be true or false");
+        }
         return new MenuItem(id, text(map, "menu[" + id + "].title"),
-            keywords(map.get("keywords"), "menu[" + id + "].keywords"), text(map, "menu[" + id + "].answer"));
+            keywords(map.get("keywords"), "menu[" + id + "].keywords"), text(map, "menu[" + id + "].answer"),
+            keywords(map.get("follow_ups"), "menu[" + id + "].follow_ups"), (Boolean) inMenu);
     }
 
     private List<String> keywords(Object value, String field) {

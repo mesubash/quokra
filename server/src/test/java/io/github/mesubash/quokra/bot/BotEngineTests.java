@@ -45,7 +45,7 @@ class BotEngineTests {
         -,                            human,   Handoff,  Handoff answer
         it's URGENT,                  -,       Handoff,  Urgent answer
         my payment failed,            -,       Handoff,  Urgent answer
-        urgent cost question,         pricing, Handoff,  Urgent answer
+        Urgent pricing,               pricing, Answer,   Pricing answer
         hello there,                  -,       Fallback, Fallback answer
         -,                            nope,    Fallback, Fallback answer
         passwords,                    -,       Fallback, Fallback answer
@@ -67,6 +67,28 @@ class BotEngineTests {
     void handsOffAfterTooManyMisses() {
         assertThat(BotEngine.decide(CONFIG, "hello", null, 1))
             .isEqualTo(new Handoff(Reason.FALLBACK_LIMIT, "Handoff answer"));
+    }
+
+    @Test
+    void answersWithoutFollowUpsShowTheMainTopics() {
+        assertThat(((Answer) BotEngine.decide(CONFIG, null, "pricing", 0)).options()).isEqualTo(CONFIG.options());
+    }
+
+    @Test
+    void followUpsComeAfterTheirAnswerAndHiddenTopicsStayOutOfTheMenu() {
+        BotConfig bot = new BotConfig("Hi", null, List.of(
+                new MenuItem("device", "Device", List.of("device"), "Device answer", List.of("sos"), true),
+                new MenuItem("sos", "How to send SOS", List.of("sos"), "SOS answer", List.of(), false)),
+            CONFIG.human(), CONFIG.urgent(), "Fallback", 2, "Handoff", true, BotConfig.Texts.DEFAULT);
+
+        assertThat(bot.options()).extracting(BotConfig.Option::id).containsExactly("device", "human");
+        assertThat(((Answer) BotEngine.decide(bot, null, "device", 0)).options()).extracting(BotConfig.Option::id)
+            .containsExactly("sos", "menu", "human");
+        // A hidden topic is still found by its words, and the way back shows the main topics again.
+        assertThat(((Answer) BotEngine.decide(bot, "how do I press sos", null, 0)).text()).isEqualTo("SOS answer");
+        Answer menu = (Answer) BotEngine.decide(bot, null, "menu", 0);
+        assertThat(menu.text()).isEqualTo("Hi");
+        assertThat(menu.options()).isEqualTo(bot.options());
     }
 
     @Test

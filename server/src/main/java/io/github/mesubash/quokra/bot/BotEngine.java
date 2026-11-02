@@ -1,6 +1,7 @@
 package io.github.mesubash.quokra.bot;
 
 import io.github.mesubash.quokra.bot.BotConfig.MenuItem;
+import io.github.mesubash.quokra.bot.BotConfig.Option;
 import java.text.Normalizer;
 import java.util.List;
 import java.util.Locale;
@@ -11,7 +12,8 @@ public final class BotEngine {
 
     public sealed interface Decision {}
 
-    public record Answer(String text) implements Decision {}
+    // options: the buttons to show under it.
+    public record Answer(String text, List<Option> options) implements Decision {}
 
     public record Fallback(String text) implements Decision {}
 
@@ -28,18 +30,21 @@ public final class BotEngine {
     public static Decision decide(BotConfig config, String text, String optionId, int fallbackCount) {
         String words = words(text);
 
-        // Urgent keywords always win, so they're checked first.
-        if (containsAny(words, config.urgent().keywords())) {
+        // Urgent keywords win over everything typed, so they're checked first. A clicked button is one of our own
+        // topics (its title is the text), so "How to send SOS" opens that topic instead of handing off.
+        if (optionId == null && containsAny(words, config.urgent().keywords())) {
             return new Handoff(Reason.URGENT, config.urgent().message());
         }
         if (BotConfig.HUMAN_OPTION.equals(optionId) || containsAny(words, config.human().keywords())) {
             return new Handoff(Reason.CUSTOMER_REQUEST, config.handoffMessage());
         }
+        if (BotConfig.MENU_OPTION.equals(optionId)) {
+            return new Answer(config.greeting(), config.options());
+        }
         if (optionId != null) {
-            for (MenuItem item : config.menu()) {
-                if (item.id().equals(optionId)) {
-                    return new Answer(item.answer());
-                }
+            var picked = config.find(optionId);
+            if (picked.isPresent()) {
+                return new Answer(picked.get().answer(), config.optionsAfter(picked.get()));
             }
         }
 
@@ -53,7 +58,7 @@ public final class BotEngine {
             }
         }
         if (best != null) {
-            return new Answer(best.answer());
+            return new Answer(best.answer(), config.optionsAfter(best));
         }
 
         if (fallbackCount + 1 >= config.maxFallbacks()) {
