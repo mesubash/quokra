@@ -19,6 +19,20 @@ What changed, newest first. Each entry says what people notice; the commits have
   read older ones (your own still do).
 - Options-only bots: with `free_text: false` in the bot file (or **Customers can type to the bot** off in
   Settings → Bot), customers pick a topic instead of typing while the bot answers.
+- Customers can rate a resolved chat with a thumb up or down and an optional comment. The team sees the
+  rating on the chat (under the thread, in Details, and as a badge in the list); admins get a summary in
+  Settings → Ratings.
+- **Email me this chat** in the chat's **⋯** menu sends customers their chat, to the email they gave in it.
+  Needs email set up on the server.
+- An emoji button in the message box, with tabs and recently used ones first.
+- Louder notification sounds, with a Low / Medium / High volume and a Test button in the bell menu.
+- Console: keyboard shortcuts (`?` lists them), a colour per customer avatar, search matches marked in the
+  list, a friendlier empty state with today's numbers, and menus with icons.
+- Console: **Back to chats** in Settings, sign out asks first, and the Resolved tab counts unread messages in
+  resolved chats you handled.
+- Settings' sidebar has an icon per section, marks the current one, and groups your own settings apart
+  from the company's.
+- The server's address (`/`) opens the console instead of "Not found".
 
 **Admins**
 - Company admins and server admins who aren't agents can read their companies' chats, notes and history,
