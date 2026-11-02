@@ -165,3 +165,37 @@ export function DownIcon({ size = 18 }: { size?: number }) {
     </svg>
   );
 }
+
+export function ChatBubblesIcon({ size = 24 }: { size?: number }) {
+  return (
+    <svg {...base} width={size} height={size}>
+      <path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z" />
+      <path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1" />
+    </svg>
+  );
+}
+
+export function PlusIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg {...base} width={size} height={size}>
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+
+export function TransferIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg {...base} width={size} height={size}>
+      <path d="M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7" />
+    </svg>
+  );
+}
+
+export function BanIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg {...base} width={size} height={size}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="m5.7 5.7 12.6 12.6" />
+    </svg>
+  );
+}

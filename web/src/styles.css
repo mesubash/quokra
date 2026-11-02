@@ -182,7 +182,7 @@ button {
   top: calc(100% + 6px);
   right: 0;
   z-index: 10;
-  width: 230px;
+  width: 240px;
   padding: 4px;
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -196,7 +196,7 @@ button {
 .chat-menu-actions button {
   display: block;
   width: 100%;
-  padding: 8px 10px;
+  padding: 9px 10px;
   border: 0;
   border-radius: 6px;
   background: none;
@@ -1103,10 +1103,23 @@ button {
 }
 
 .pane-header {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 14px 16px 10px;
+}
+
+/* The header's pop-ups (notifications, sign out) open under the whole header, inside the pane,
+   rather than hanging off their small button and running past the pane's edge. */
+.pane-header .menu {
+  position: static;
+}
+
+.pane-header .menu-list {
+  top: calc(100% - 4px);
+  right: 12px;
+  max-width: calc(100% - 24px);
 }
 
 .pane-title {
@@ -1231,6 +1244,12 @@ button {
   font-size: 0.88rem;
 }
 
+.console-list .empty svg {
+  display: block;
+  margin: 0 auto 8px;
+  opacity: 0.45;
+}
+
 .console-item {
   display: flex;
   gap: 10px;
@@ -1333,6 +1352,82 @@ button {
   height: 100%;
   padding: 24px;
   text-align: center;
+  background: var(--surface);
+}
+
+.console-empty-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  max-width: 420px;
+}
+
+.console-empty-card h2 {
+  margin: 4px 0 0;
+  font-size: 1.1rem;
+}
+
+.console-empty-card p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.console-empty-icon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: var(--accent-bg);
+  color: var(--accent-text);
+}
+
+/* Today's numbers at a glance while no chat is open. */
+.console-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  width: 100%;
+  margin: 8px 0 0;
+}
+
+.console-stats div {
+  padding: 12px 8px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--raised);
+}
+
+.console-stats dt {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.console-stats dd {
+  margin: 4px 0 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.console-away {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--warn-bg);
+  color: var(--warn-text);
+  text-align: left;
+}
+
+.console-away p {
+  font-size: 0.82rem;
+}
+
+.console-away .button {
+  flex: none;
 }
 
 .console-waiting {
@@ -2009,9 +2104,11 @@ button {
   filter: brightness(0.95);
 }
 
+.sign-out-actions .button:not(.button-quiet),
 .sign-out-actions .button:not(.button-quiet):hover,
 .sign-out-actions .button:not(.button-quiet):focus-visible {
-  background: var(--primary);
+  background: var(--danger-solid);
+  color: #fff;
 }
 
 .settings-side-head {
@@ -3074,4 +3171,69 @@ button {
 
 .menu-list button.notify-turn-on:hover {
   background: color-mix(in srgb, var(--primary) 88%, #000);
+}
+
+
+/* Menus: an icon per item, a divider before risky ones, and switches that look like switches. */
+.chat-menu-list > button,
+.menu-list button[role="menuitem"] {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.menu-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 18px;
+  color: var(--muted);
+}
+
+.menu-list button.danger,
+.menu-list button.danger .menu-icon {
+  color: var(--danger);
+}
+
+.menu-divider {
+  height: 1px;
+  margin: 4px 6px;
+  border: 0;
+  background: var(--border);
+}
+
+.menu-list[role="menu"] {
+  min-width: 200px;
+}
+
+.menu-switch {
+  position: relative;
+  flex: none;
+  width: 30px;
+  height: 18px;
+  margin-left: auto;
+  border-radius: 9px;
+  background: var(--track);
+  transition: background 0.15s;
+}
+
+.menu-switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.25);
+  transition: transform 0.15s;
+}
+
+.menu-switch.on {
+  background: var(--primary);
+}
+
+.menu-switch.on::after {
+  transform: translateX(12px);
 }

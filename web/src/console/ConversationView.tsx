@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ApiError,
   MAX_IMAGE_BYTES,
@@ -14,7 +14,7 @@ import {
   type Suggestion,
 } from "../lib/api";
 import type { Socket } from "../lib/realtime";
-import { BackIcon, CheckIcon, CloseIcon, CopyIcon, ExpandIcon, MoreIcon, PanelIcon } from "../lib/icons";
+import { BackIcon, BanIcon, BotIcon, CheckIcon, CloseIcon, CopyIcon, ExpandIcon, MoreIcon, PanelIcon, TransferIcon } from "../lib/icons";
 import { Composer } from "../chat/Composer";
 import { MessageList, previewOf, quoteLabel, type TimelineItem } from "../chat/MessageList";
 import { useTypingSignal } from "../chat/typing";
@@ -244,10 +244,21 @@ export function ConversationView({
   const timeline: TimelineItem[] = [...messages, ...notes.map(noteItem)].sort((a, b) => (a.id < b.id ? -1 : 1));
 
   const actions = readOnly ? [] : [
-    status === "HUMAN" && mine && { label: "Transfer…", run: () => (setMenu(false), setDialog("transfer")) },
-    status === "HUMAN" && mine && { label: "Return to bot", run: () => act(() => api.returnToBot(id)) },
-    (status === "WAITING" || (status === "HUMAN" && mine)) && { label: "Resolve", run: () => act(() => api.resolve(id)) },
-    canBlock && { label: "Block contact…", danger: true, run: () => (setMenu(false), setDialog("block")) },
+    status === "HUMAN" &&
+      mine && { label: "Transfer…", icon: <TransferIcon size={16} />, run: () => (setMenu(false), setDialog("transfer")) },
+    status === "HUMAN" &&
+      mine && { label: "Return to bot", icon: <BotIcon size={16} />, run: () => act(() => api.returnToBot(id)) },
+    (status === "WAITING" || (status === "HUMAN" && mine)) && {
+      label: "Resolve",
+      icon: <CheckIcon size={16} />,
+      run: () => act(() => api.resolve(id)),
+    },
+    canBlock && {
+      label: "Block contact…",
+      icon: <BanIcon size={16} />,
+      danger: true,
+      run: () => (setMenu(false), setDialog("block")),
+    },
   ].filter(Boolean) as MenuItem[];
 
   return (
@@ -458,6 +469,7 @@ function noteItem(n: Note): TimelineItem {
 
 interface MenuItem {
   label: string;
+  icon?: ReactNode;
   danger?: boolean;
   run: () => void;
 }
@@ -503,10 +515,16 @@ function Menu({
       </button>
       {open && (
         <div className="menu-list" role="menu">
-          {items.map((item) => (
-            <button key={item.label} type="button" role="menuitem" className={item.danger ? "danger" : ""} onClick={item.run}>
-              {item.label}
-            </button>
+          {items.map((item, i) => (
+            <Fragment key={item.label}>
+              {item.danger && i > 0 && <hr className="menu-divider" />}
+              <button type="button" role="menuitem" className={item.danger ? "danger" : ""} onClick={item.run}>
+                <span className="menu-icon" aria-hidden="true">
+                  {item.icon}
+                </span>
+                {item.label}
+              </button>
+            </Fragment>
           ))}
         </div>
       )}
