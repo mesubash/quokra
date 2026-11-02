@@ -34,6 +34,8 @@ What changed, newest first. Each entry says what people notice; the commits have
 - Settings' sidebar has an icon per section, marks the current one, and groups your own settings apart
   from the company's.
 - The server's address (`/`) opens the console instead of "Not found".
+- Highlights follow the company's colour, text on it stays white unless the colour is very light, and the
+  chat's robot avatar is redrawn as an outline head.
 
 **Admins**
 - Company admins and server admins who aren't agents can read their companies' chats, notes and history,

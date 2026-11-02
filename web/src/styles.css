@@ -23,8 +23,9 @@
   --warn-text: #8a4500;
   --success-bg: #e6f4ea;
   --success-text: #1e6b34;
-  --accent-bg: #e7e9f6;
-  --accent-text: #3d3f8f;
+  /* Soft tint and deep shade of the brand colour, so highlights follow whatever colour the company picks. */
+  --accent-bg: color-mix(in srgb, var(--primary) 12%, #fff);
+  --accent-text: color-mix(in srgb, var(--primary) 82%, #000);
   --note-bg: #fff8db;
   --note-border: #e6c35c;
   --note-text: #5c4500;
@@ -335,9 +336,8 @@ button {
 
 .avatar-robot {
   --robot-bg: var(--primary);
-  /* Dark on a very light brand colour, white otherwise (see textOn). */
+  /* White on most brand colours, dark on very light ones (see textOn). */
   --robot-face: var(--on-primary);
-  --robot-eye: var(--primary);
   background: none;
 }
 
@@ -353,19 +353,16 @@ button {
   fill: var(--robot-face);
 }
 
-.robot-line {
+.robot-head {
+  fill: none;
   stroke: var(--robot-face);
-  stroke-width: 1.6;
-}
-
-.robot-eye {
-  fill: var(--robot-eye);
+  stroke-width: 2;
 }
 
 .robot-smile {
   fill: none;
-  stroke: var(--robot-eye);
-  stroke-width: 1.6;
+  stroke: var(--robot-face);
+  stroke-width: 1.5;
   stroke-linecap: round;
 }
 
@@ -373,7 +370,6 @@ button {
 .header-avatar .avatar-robot {
   --robot-bg: var(--on-primary);
   --robot-face: var(--primary);
-  --robot-eye: var(--on-primary);
 }
 
 .avatar-agent,
