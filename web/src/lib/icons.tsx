@@ -209,10 +209,27 @@ export function BanIcon({ size = 18 }: { size?: number }) {
   );
 }
 
+export function UsersIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg {...base} width={size} height={size}>
+      <circle cx="9" cy="8" r="3.5" />
+      <path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18.5 20a6.5 6.5 0 0 0-3-5.5" />
+    </svg>
+  );
+}
+
 export function ThumbIcon({ size = 18, down = false }: { size?: number; down?: boolean }) {
   return (
     <svg {...base} width={size} height={size} style={down ? { transform: "rotate(180deg)" } : undefined}>
       <path d="M7 10v11H4a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1zM7 10l4-8a3 3 0 0 1 3 3v4h5.5a2 2 0 0 1 2 2.3l-1.4 8a2 2 0 0 1-2 1.7H7" />
+    </svg>
+  );
+}
+
+export function CodeIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg {...base} width={size} height={size}>
+      <path d="m8 7-5 5 5 5M16 7l5 5-5 5" />
     </svg>
   );
 }
