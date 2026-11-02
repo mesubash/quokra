@@ -40,6 +40,9 @@ public class Tenant {
     // Customers and agents may send images (and only while the file store works, see StorageCheck).
     private boolean attachmentsEnabled;
 
+    // AI suggestions for agents (v3); also needs QUOKRA_AI_KEY on the server.
+    private boolean aiEnabled;
+
     // The bot as edited in the Admin tab (JSON); null means the bot file above is used.
     private String botCustom;
 

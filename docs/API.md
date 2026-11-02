@@ -205,8 +205,9 @@ All require an agent token. The agent only sees tenants they're a member of (`te
 ### 4.1 `GET /agent/tenants`
 
 ```json
-200 { "items": [{ "id": "…", "slug": "demo", "displayName": "Demo Company", "attachments": true, "primaryColor": "#0051fb" }] }
-// attachments: agents can send images in this company's chats; primaryColor: the company's colour (or null)
+200 { "items": [{ "id": "…", "slug": "demo", "displayName": "Demo Company", "attachments": true, "primaryColor": "#0051fb", "ai": false }] }
+// attachments: agents can send images in this company's chats; primaryColor: the company's colour (or null);
+// ai: agents can ask for suggested replies (4.21)
 ```
 
 ### 4.2 `GET /agent/conversations`
@@ -348,6 +349,17 @@ The console calls it every minute while it's open. An agent is online while thei
 
 No body; `204`. The customer sees "<agent name> is typing…" (event `typing`). The console sends it at most every 3 seconds while the agent types a reply (not a note).
 
+### 4.21 `POST /agent/conversations/{id}/suggestion`
+
+A reply drafted from the company's knowledge documents, for the agent to edit or send. No body; nothing is stored or sent to the customer. Any agent of the company can ask; up to 20 a minute each (`429 RATE_LIMITED`).
+
+```json
+200 { "text": "Refunds go back to your card within 5 working days.", "sources": [{ "title": "Handbook", "heading": "Returns and refunds › Refunds" }], "reason": null }
+200 { "text": null, "sources": [], "reason": "NO_MATCH" }
+```
+
+`reason` says why there's no suggestion: `OFF` (AI off for the server or the company), `NO_QUESTION` (the customer hasn't written anything), `NO_MATCH` (nothing in the documents is close enough to the customer's latest messages; the AI isn't asked), `NO_ANSWER` (the AI found no answer in the passages, or its answer failed a check), `AI_UNAVAILABLE` (the provider didn't answer in time). The AI gets the matching passages and the last 8 messages, and answers only from the passages; the server drops answers that don't cite the passages it got, link anywhere they don't, contain HTML or run over 1,000 characters.
+
 ### 4.19 Images
 
 `POST /agent/conversations/{id}/attachments` (multipart: `file`, optional `clientMessageId` and `replyTo`) → `201 { "message": Message }`. Same rules as a reply (the assignee of an accepted chat) and the same checks as 3.10. `GET /agent/conversations/{id}/messages/{messageId}/attachment` returns the image to any agent of the tenant.
@@ -374,6 +386,7 @@ interface Tenant {
   logoUrl: string | null; primaryColor: string | null; botConfig: string;
   autoResolveMinutes: number;            // close quiet chats after this long; 0 = never (default 1440)
   attachmentsEnabled: boolean;           // customers and agents may send images (default false)
+  aiEnabled: boolean;                    // agents get suggested replies (default false); sends recent messages to the AI provider
   retentionMonths: number;               // resolved chats are deleted after this long; 0 = forever (default 12)
   alertEmail: string | null;             // where "a chat is waiting" emails go (comma-separated, up to 5); null = agents' own emails
   waitingAlertMinutes: number;           // email the team after a chat waited this long with nobody online; 0 = never (default 10)
@@ -390,6 +403,7 @@ interface Tenant {
 |---|---|
 | `GET /admin/mail` | Whether the server can send email: `{ "configured": true, "ok": true, "problem": null }`. Emails go out only while `ok` |
 | `GET /admin/retention` | What companies may choose for `retentionMonths`: `{ "minMonths": 1, "maxMonths": 60 }`; `maxMonths: 0` means 0 (forever) is allowed too. Anything else is `400 VALIDATION_ERROR` |
+| `GET /admin/ai` | Whether the server has AI: `{ "configured": true, "chatModel": "gemini-3.1-flash-lite", "embeddingModel": "gemini-embedding-001" }`. Without it, `aiEnabled` has no effect and Settings hides Knowledge |
 | `GET /admin/storage` | Whether image storage works: `{ "ok": true, "store": "disk", "problem": null }`. Checked by writing and reading a small file, at most every 5 minutes |
 | `GET /admin/bots` | Bot files the server has: `{ "items": ["demo", …] }` |
 | `GET /admin/tenants` | The tenants the caller manages (all of them for server admins): `{ "items": [Tenant, …] }` |

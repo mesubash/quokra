@@ -284,6 +284,8 @@ export interface AdminTenant {
   // null means always open.
   openingHours: OpeningHours | null;
   attachmentsEnabled: boolean;
+  // AI suggestions for agents; sends customers' messages to the AI provider.
+  aiEnabled: boolean;
   // Resolved chats are deleted after this many months (0 = kept forever).
   retentionMonths: number;
   // Email alerts: where "a chat is waiting" goes (null: the agents' own emails), after how long (0 = never),
@@ -309,6 +311,7 @@ export interface TenantForm {
   autoResolveMinutes: number;
   openingHours: OpeningHours | null;
   attachmentsEnabled: boolean;
+  aiEnabled: boolean;
   retentionMonths?: number;
   alertEmail: string | null;
   waitingAlertMinutes: number;
@@ -329,6 +332,13 @@ export interface RetentionLimits {
 }
 
 // Whether image storage works (GET /admin/storage).
+// configured: the server has an AI key, so companies can turn AI on.
+export interface AiStatus {
+  configured: boolean;
+  chatModel: string;
+  embeddingModel: string;
+}
+
 export interface StorageStatus {
   ok: boolean;
   store: string;
@@ -398,6 +408,7 @@ export function adminApi(getToken: () => string, refresh?: FreshToken) {
   return {
     bots: () => call<{ items: string[] }>("GET", "/bots"),
     storage: () => call<StorageStatus>("GET", "/storage"),
+    ai: () => call<AiStatus>("GET", "/ai"),
     retention: () => call<RetentionLimits>("GET", "/retention"),
     mail: () => call<MailStatus>("GET", "/mail"),
     tenants: () => call<{ items: AdminTenant[] }>("GET", "/tenants"),
@@ -439,6 +450,15 @@ export interface TenantItem {
   // Agents can send images in this company's chats.
   attachments: boolean;
   primaryColor: string | null;
+  // Agents can ask for suggested replies (AI on for the server and the company).
+  ai: boolean;
+}
+
+// A reply drafted from the company's documents, or why there's none.
+export interface Suggestion {
+  text: string | null;
+  sources: { title: string; heading: string | null }[];
+  reason: "OFF" | "NO_QUESTION" | "NO_MATCH" | "NO_ANSWER" | "AI_UNAVAILABLE" | null;
 }
 
 // getToken returns the agent's current token, so a refreshed token is used without rebuilding anything.
@@ -489,6 +509,7 @@ export function agentApi(getToken: () => string, refresh?: FreshToken) {
     block: (id: string) => post<One>(`/conversations/${id}/block`),
     unblock: (contactId: string) => post<void>(`/contacts/${contactId}/unblock`),
     typing: (id: string) => post<void>(`/conversations/${id}/typing`),
+    suggestion: (id: string) => post<Suggestion>(`/conversations/${id}/suggestion`),
     // The console's check-in; with a status, also switches Online / Away.
     presence: (status?: PresenceStatus) => post<{ status: PresenceStatus }>("/presence", status ? { status } : undefined),
     markRead: (id: string, messageId: string) => post<void>(`/conversations/${id}/read`, { messageId }),

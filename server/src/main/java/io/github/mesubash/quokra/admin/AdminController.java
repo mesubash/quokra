@@ -2,6 +2,7 @@ package io.github.mesubash.quokra.admin;
 
 import io.github.mesubash.quokra.admin.TenantAdmin.TenantForm;
 import io.github.mesubash.quokra.admin.TenantAdmin.TenantView;
+import io.github.mesubash.quokra.ai.AiClient;
 import io.github.mesubash.quokra.attachment.StorageCheck;
 import io.github.mesubash.quokra.bot.BotConfigRegistry;
 import io.github.mesubash.quokra.presence.AgentPresence;
@@ -47,6 +48,9 @@ public class AdminController {
 
     record SecretResponse(String secretKey) {}
 
+    // configured: the server has an AI key, so companies can turn AI on.
+    record AiStatus(boolean configured, String chatModel, String embeddingModel) {}
+
     record AgentView(String sub, String name, String email, boolean admin, boolean online) {}
 
     record AgentsResponse(List<AgentView> agents, List<TenantAgents.Invite> invites) {}
@@ -76,11 +80,13 @@ public class AdminController {
     private final RetentionLimits retention;
     private final MailCheck mail;
     private final TenantAccess access;
+    private final AiClient ai;
 
     public AdminController(TenantAdmin tenants, TenantAgents agents, TenantSecrets secrets, BotConfigRegistry bots,
                            CannedReplies replies, TenantBots tenantBots, TenantRepository tenantRepository,
                            StorageCheck storage, AgentPresence presence, RetentionLimits retention,
-                           MailCheck mail, TenantAccess access) {
+                           MailCheck mail, TenantAccess access, AiClient ai) {
+        this.ai = ai;
         this.access = access;
         this.mail = mail;
         this.retention = retention;
@@ -110,6 +116,12 @@ public class AdminController {
     @GetMapping("/mail")
     public MailCheck.Status mail() {
         return mail.status();
+    }
+
+    // Whether the server can use AI, for the "AI suggestions" setting and Settings → Knowledge.
+    @GetMapping("/ai")
+    public AiStatus ai() {
+        return new AiStatus(ai.enabled(), ai.chatModel(), ai.embeddingModel());
     }
 
     // What companies may choose for keeping chats (maxMonths 0: "forever" is allowed too).

@@ -1,5 +1,6 @@
 package io.github.mesubash.quokra.agent;
 
+import io.github.mesubash.quokra.ai.ReplySuggester;
 import io.github.mesubash.quokra.agent.AgentViews.ConversationView;
 import io.github.mesubash.quokra.agent.AgentViews.EventView;
 import io.github.mesubash.quokra.agent.AgentViews.Summary;
@@ -65,7 +66,8 @@ public class AgentController {
     record Me(String sub, String name, List<String> tenants, boolean agent, boolean admin, List<String> manages) {}
 
     // attachments: agents can send images in this tenant's chats. primaryColor: the company's brand colour.
-    record TenantItem(UUID id, String slug, String displayName, boolean attachments, String primaryColor) {}
+    // ai: agents can ask for suggested replies.
+    record TenantItem(UUID id, String slug, String displayName, boolean attachments, String primaryColor, boolean ai) {}
 
     record Page<T>(List<T> items, String nextCursor) {}
 
@@ -106,11 +108,13 @@ public class AgentController {
     private final RateLimiter rateLimiter;
     private final AgentPresence presence;
     private final TenantAccess access;
+    private final ReplySuggester suggester;
 
     public AgentController(ConversationService service, TenantRepository tenants, TenantAgents tenantAgents,
                            ContactRepository contacts, AgentReads reads, AgentJwtConverter agentTokens,
                            CannedReplies replies, TypingSignals typing, RateLimiter rateLimiter,
-                           AgentPresence presence, TenantAccess access) {
+                           AgentPresence presence, TenantAccess access, ReplySuggester suggester) {
+        this.suggester = suggester;
         this.access = access;
         this.presence = presence;
         this.replies = replies;
@@ -146,7 +150,7 @@ public class AgentController {
     public Page<TenantItem> tenants(@AuthenticationPrincipal Jwt jwt) {
         return new Page<>(myTenants(jwt).values().stream()
             .map(t -> new TenantItem(t.getId(), t.getSlug(), t.getDisplayName(), service.imagesAllowed(t),
-                t.getPrimaryColor()))
+                t.getPrimaryColor(), suggester.availableFor(t)))
             .sorted((a, b) -> a.slug().compareTo(b.slug()))
             .toList(), null);
     }
@@ -242,6 +246,15 @@ public class AgentController {
     }
 
     // The agent is typing a reply; the customer sees "<name> is typing…". Nothing is stored.
+    // A reply drafted from the company's documents, for the agent to edit or send. Nothing is stored or sent.
+    @PostMapping("/conversations/{id}/suggestion")
+    public ReplySuggester.Suggestion suggestion(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
+        Conversation conversation = visible(jwt, id);
+        rateLimiter.check("suggest:" + jwt.getSubject(), RateLimiter.SUGGESTIONS_PER_MINUTE);
+        Tenant tenant = tenants.findById(conversation.getTenantId()).orElseThrow();
+        return suggester.suggest(tenant, service.messages(id, null, 20));
+    }
+
     @PostMapping("/conversations/{id}/typing")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void typing(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {

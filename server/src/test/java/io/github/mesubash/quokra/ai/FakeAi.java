@@ -19,6 +19,10 @@ public final class FakeAi {
     static final int DIMENSIONS = 768;
 
     public final AtomicInteger requests = new AtomicInteger();
+    public final AtomicInteger chats = new AtomicInteger();
+    // What /chat/completions answers with (the model's text), and the last request it got.
+    public volatile String chatReply = "{\"answer\": \"NONE\", \"sources\": []}";
+    public volatile String lastChat;
     // HTTP status to answer with instead of 200, e.g. 429 or 500; 0 for normal answers.
     public volatile int failWith;
 
@@ -44,6 +48,19 @@ public final class FakeAi {
             } else {
                 reply = "{\"error\":{\"message\":\"nope\"}}".getBytes(StandardCharsets.UTF_8);
             }
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(status, reply.length);
+            exchange.getResponseBody().write(reply);
+            exchange.close();
+        });
+        server.createContext("/chat/completions", exchange -> {
+            chats.incrementAndGet();
+            lastChat = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+            int status = failWith == 0 ? 200 : failWith;
+            byte[] reply = status == 200
+                ? JSON.writeValueAsBytes(java.util.Map.of("choices",
+                    List.of(java.util.Map.of("message", java.util.Map.of("role", "assistant", "content", chatReply)))))
+                : "{\"error\":{\"message\":\"nope\"}}".getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().add("Content-Type", "application/json");
             exchange.sendResponseHeaders(status, reply.length);
             exchange.getResponseBody().write(reply);

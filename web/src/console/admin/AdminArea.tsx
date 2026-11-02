@@ -8,6 +8,7 @@ import {
   type MailStatus,
   type RetentionLimits,
   type SavedReply,
+  type AiStatus,
   type StorageStatus,
   type TenantForm,
 } from "../../lib/api";
@@ -26,6 +27,8 @@ export type AdminSelection = string | "new" | null;
 export function useAdmin(api: AdminApi, enabled: boolean) {
   const [tenants, setTenants] = useState<AdminTenant[] | null>(null);
   const [bots, setBots] = useState<string[]>([]);
+  // Whether the server has AI; Settings → Knowledge only shows then.
+  const [ai, setAi] = useState(false);
   const [selected, setSelected] = useState<AdminSelection>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,9 +49,13 @@ export function useAdmin(api: AdminApi, enabled: boolean) {
       .bots()
       .then((page) => setBots(page.items))
       .catch(() => {});
+    api
+      .ai()
+      .then((s) => setAi(s.configured))
+      .catch(() => {});
   }, [api, reload, enabled]);
 
-  return { tenants, bots, selected, select: setSelected, reload, error };
+  return { tenants, bots, ai, selected, select: setSelected, reload, error };
 }
 
 type Admin = ReturnType<typeof useAdmin>;
@@ -56,13 +63,11 @@ type Admin = ReturnType<typeof useAdmin>;
 type Section = "notifications" | "general" | "bot" | "knowledge" | "replies" | "agents" | "embed";
 
 // Notifications are each agent's own; the rest is per company, for admins.
-// ponytail: Knowledge stays hidden until AI answers use it (v3 step 3); then drop the flag.
-const KNOWLEDGE_READY = false;
-
 const COMPANY_SECTIONS: { id: Section; label: string }[] = [
   { id: "general", label: "General" },
   { id: "bot", label: "Bot" },
-  ...(KNOWLEDGE_READY ? [{ id: "knowledge" as const, label: "Knowledge" }] : []),
+  // Only listed when the server has AI (see Settings).
+  { id: "knowledge", label: "Knowledge" },
   { id: "replies", label: "Saved replies" },
   { id: "agents", label: "Agents" },
   { id: "embed", label: "Embed & keys" },
@@ -72,7 +77,7 @@ const INTRO: Record<Section, (company: string) => string> = {
   notifications: () => "What alerts you, and how. Kept in this browser.",
   general: (c) => `How ${c} looks in the chat, and when chats are answered.`,
   bot: () => "The questions and answers customers can pick from before they reach a person.",
-  knowledge: (c) => `Documents about ${c} that the bot answers questions from. Text or Markdown.`,
+  knowledge: (c) => `Documents about ${c} that suggested replies come from. Text or Markdown.`,
   replies: () => "Answers agents insert by typing / in the reply box. {name} becomes the customer's name.",
   agents: (c) =>
     `People who answer chats for ${c}. They sign in with your own login and need the agent role there. Admins can also change these settings.`,
@@ -114,7 +119,9 @@ export function Settings({
   // General first, then your own notifications, then the rest of the company's sections.
   const sections: { id: Section; label: string }[] =
     admin && api && tenant
-      ? [COMPANY_SECTIONS[0], { id: "notifications", label: "Notifications" }, ...COMPANY_SECTIONS.slice(1)]
+      ? [COMPANY_SECTIONS[0], { id: "notifications" as const, label: "Notifications" }, ...COMPANY_SECTIONS.slice(1)].filter(
+          (x) => x.id !== "knowledge" || admin.ai,
+        )
       : [{ id: "notifications", label: "Notifications" }];
   const title = creating ? "New company" : (COMPANY_SECTIONS.find((x) => x.id === section)?.label ?? "Notifications");
 
@@ -594,6 +601,7 @@ function TenantFormView({
   const [autoResolve, setAutoResolve] = useState(tenant?.autoResolveMinutes ?? 1440);
   const [hours, setHours] = useState<OpeningHours | null>(tenant?.openingHours ?? null);
   const [images, setImages] = useState(tenant?.attachmentsEnabled ?? false);
+  const [ai, setAi] = useState(tenant?.aiEnabled ?? false);
   const [retention, setRetention] = useState<number | undefined>(tenant?.retentionMonths);
   const [alertEmail, setAlertEmail] = useState(tenant?.alertEmail ?? "");
   const [waitingAlert, setWaitingAlert] = useState(tenant?.waitingAlertMinutes ?? 10);
@@ -621,6 +629,7 @@ function TenantFormView({
       autoResolveMinutes: autoResolve,
       openingHours: hours,
       attachmentsEnabled: images,
+      aiEnabled: ai,
       retentionMonths: retention,
       alertEmail: alertEmail.trim() || null,
       waitingAlertMinutes: waitingAlert,
@@ -724,6 +733,7 @@ function TenantFormView({
         </Row>
         <HoursField value={hours} onChange={setHours} />
         <ImagesField api={api} value={images} onChange={setImages} />
+        <AiField api={api} value={ai} onChange={setAi} />
         <RetentionField api={api} value={retention} onChange={setRetention} />
       </section>
 
@@ -949,6 +959,34 @@ function RetentionField({
 }
 
 // "Allow images", with whether the server's storage for them works.
+function AiField({ api, value, onChange }: { api: AdminApi; value: boolean; onChange: (v: boolean) => void }) {
+  const [status, setStatus] = useState<AiStatus | null>(null);
+
+  useEffect(() => {
+    api
+      .ai()
+      .then(setStatus)
+      .catch(() => setStatus(null));
+  }, [api]);
+
+  return (
+    <Row
+      label="AI suggestions"
+      help="Agents can ask for a reply drafted from your documents (Settings → Knowledge) and edit it before sending. The customer's recent messages are sent to the AI provider."
+    >
+      <label className="admin-check">
+        <input type="checkbox" role="switch" checked={value} onChange={(e) => onChange(e.target.checked)} />
+        Suggest replies
+      </label>
+      {status && !status.configured && (
+        <p className="setting-note error-text" role="status">
+          This server has no AI key, so suggestions stay off.
+        </p>
+      )}
+    </Row>
+  );
+}
+
 function ImagesField({ api, value, onChange }: { api: AdminApi; value: boolean; onChange: (v: boolean) => void }) {
   const [storage, setStorage] = useState<StorageStatus | null>(null);
 

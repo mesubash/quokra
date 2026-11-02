@@ -11,6 +11,7 @@ import {
   type Note,
   type Person,
   type SavedReply,
+  type Suggestion,
 } from "../lib/api";
 import type { Socket } from "../lib/realtime";
 import { BackIcon, CheckIcon, CloseIcon, CopyIcon, ExpandIcon, MoreIcon, PanelIcon } from "../lib/icons";
@@ -36,6 +37,28 @@ interface Props {
   onError: (e: unknown) => void;
   // Whether agents can send images in this company's chats.
   imagesAllowed?: (tenantSlug: string) => boolean;
+  // Whether agents of that company can ask for suggested replies.
+  aiAllowed?: (tenantSlug: string) => boolean;
+}
+
+// What the agent reads under the reply box after asking for a suggestion.
+export function suggestionNote(s: Suggestion): string {
+  if (s.text) {
+    const from = s.sources.map((x) => (x.heading ? `${x.title} › ${x.heading}` : x.title)).join(", ");
+    return `Suggested from ${from}. Check it before sending.`;
+  }
+  switch (s.reason) {
+    case "NO_MATCH":
+      return "Nothing in your documents answers this.";
+    case "NO_QUESTION":
+      return "The customer hasn't asked anything yet.";
+    case "AI_UNAVAILABLE":
+      return "The AI didn't answer. Try again in a moment.";
+    case "OFF":
+      return "Suggestions are off for this company.";
+    default:
+      return "Couldn't draft a reply from your documents.";
+  }
 }
 
 const STATUS_LABEL = { BOT: "With the bot", WAITING: "Waiting", HUMAN: "Open", RESOLVED: "Resolved" };
@@ -55,6 +78,7 @@ export function ConversationView({
   onChanged,
   onError,
   imagesAllowed = () => false,
+  aiAllowed = () => false,
 }: Props) {
   const [conversation, setConversation] = useState<AgentConversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -340,6 +364,21 @@ export function ConversationView({
             onTyping={writing === "reply" ? () => void api.typing(id).catch(() => {}) : undefined}
             onAttach={
               writing === "reply" && imagesAllowed(conversation.tenantSlug) ? (file) => void sendImage(file) : undefined
+            }
+            onSuggest={
+              writing === "reply" && aiAllowed(conversation.tenantSlug)
+                ? () =>
+                    api.suggestion(id).then(
+                      (s) => ({ text: s.text, note: suggestionNote(s) }),
+                      (e) => ({
+                        text: null,
+                        note:
+                          e instanceof ApiError && e.status === 429
+                            ? "Too many suggestions. Wait a minute."
+                            : "Couldn't get a suggestion.",
+                      }),
+                    )
+                : undefined
             }
             placeholder={writing === "note" ? "Only your team sees this…" : `Reply to ${customer}…`}
           />

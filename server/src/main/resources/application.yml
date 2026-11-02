@@ -49,6 +49,9 @@ quokra:
     # v3: an OpenAI-compatible API (Gemini, OpenAI, Ollama, …). AI is off without a key.
     base-url: ${QUOKRA_AI_BASE_URL:https://generativelanguage.googleapis.com/v1beta/openai/}
     key: ${QUOKRA_AI_KEY:}
+    chat-model: ${QUOKRA_AI_CHAT_MODEL:gemini-3.1-flash-lite}
+    # Sent as reasoning_effort; "none" keeps Gemini's flash models fast. Empty leaves it out (other providers).
+    reasoning-effort: ${QUOKRA_AI_REASONING_EFFORT:none}
     embedding-model: ${QUOKRA_AI_EMBEDDING_MODEL:gemini-embedding-001}
     # Must match the database column (vector(768)).
     dimensions: 768

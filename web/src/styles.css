@@ -614,6 +614,11 @@ button {
 }
 
 /* "Replying to …" above the input. */
+.composer-suggestion {
+  margin: 0 0 6px;
+  font-size: 0.78rem;
+}
+
 .composer-quote {
   display: flex;
   align-items: center;

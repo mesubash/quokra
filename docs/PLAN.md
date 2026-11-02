@@ -132,7 +132,9 @@ Google can change at any time. With billing on, set a spending cap and quotas th
    questions scored 0.47 at most, so the minimum score is 0.55.
 3. **Answers:**
    - **3a, for agents:** in the console, a suggested reply from the documents with its sources; the agent
-     edits or sends it. Nothing reaches the customer without a person.
+     edits or sends it. Nothing reaches the customer without a person. **Done**, with a per-company switch
+     (off by default) and Settings → Knowledge shown when the server has AI; `SuggestionEvalTests` passed
+     against Gemini (answers cited, off-topic and injection attempts got nothing).
    - **3b, for customers** (per company, off by default): free-text questions the FAQ didn't match get an
      answer from the documents, with the guardrails above; otherwise fallback and handoff.
 4. **In the chat and console:** AI answers marked, sources shown, "Talk to a person" always there; agents see
