@@ -418,7 +418,8 @@ export interface SavedReply {
 export interface BotFields {
   greeting: string;
   teaser?: string;
-  menu: { id: string; title: string; keywords: string[]; answer: string }[];
+  // follow_ups: ids of topics offered after this answer; in_menu: false keeps it out of the main topics.
+  menu: { id: string; title: string; keywords: string[]; answer: string; follow_ups?: string[]; in_menu?: boolean }[];
   human: { title: string; keywords: string[] };
   urgent: { keywords: string[]; message: string };
   fallback: string;

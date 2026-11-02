@@ -3637,3 +3637,45 @@ kbd {
     width: 250px;
   }
 }
+
+/* Settings → Bot: whether a question is a main topic, and the buttons after its answer. */
+.bot-question-menu {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 0.82rem;
+}
+
+.bot-follow-ups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.bot-follow-ups legend {
+  margin-bottom: 4px;
+  padding: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.bot-follow-ups button {
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--raised);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.bot-follow-ups button.on {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--on-primary);
+}
