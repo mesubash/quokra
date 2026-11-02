@@ -6,6 +6,9 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2Error;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtClaimValidator;
 import org.springframework.security.oauth2.jwt.JwtValidators;
@@ -36,6 +39,16 @@ class OidcConfig {
     static DelegatingOAuth2TokenValidator<Jwt> validator(String issuer, String audience) {
         return new DelegatingOAuth2TokenValidator<>(
             JwtValidators.createDefaultWithIssuer(issuer),
-            new JwtClaimValidator<List<String>>("aud", aud -> aud != null && aud.contains(audience)));
+            new JwtClaimValidator<List<String>>("aud", aud -> aud != null && aud.contains(audience)),
+            accessTokensOnly());
+    }
+
+    // Some providers mark the kind of token in a "type" claim: only access tokens, never refresh tokens.
+    static OAuth2TokenValidator<Jwt> accessTokensOnly() {
+        return jwt -> {
+            Object type = jwt.getClaims().get("type");
+            return type == null || "access".equals(type) ? OAuth2TokenValidatorResult.success()
+                : OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token", "Not an access token", null));
+        };
     }
 }
