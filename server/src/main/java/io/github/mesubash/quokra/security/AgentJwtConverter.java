@@ -56,6 +56,7 @@ public class AgentJwtConverter implements Converter<Jwt, AbstractAuthenticationT
             ? email.strip() : null;
     }
 
+    // The agent's name in chats, which customers see too, so never an email address.
     public String displayName(Jwt jwt) {
         // The configured claim first (QUOKRA_AGENT_NAME_CLAIM), then the usual ones.
         for (String claim : List.of(nameClaim, "name", "preferred_username", "email")) {
@@ -64,7 +65,7 @@ public class AgentJwtConverter implements Converter<Jwt, AbstractAuthenticationT
             }
             String value = jwt.getClaimAsString(claim);
             if (value != null && !value.isBlank()) {
-                return value;
+                return PersonNames.safe(value);
             }
         }
         return jwt.getSubject();
