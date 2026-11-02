@@ -181,6 +181,18 @@ export function useChat(token: string | null, onUnauthorized?: () => void) {
     [token],
   );
 
+  // "Email me this chat": returns the line to show the customer.
+  const emailTranscript = useCallback(async (): Promise<string> => {
+    if (!token) return "Not connected yet.";
+    try {
+      const { sentTo } = await widgetApi.emailTranscript(token);
+      return sentTo ? `Sent to ${sentTo}.` : "We've emailed you this chat.";
+    } catch (e) {
+      if (e instanceof ApiError && e.code === "RATE_LIMITED") return "You've asked for this chat a few times. Try again later.";
+      return "Couldn't email this chat. Try again later.";
+    }
+  }, [token]);
+
   const loadImage = useCallback((messageId: string) => widgetApi.image(token ?? "", messageId), [token]);
 
   // Tells the agent the customer is typing; only once a person has the chat.
@@ -188,5 +200,5 @@ export function useChat(token: string | null, onUnauthorized?: () => void) {
     if (token && state.conversation?.status === "HUMAN") widgetApi.typing(token).catch(() => {});
   }, [token, state.conversation?.status]);
 
-  return { ...state, send, retry, startNew, sendImage, loadImage, agentTyping: typing.who, sendTyping };
+  return { ...state, send, retry, startNew, sendImage, emailTranscript, loadImage, agentTyping: typing.who, sendTyping };
 }

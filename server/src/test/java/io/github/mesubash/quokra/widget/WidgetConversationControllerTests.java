@@ -127,6 +127,14 @@ class WidgetConversationControllerTests {
     }
 
     @Test
+    void noTranscriptWhileEmailIsOff() {
+        post(BASE, null);
+
+        assertThat(post(BASE + "/transcript", null)).hasStatus(HttpStatus.CONFLICT)
+            .bodyJson().extractingPath("$.error.code").isEqualTo("EMAIL_OFF");
+    }
+
+    @Test
     void startingANewChatGivesAFreshConversation() {
         MvcTestResult first = post(BASE, null);
         post(BASE + "/messages", "{\"clientMessageId\":\"c-1\",\"body\":\"hello\"}");

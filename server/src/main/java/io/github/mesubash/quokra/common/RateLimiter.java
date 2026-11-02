@@ -20,6 +20,9 @@ public class RateLimiter {
     // AI suggested replies, per agent.
     public static final int SUGGESTIONS_PER_MINUTE = 20;
     public static final int SESSIONS_PER_MINUTE = 5;
+    // Chat transcripts by email, per conversation and per IP address.
+    public static final int TRANSCRIPTS_PER_HOUR = 3;
+    public static final int TRANSCRIPTS_PER_HOUR_PER_IP = 10;
 
     static final Duration WINDOW = Duration.ofMinutes(1);
     // Old windows are dropped once the map grows past this, so it can't grow without limit.
@@ -47,7 +50,7 @@ public class RateLimiter {
             windows.values().removeIf(w -> now - w.start() >= w.length());
         }
         if (window.count() > limit) {
-            long retryAfter = Math.max(1, (window.start() + windowMs - now + 999) / 1000);
+            long retryAfter = Math.max(1, (window.start() + window.length() - now + 999) / 1000);
             throw new RateLimitedException(retryAfter);
         }
     }

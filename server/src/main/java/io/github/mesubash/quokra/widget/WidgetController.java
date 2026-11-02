@@ -4,6 +4,7 @@ import io.github.mesubash.quokra.bot.BotConfig;
 import io.github.mesubash.quokra.bot.TenantBots;
 import io.github.mesubash.quokra.common.ApiException;
 import io.github.mesubash.quokra.common.RateLimiter;
+import io.github.mesubash.quokra.mail.Transcripts;
 import io.github.mesubash.quokra.presence.AgentPresence;
 import jakarta.servlet.http.HttpServletRequest;
 import io.github.mesubash.quokra.session.SessionTokens;
@@ -37,8 +38,10 @@ public class WidgetController {
 
     // open: inside the tenant's opening hours (always, when it has none). attachments: images can be sent.
     // teamOnline: someone of the team is answering chats right now. freeText: customers may type to the bot.
+    // transcripts: customers can have their chat emailed to them.
     public record TenantView(String slug, String displayName, Branding branding, String teaser, Texts texts,
-                             boolean open, boolean attachments, boolean teamOnline, boolean freeText) {
+                             boolean open, boolean attachments, boolean teamOnline, boolean freeText,
+                             boolean transcripts) {
         public record Branding(String logoUrl, String primaryColor) {}
 
         // The wording the chat panel shows itself; the bot's own lines stay on the server.
@@ -66,10 +69,12 @@ public class WidgetController {
     private final RateLimiter rateLimiter;
     private final Clock clock;
     private final AgentPresence presence;
+    private final Transcripts transcripts;
 
     public WidgetController(TenantRepository tenants, SessionTokens sessionTokens, TenantBots bots,
                             TenantSecrets secrets, IdentityTokens identityTokens, ConversationService conversations,
-                            RateLimiter rateLimiter, Clock clock, AgentPresence presence) {
+                            RateLimiter rateLimiter, Clock clock, AgentPresence presence, Transcripts transcripts) {
+        this.transcripts = transcripts;
         this.clock = clock;
         this.presence = presence;
         this.rateLimiter = rateLimiter;
@@ -90,7 +95,7 @@ public class WidgetController {
             bot.map(BotConfig::teaser).orElse(null),
             TenantView.Texts.of(bot.map(BotConfig::texts).orElse(BotConfig.Texts.DEFAULT)),
             tenant.isOpen(clock.instant()), conversations.imagesAllowed(tenant), presence.anyoneOnline(tenant.getId()),
-            bot.map(BotConfig::freeText).orElse(true));
+            bot.map(BotConfig::freeText).orElse(true), transcripts.available());
     }
 
     @PostMapping("/sessions")

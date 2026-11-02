@@ -67,12 +67,15 @@ WebSocket: send the same bearer token in the STOMP `CONNECT` frame header `Autho
   "open": true,
   "attachments": false,
   "teamOnline": true,
-  "freeText": true
+  "freeText": true,
+  "transcripts": true
 }
 ```
 
 `freeText` is the bot file's `free_text`: when false, the chat shows "Please pick an option above." instead of the
 message box while the bot is answering (not while it asks for an email or name, nor once the team has the chat).
+
+`transcripts` is true when email is set up on the server (see DEPLOY.md); the chat offers "Email me this chat" (3.12) only then. It doesn't test the mail server on each request: a send that fails answers `503 EMAIL_FAILED`.
 
 `teamOnline` is true while someone of the company's team is online (see 4.21); the chat shows `texts.online` / `texts.waiting` only then, and `texts.offline` otherwise. `attachments` is true when the company allows images and the server's storage works; the chat shows its image button only then. `open` is false outside the tenant's opening hours (always true without any); the chat then shows `texts.offline` in its header. `teaser` and `texts` come from the tenant's bot file (see ARCHITECTURE.md §6); `texts` always has every field, with defaults for any the file leaves out. `404 TENANT_NOT_FOUND` for unknown keys.
 
@@ -201,6 +204,24 @@ No request body. Closes the current conversation, whoever has it (event `RESOLVE
 ```
 
 Subscribe to the new conversation's topic from here on. `403 CONTACT_BLOCKED` for a blocked contact; `429 RATE_LIMITED` shares the message limit.
+
+### 3.12 `POST /widget/conversation/transcript`: "Email me this chat"
+
+No request body (anything sent is ignored). Emails the current conversation, open or resolved, to the email the
+customer gave in it; never to another address. The chat shows the action only when `transcripts` (3.1) and the
+conversation's `hasEmail` are true.
+
+```json
+202  { "sentTo": "p…@example.test" }   // the address, lightly masked
+```
+
+The email is plain text, from `QUOKRA_MAIL_FROM`, subject "Your chat with {company} on {date}". It lists the
+messages in order as "Name (HH:mm): text": the customer as "You", agents by their stored name, the bot as the company.
+System lines ("Sam joined the chat") appear as they are, images as "[image]" (no attachments). Private notes are never
+included. Times are in the tenant's opening-hours time zone, or UTC without one.
+
+Errors: `409 NO_OPEN_CONVERSATION` (no conversation yet), `409 EMAIL_OFF`, `409 NO_CUSTOMER_EMAIL`,
+`503 EMAIL_FAILED` (the mail server refused it), `429 RATE_LIMITED` (3 an hour per conversation, 10 an hour per IP address).
 
 ---
 
@@ -508,6 +529,7 @@ interface Conversation {
   handoffReason: HandoffReason | null;  // agent view only
   assignee: { name: string } | null;
   asking: "EMAIL" | "NAME" | null; // customer view only: what the bot is asking for
+  hasEmail: boolean;           // customer view only: the customer gave an email in this chat
   customer: { sub: string | null; contactId: string | null; name: string | null; email: string | null } | null; // agent view only
   createdAt: string;
   lastMessageAt: string;
@@ -674,6 +696,9 @@ Envelope:
 | 409 | `ALREADY_ACCEPTED` | Another agent accepted first |
 | 409 | `NEWER_CHAT_OPEN` | Reopening an old chat while the customer has a newer open one (after "Start a new chat"); answer in that one |
 | 409 | `NO_OPEN_CONVERSATION` | Sending without an open conversation |
+| 409 | `EMAIL_OFF` | Email isn't set up on the server |
+| 409 | `NO_CUSTOMER_EMAIL` | Transcript asked for, but the customer gave no email in this chat |
+| 503 | `EMAIL_FAILED` | The mail server didn't take the email |
 | 422 | `MESSAGE_TOO_LONG` | Body over 2,000 characters |
 | 403 | `ATTACHMENTS_OFF` | Images aren't allowed for this company |
 | 404 | `ATTACHMENT_NOT_FOUND` | No image for that message in this conversation |
@@ -681,5 +706,5 @@ Envelope:
 | 409 | `TOO_MANY_IMAGES` | The chat already has 30 images |
 | 415 | `UNSUPPORTED_FILE` | Not a PNG, JPEG, GIF or WebP |
 | 503 | `STORAGE_UNAVAILABLE` | Image storage isn't working |
-| 429 | `RATE_LIMITED` | Too many requests (`Retry-After` header set): 5 new chat sessions a minute per IP address, 20 customer messages a minute per session |
+| 429 | `RATE_LIMITED` | Too many requests (`Retry-After` header set): 5 new chat sessions a minute per IP address, 20 customer messages a minute per session, 3 transcripts an hour per conversation (10 per IP address) |
 | 500 | `INTERNAL_ERROR` | Unexpected; logged with the request id |

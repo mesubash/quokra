@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { embedded, onHostMessage, postToHost } from "../lib/bridge";
 import { accent, applyColor } from "../lib/theme";
-import { BellIcon, CloseIcon, MoreIcon, PlusIcon } from "../lib/icons";
+import { BellIcon, CloseIcon, MailIcon, MoreIcon, PlusIcon } from "../lib/icons";
 import { ApiError, widgetApi, type Conversation, type Tenant } from "../lib/api";
 import { Composer } from "./Composer";
 import { MessageList, previewOf, quoteLabel, type TimelineItem } from "./MessageList";
@@ -198,6 +198,7 @@ function Chat({ tenant, token, visible, onUnauthorized }: ChatProps) {
   async function send(message: { body: string; optionId?: string }) {
     const replyTo = message.optionId ? undefined : replyingTo ?? undefined;
     setReplyingTo(null);
+    setNotice(null);
     setAwaitingBot(true);
     if (!(await chat.send({ ...message, replyTo }))) setAwaitingBot(false);
   }
@@ -217,7 +218,20 @@ function Chat({ tenant, token, visible, onUnauthorized }: ChatProps) {
           <h1>{tenant.displayName}</h1>
           <HeaderStatus conversation={chat.conversation} online={chat.online} tenant={tenant} />
         </div>
-        {!chat.error && <ChatMenu conversation={chat.conversation} onStartNew={chat.startNew} />}
+        {!chat.error && (
+          <ChatMenu
+            conversation={chat.conversation}
+            onStartNew={chat.startNew}
+            onEmail={
+              canEmailTranscript(chat.conversation, tenant)
+                ? () => {
+                    setNotice(null);
+                    void chat.emailTranscript().then(setNotice);
+                  }
+                : undefined
+            }
+          />
+        )}
         <CloseButton />
       </header>
       {chat.error ? (
@@ -281,6 +295,11 @@ export function pickOnly(conversation: Conversation | null, tenant: Tenant) {
   return tenant.freeText === false && conversation?.status === "BOT" && !conversation.asking;
 }
 
+// "Email me this chat" shows only when the server can send email and the customer gave one in this chat.
+export function canEmailTranscript(conversation: Conversation | null, tenant: Tenant) {
+  return tenant.transcripts === true && conversation?.hasEmail === true;
+}
+
 function placeholder(conversation: Conversation | null, tenant: Tenant) {
   if (conversation?.asking === "EMAIL") return "Your email address…";
   if (conversation?.asking === "NAME") return "Your name…";
@@ -289,7 +308,16 @@ function placeholder(conversation: Conversation | null, tenant: Tenant) {
 }
 
 // "Start a new chat". With the team on this chat it asks first, since that ends their chat.
-function ChatMenu({ conversation, onStartNew }: { conversation: Conversation | null; onStartNew: () => Promise<boolean> }) {
+// onEmail: "Email me this chat", when it's available.
+function ChatMenu({
+  conversation,
+  onStartNew,
+  onEmail,
+}: {
+  conversation: Conversation | null;
+  onStartNew: () => Promise<boolean>;
+  onEmail?: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -355,6 +383,20 @@ function ChatMenu({ conversation, onStartNew }: { conversation: Conversation | n
                 </span>
                 Start a new chat
               </button>
+              {onEmail && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    onEmail();
+                  }}
+                >
+                  <span className="menu-icon" aria-hidden="true">
+                    <MailIcon size={16} />
+                  </span>
+                  Email me this chat
+                </button>
+              )}
               <button
                 type="button"
                 role="menuitemcheckbox"

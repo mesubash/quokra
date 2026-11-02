@@ -104,7 +104,7 @@ docker run -d --name quokra -p 8080:8080 \
 - **Proxy:** pass WebSocket upgrades through for `/ws`, and keep `X-Forwarded-For` / `X-Forwarded-Proto`.
 - **One instance for now:** rate limits and the WebSocket broker are in memory. Running several instances
   needs a shared broker and limiter (later).
-- **Email:** each company sets its alerts in Settings → General → Email, which also says whether email works. `/actuator/health` includes `email`: up when it's not configured or working, down when configured but the server doesn't answer.
+- **Email:** each company sets its alerts in Settings → General → Email, which also says whether email works. Customers' "Email me this chat" also needs the SMTP settings above; without them the chat hides it. `/actuator/health` includes `email`: up when it's not configured or working, down when configured but the server doesn't answer.
 - **Images:** off for each company until an admin allows them (Settings → General). `/actuator/health` includes `storage`, which is down when the store can't be written or read; the image button then stays hidden.
 - **Backups:** back up the PostgreSQL database, and the images (the `/data` volume or the bucket). Keep `TENANT_SECRET_ENCRYPTION_KEY` safe alongside it.
 
