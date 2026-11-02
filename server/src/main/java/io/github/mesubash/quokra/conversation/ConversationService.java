@@ -763,7 +763,7 @@ public class ConversationService {
         switch (decision) {
             case BotEngine.Answer answer -> {
                 conversation.resetFallbacks();
-                botMessage(conversation, answer.text(), bot.options(), now);
+                botMessage(conversation, answer.text(), answer.options(), now);
             }
             case BotEngine.Fallback fallback -> {
                 conversation.countFallback();

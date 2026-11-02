@@ -182,15 +182,16 @@ Any other combination throws `InvalidTransition` (HTTP 409). `ACCEPT` uses the `
 
 ```text
 decide(config, text, optionId, fallbackCount):
-  if matches(config.urgent.keywords):        return Handoff(URGENT, config.urgent.message)
+  if no optionId and matches(config.urgent.keywords): return Handoff(URGENT, config.urgent.message)
   if optionId == "human" or matches(config.human.keywords): return Handoff(CUSTOMER_REQUEST, config.handoff_message)
-  if optionId is a menu id:                  return Answer(item.answer)
-  if keywordMatch(config.menu, text):        return Answer(best.answer)
+  if optionId == "menu":                     return Answer(config.greeting, main topics)
+  if optionId is a menu id:                  return Answer(item.answer, buttonsAfter(item))
+  if keywordMatch(config.menu, text):        return Answer(best.answer, buttonsAfter(best))
   if fallbackCount + 1 >= config.max_fallbacks: return Handoff(FALLBACK_LIMIT, config.handoff_message)
   return Fallback(config.fallback)
 ```
 
-The greeting is sent when the conversation starts. Answers and fallbacks come with the menu as buttons (`options`); an answer resets the miss count, a fallback adds one.
+The greeting is sent when the conversation starts. Greeting and fallbacks come with the main topics as buttons (`options`): the menu items with `in_menu` (default true), then "Talk to a person". An answer comes with its `follow_ups` as buttons, then "← Main topics" (reserved id `menu`) and "Talk to a person"; an answer without follow-ups shows the main topics. Keyword matching searches every item, in the menu or not. An answer resets the miss count, a fallback adds one.
 
 Bot file (one per tenant, named by the tenant's `bot_config`; an admin can instead edit the tenant's own copy in Settings, stored in `tenants.bot_custom` with the same fields and checked by the same parser, see `TenantBots`):
 
@@ -201,6 +202,12 @@ menu:
     title: "Pricing"
     keywords: [price, pricing, cost]
     answer: "Our plans start at $10 a month."
+    follow_ups: [pay]                # optional: buttons after this answer (other items' ids)
+  - id: pay
+    title: "How do I pay?"
+    keywords: [pay, card]
+    answer: "By card or bank transfer."
+    in_menu: false                   # optional, default true: only a follow-up, or found by its keywords
 human:
   title: "Talk to a person"          # button with the reserved id "human"
   keywords: [agent, human, person]
@@ -237,7 +244,7 @@ texts:
 - **Opening hours:** optional per tenant (Settings; a time zone and a range per weekday, stored as JSON in `tenants.opening_hours`; none = always open). Outside them the bot answers as usual and handoffs still go to the queue, but the customer sees `offline_handoff` instead of the handoff or urgent message, with `{opens}` like "tomorrow at 09:00 (Europe/Berlin)", and the header shows `offline`.
 
 - **Auto-resolve:** every 5 minutes (`quokra.auto-resolve.every`), quiet conversations close by themselves after the tenant's `auto_resolve_minutes` (default 24 hours, 0 = never, set in Settings): chats **with the bot** where the customer wrote something and then left, and chats **with an agent** where the agent wrote last. Waiting chats and chats where the customer wrote last stay open. The customer sees `auto_closed`; the activity shows "Closed automatically" (event `RESOLVED`, reason `AUTO`); writing again reopens the chat as usual.
-- Urgent keywords are checked **first**, so they always win: the conversation gets priority `URGENT` and the tenant's urgent message, even if the text also matches a menu option or asks for a person. Each tenant chooses its own urgent keywords (e.g. "outage", "payment failed", or real emergencies).
+- Urgent keywords are checked **first** on typed messages, so they always win there: the conversation gets priority `URGENT` and the tenant's urgent message, even if the text also matches a menu option or asks for a person. A clicked button isn't checked (its title is our own text, e.g. "How to send SOS"). Each tenant chooses its own urgent keywords (e.g. "outage", "payment failed", or real emergencies).
 - Keyword matching: lowercase, accents and punctuation ignored, whole words or phrases (`payment failed`); the option with the most keyword hits wins; ties go to the first option in the file.
 - A missing bot file or any exception inside the engine is caught by `ConversationService` → `Handoff(BOT_ERROR)`.
 - v3 replaces "no match" with retrieval + LLM; the decision type stays the same.

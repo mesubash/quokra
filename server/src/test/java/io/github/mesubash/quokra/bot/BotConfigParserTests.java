@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.core.io.ClassPathResource;
@@ -99,6 +100,27 @@ class BotConfigParserTests {
     void reservedMenuIdIsRejected() {
         assertThatThrownBy(() -> BotConfigParser.parse("bad.yaml", VALID.replace("id: pricing", "id: human")))
             .hasMessage("bad.yaml: menu id 'human' is reserved");
+    }
+
+    @Test
+    void followUpsMustNameAnotherTopic() {
+        String withFollowUps = VALID.replace("    answer: Pricing answer\n", """
+                answer: Pricing answer
+                follow_ups: [pay]
+              - id: pay
+                title: How to pay
+                keywords: [pay]
+                answer: Pay answer
+                in_menu: false
+            """);
+
+        BotConfig bot = BotConfigParser.parse("ok.yaml", withFollowUps);
+        assertThat(bot.find("pricing")).get().extracting(BotConfig.MenuItem::followUps).isEqualTo(List.of("pay"));
+        assertThat(bot.find("pay")).get().extracting(BotConfig.MenuItem::inMenu).isEqualTo(false);
+        assertThatThrownBy(() -> BotConfigParser.parse("bad.yaml", withFollowUps.replace("[pay]", "[nope]")))
+            .hasMessage("bad.yaml: menu[pricing].follow_ups: 'nope' isn't another topic's id");
+        assertThatThrownBy(() -> BotConfigParser.parse("bad.yaml", VALID.replace("id: pricing", "id: menu")))
+            .hasMessage("bad.yaml: menu id 'menu' is reserved");
     }
 
     @Test

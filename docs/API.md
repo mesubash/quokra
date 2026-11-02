@@ -469,7 +469,7 @@ interface Tenant {
 | `PUT /admin/tenants/{slug}/agents/{sub}` | `{ "admin": true }` makes an agent company admin, `false` a plain agent again (`204`). `404 AGENT_NOT_FOUND`. Company admins can't take away their own admin or remove themselves (`409 CANT_CHANGE_YOURSELF`); another admin can |
 | `DELETE /admin/tenants/{slug}/agents/{sub}` | Remove an agent (`204`) |
 | `DELETE /admin/tenants/{slug}/invites/{email}` | Cancel an invite (`204`) |
-| `GET /admin/tenants/{slug}/bot` | `{ "custom": false, "file": "demo", "bot": { greeting, teaser?, menu: [{ id, title, keywords, answer }], human, urgent, fallback, max_fallbacks, handoff_message, free_text, texts } }`: the same fields as a bot file. `custom` is true once edited here |
+| `GET /admin/tenants/{slug}/bot` | `{ "custom": false, "file": "demo", "bot": { greeting, teaser?, menu: [{ id, title, keywords, answer, follow_ups, in_menu }], human, urgent, fallback, max_fallbacks, handoff_message, free_text, texts } }`: the same fields as a bot file. `custom` is true once edited here |
 | `PUT /admin/tenants/{slug}/bot` | Save the company's own bot (body: the `bot` object above). Checked with the same rules as bot files; `400 VALIDATION_ERROR` names the field, e.g. `bot: menu needs at least one item`. Used for new messages at once |
 | `DELETE /admin/tenants/{slug}/bot` | Drop the edited bot and use the bot file again |
 | `GET /admin/tenants/{slug}/replies` | Saved replies: `{ "items": [{ id, title, body }] }` |

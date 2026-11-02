@@ -70,7 +70,8 @@ public class TenantBots {
             map.put("teaser", bot.teaser());
         }
         map.put("menu", bot.menu().stream().map(item -> Map.of("id", item.id(), "title", item.title(),
-            "keywords", item.keywords(), "answer", item.answer())).toList());
+            "keywords", item.keywords(), "answer", item.answer(), "follow_ups", item.followUps(),
+            "in_menu", item.inMenu())).toList());
         map.put("human", Map.of("title", bot.human().title(), "keywords", bot.human().keywords()));
         map.put("urgent", Map.of("keywords", bot.urgent().keywords(), "message", bot.urgent().message()));
         map.put("fallback", bot.fallback());

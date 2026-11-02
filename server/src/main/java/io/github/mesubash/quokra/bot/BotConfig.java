@@ -21,8 +21,19 @@ public record BotConfig(
 
     // Option id that always means "talk to a person".
     public static final String HUMAN_OPTION = "human";
+    // Option id that shows the main topics again, after an answer with follow-ups.
+    public static final String MENU_OPTION = "menu";
+    static final String MENU_TITLE = "← Main topics";
 
-    public record MenuItem(String id, String title, List<String> keywords, String answer) {}
+    // followUps: ids of the topics offered as buttons after this answer (none: the main topics, as before).
+    // inMenu: false keeps a topic out of the main topics; it's still found by its keywords and as a follow-up.
+    public record MenuItem(String id, String title, List<String> keywords, String answer, List<String> followUps,
+                           boolean inMenu) {
+
+        public MenuItem(String id, String title, List<String> keywords, String answer) {
+            this(id, title, keywords, answer, List.of(), true);
+        }
+    }
 
     public record Human(String title, List<String> keywords) {}
 
@@ -52,17 +63,36 @@ public record BotConfig(
             "We're away right now and back {opens}. Leave your message here and we'll reply then.");
     }
 
-    // Buttons shown under the greeting, answers and fallbacks.
+    // The main topics: buttons under the greeting and fallbacks, and after answers without follow-ups.
     public List<Option> options() {
         var options = new ArrayList<Option>();
-        menu.forEach(item -> options.add(new Option(item.id(), item.title())));
+        menu.stream().filter(MenuItem::inMenu).forEach(item -> options.add(new Option(item.id(), item.title())));
         options.add(new Option(HUMAN_OPTION, human.title()));
         return List.copyOf(options);
+    }
+
+    // Buttons under an answer: its follow-ups, a way back to the main topics, and a person.
+    public List<Option> optionsAfter(MenuItem answered) {
+        if (answered.followUps().isEmpty()) {
+            return options();
+        }
+        var options = new ArrayList<Option>();
+        answered.followUps().forEach(id -> find(id).ifPresent(item -> options.add(new Option(item.id(), item.title()))));
+        options.add(new Option(MENU_OPTION, MENU_TITLE));
+        options.add(new Option(HUMAN_OPTION, human.title()));
+        return List.copyOf(options);
+    }
+
+    public Optional<MenuItem> find(String id) {
+        return menu.stream().filter(item -> item.id().equals(id)).findFirst();
     }
 
     public Optional<String> optionTitle(String optionId) {
         if (HUMAN_OPTION.equals(optionId)) {
             return Optional.of(human.title());
+        }
+        if (MENU_OPTION.equals(optionId)) {
+            return Optional.of(MENU_TITLE);
         }
         return menu.stream().filter(item -> item.id().equals(optionId)).map(MenuItem::title).findFirst();
     }
