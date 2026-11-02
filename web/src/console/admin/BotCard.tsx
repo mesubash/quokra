@@ -163,6 +163,18 @@ export function BotCard({ api, tenant }: { api: AdminApi; tenant: AdminTenant })
             aria-label="Teaser"
           />
         </Row>
+        <Row label="Typing" help="Off: while the bot answers, customers pick a topic instead of typing. They still type their email and name, and once someone of the team joins.">
+          <label className="admin-check">
+            <input
+              type="checkbox"
+              role="switch"
+              checked={bot.free_text !== false}
+              onChange={(e) => setBot({ free_text: e.target.checked })}
+              aria-label="Customers can type to the bot"
+            />
+            Customers can type to the bot
+          </label>
+        </Row>
       </section>
 
       <section className="settings-group">

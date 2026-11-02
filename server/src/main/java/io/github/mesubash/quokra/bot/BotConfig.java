@@ -14,6 +14,9 @@ public record BotConfig(
     String fallback,
     int maxFallbacks,
     String handoffMessage,
+    // false: while the bot is answering, customers pick an option instead of typing (the chat still asks
+    // for email and name, and people can type once someone of the team joins).
+    boolean freeText,
     Texts texts) {
 
     // Option id that always means "talk to a person".

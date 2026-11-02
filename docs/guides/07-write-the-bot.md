@@ -36,6 +36,7 @@ copy and applies to new messages straight away; emptying a wording field brings 
    fallback: "Sorry, I didn't get that. Pick a topic below, or choose 'Talk to a person'."
    max_fallbacks: 2                              # hand over after this many misses in a row
    handoff_message: "Connecting you with the team. Someone will reply shortly."
+   free_text: true                               # false: customers pick a topic instead of typing
 
    texts:                                        # optional: the chat's own wording
      online: "Online · we usually reply within minutes"
@@ -47,6 +48,8 @@ copy and applies to new messages straight away; emptying a wording field brings 
 
 **Tips**
 - Keywords match whole words and phrases, ignoring case and accents; the menu item with most matches wins.
+- To have customers only pick from the menu, set `free_text: false` (or turn off **Customers can type to
+  the bot** in Settings → Bot). They still type their email and name, and once someone of the team joins.
 - Avoid broad keywords ("about", your product name) that would match many questions.
 - A mistake in the file is reported at startup with the file and field name.
 

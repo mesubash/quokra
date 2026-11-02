@@ -60,6 +60,11 @@ final class BotConfigParser {
             throw error("max_fallbacks must be a number of at least 1");
         }
 
+        Object freeText = map.getOrDefault("free_text", true);
+        if (!(freeText instanceof Boolean)) {
+            throw error("free_text must be true or false");
+        }
+
         return new BotConfig(
             text(map, "greeting"),
             optionalText(map, "teaser"),
@@ -69,6 +74,7 @@ final class BotConfigParser {
             text(map, "fallback"),
             maxFallbacks,
             text(map, "handoff_message"),
+            (Boolean) freeText,
             texts(map.get("texts")));
     }
 

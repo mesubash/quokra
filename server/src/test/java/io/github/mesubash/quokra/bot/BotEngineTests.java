@@ -28,6 +28,7 @@ class BotEngineTests {
         "Fallback answer",
         2,
         "Handoff answer",
+        true,
         BotConfig.Texts.DEFAULT);
 
     @ParameterizedTest(name = "\"{0}\" / option {1} -> {2}")

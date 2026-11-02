@@ -66,9 +66,13 @@ WebSocket: send the same bearer token in the STOMP `CONNECT` frame header `Autho
   },
   "open": true,
   "attachments": false,
-  "teamOnline": true
+  "teamOnline": true,
+  "freeText": true
 }
 ```
+
+`freeText` is the bot file's `free_text`: when false, the chat shows "Please pick an option above." instead of the
+message box while the bot is answering (not while it asks for an email or name, nor once the team has the chat).
 
 `teamOnline` is true while someone of the company's team is online (see 4.21); the chat shows `texts.online` / `texts.waiting` only then, and `texts.offline` otherwise. `attachments` is true when the company allows images and the server's storage works; the chat shows its image button only then. `open` is false outside the tenant's opening hours (always true without any); the chat then shows `texts.offline` in its header. `teaser` and `texts` come from the tenant's bot file (see ARCHITECTURE.md §6); `texts` always has every field, with defaults for any the file leaves out. `404 TENANT_NOT_FOUND` for unknown keys.
 
@@ -428,7 +432,7 @@ interface Tenant {
 | `PUT /admin/tenants/{slug}/agents/{sub}` | `{ "admin": true }` makes an agent company admin, `false` a plain agent again (`204`). `404 AGENT_NOT_FOUND`. Company admins can't take away their own admin or remove themselves (`409 CANT_CHANGE_YOURSELF`); another admin can |
 | `DELETE /admin/tenants/{slug}/agents/{sub}` | Remove an agent (`204`) |
 | `DELETE /admin/tenants/{slug}/invites/{email}` | Cancel an invite (`204`) |
-| `GET /admin/tenants/{slug}/bot` | `{ "custom": false, "file": "demo", "bot": { greeting, teaser?, menu: [{ id, title, keywords, answer }], human, urgent, fallback, max_fallbacks, handoff_message, texts } }`: the same fields as a bot file. `custom` is true once edited here |
+| `GET /admin/tenants/{slug}/bot` | `{ "custom": false, "file": "demo", "bot": { greeting, teaser?, menu: [{ id, title, keywords, answer }], human, urgent, fallback, max_fallbacks, handoff_message, free_text, texts } }`: the same fields as a bot file. `custom` is true once edited here |
 | `PUT /admin/tenants/{slug}/bot` | Save the company's own bot (body: the `bot` object above). Checked with the same rules as bot files; `400 VALIDATION_ERROR` names the field, e.g. `bot: menu needs at least one item`. Used for new messages at once |
 | `DELETE /admin/tenants/{slug}/bot` | Drop the edited bot and use the bot file again |
 | `GET /admin/tenants/{slug}/replies` | Saved replies: `{ "items": [{ id, title, body }] }` |
