@@ -13,6 +13,8 @@ export interface Tenant {
   teamOnline: boolean;
   // false: while the bot answers, customers pick an option instead of typing.
   freeText?: boolean;
+  // Customers can have their chat emailed to them (email works on the server).
+  transcripts?: boolean;
 }
 
 export interface Session {
@@ -68,6 +70,8 @@ export interface Conversation {
   assignee: { name: string } | null;
   // The bot is asking for the customer's email or name before connecting them to the team.
   asking: "EMAIL" | "NAME" | null;
+  // The customer gave an email in this chat (customer view only).
+  hasEmail?: boolean;
   createdAt: string;
   lastMessageAt: string;
   resolvedAt: string | null;
@@ -178,6 +182,10 @@ export const widgetApi = {
     }),
 
   image: (token: string, messageId: string) => image(`/widget/conversation/messages/${messageId}/attachment`, token),
+
+  // Emails the chat to the address the customer gave in it; sentTo is that address, lightly masked.
+  emailTranscript: (token: string) =>
+    request<{ sentTo: string }>("/widget/conversation/transcript", { method: "POST", token }),
 
   // The customer is typing (sent every few seconds while they do).
   typing: (token: string) => request<void>("/widget/conversation/typing", { method: "POST", token }),

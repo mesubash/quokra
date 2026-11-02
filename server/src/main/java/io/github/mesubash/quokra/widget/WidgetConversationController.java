@@ -11,6 +11,7 @@ import io.github.mesubash.quokra.conversation.Enums.SenderType;
 import io.github.mesubash.quokra.conversation.Message;
 import io.github.mesubash.quokra.conversation.MessageView;
 import io.github.mesubash.quokra.conversation.Status;
+import io.github.mesubash.quokra.mail.Transcripts;
 import io.github.mesubash.quokra.realtime.TypingSignals;
 import io.github.mesubash.quokra.session.SessionTokens.Session;
 import jakarta.servlet.http.HttpServletRequest;
@@ -54,11 +55,16 @@ public class WidgetConversationController {
 
     public record SendResponse(MessageView message, CustomerConversationView conversation) {}
 
+    public record TranscriptResponse(String sentTo) {}
+
     private final ConversationService service;
     private final RateLimiter rateLimiter;
     private final TypingSignals typing;
+    private final Transcripts transcripts;
 
-    public WidgetConversationController(ConversationService service, RateLimiter rateLimiter, TypingSignals typing) {
+    public WidgetConversationController(ConversationService service, RateLimiter rateLimiter, TypingSignals typing,
+                                        Transcripts transcripts) {
+        this.transcripts = transcripts;
         this.service = service;
         this.rateLimiter = rateLimiter;
         this.typing = typing;
@@ -150,6 +156,13 @@ public class WidgetConversationController {
     public void typing(@AuthenticationPrincipal Session session) {
         rateLimiter.check("typing:" + session.visitorId(), RateLimiter.TYPING_PER_MINUTE);
         typing.typing(openConversation(session).getId(), SenderType.CUSTOMER, null);
+    }
+
+    // "Email me this chat": to the email the customer gave in this chat, never one sent with the request.
+    @PostMapping("/transcript")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public TranscriptResponse transcript(@AuthenticationPrincipal Session session, HttpServletRequest http) {
+        return new TranscriptResponse(transcripts.send(openConversation(session), http.getRemoteAddr()));
     }
 
     @PostMapping("/handoff")
