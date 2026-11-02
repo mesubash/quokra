@@ -72,8 +72,8 @@ export function ConsoleApp({ getToken, freshToken, onUnauthorized, onSignOut, on
   // Server admins manage every company; company admins the ones in manages.
   const manages = me !== null && (me.admin || me.manages.length > 0);
   const admin = useAdmin(admins, manages);
-  // Admins without the agent role only get settings.
-  const adminOnly = me !== null && manages && !me.agent;
+  // Admins who aren't agents watch their companies' chats (read-only); with nothing to watch they only get settings.
+  const adminOnly = me !== null && manages && !me.agent && me.tenants.length === 0;
   const presence = usePresence(api, !!me?.agent);
   const showSettings = settingsOpen || adminOnly;
 

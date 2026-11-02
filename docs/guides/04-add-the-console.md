@@ -63,4 +63,7 @@ Settings → Agents) and server admins (the `QUOKRA_ADMIN` role) also see the co
 **Notifications** there. Settings only show the company in `tenant`; to manage all companies, see
 [Set up a company](02-set-up-a-company.md).
 
+Admins without the agent role can still read their companies' chats, read-only: no reply box, no Accept
+or other actions.
+
 Reference: [Embedding guide §5](../EMBEDDING.md#5-agent-console-in-your-dashboard), [sdk.js API](../API.md#92-agent-console-windowquokraconsole).

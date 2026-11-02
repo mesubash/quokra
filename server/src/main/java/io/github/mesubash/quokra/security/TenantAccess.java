@@ -1,9 +1,11 @@
 package io.github.mesubash.quokra.security;
 
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.UUID;
 import java.util.regex.Pattern;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -17,6 +19,8 @@ import org.springframework.stereotype.Component;
 // Who may manage which company. Server admins (the admin role) manage every company. A company admin
 // manages only theirs: either marked as admin on their membership (Settings → Agents), or, when
 // quokra.admins.company-claim is set, named in the token, e.g. "quokra:shop:admin" in "permissions".
+// Also who may read which company's chats: its agents and its admins. Reading never allows acting on a chat;
+// that takes the agent role and membership.
 @Component
 public class TenantAccess {
 
@@ -56,6 +60,36 @@ public class TenantAccess {
             where t.slug = any(?)
                or exists (select 1 from tenant_agents a where a.tenant_id = t.id and a.agent_sub = ? and a.admin)
             """, String.class, fromToken, jwt.getSubject()));
+    }
+
+    // Ids of the companies whose chats this person may read: where they're an agent (while they have the agent
+    // role) and what they manage. Server admins read all.
+    public Set<UUID> readable(Authentication auth) {
+        if (auth == null || !(auth.getPrincipal() instanceof Jwt jwt)) {
+            return Set.of();
+        }
+        if (serverAdmin(auth)) {
+            return new HashSet<>(jdbc.queryForList("select id from tenants", UUID.class));
+        }
+        return new HashSet<>(jdbc.queryForList("""
+            select t.id from tenants t
+            where t.slug = any(?)
+               or (? and exists (select 1 from tenant_agents a where a.tenant_id = t.id and a.agent_sub = ?))
+            """, UUID.class, managed(auth).toArray(String[]::new), agent(auth), jwt.getSubject()));
+    }
+
+    // For reads under /agent: agents, and anyone else who can read at least one company.
+    public boolean mayRead(Authentication auth) {
+        return auth != null && (agent(auth) || !readable(auth).isEmpty());
+    }
+
+    public AuthorizationManager<RequestAuthorizationContext> anyReadable() {
+        return (auth, context) -> new AuthorizationDecision(mayRead(auth.get()));
+    }
+
+    private static boolean agent(Authentication auth) {
+        return auth.getAuthorities().stream()
+            .anyMatch(a -> ("ROLE_" + AgentJwtConverter.AGENT_ROLE).equals(a.getAuthority()));
     }
 
     public boolean manages(Authentication auth, String slug) {

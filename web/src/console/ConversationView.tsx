@@ -96,6 +96,8 @@ export function ConversationView({
   const [saved, setSaved] = useState<SavedReply[]>([]);
   const [replyingTo, setReplyingTo] = useState<TimelineItem | null>(null);
   const customerTyping = useTypingSignal();
+  // Admins who aren't agents can watch a chat but never act on it.
+  const readOnly = !me.agent;
 
   const load = useCallback(() => {
     api
@@ -112,11 +114,12 @@ export function ConversationView({
   useEffect(load, [load]);
 
   useEffect(() => {
+    if (readOnly) return;
     api
       .replies(id)
       .then((page) => setSaved(page.items))
       .catch(() => setSaved([]));
-  }, [api, id]);
+  }, [api, id, readOnly]);
 
   // Messages and notes arrive live; a status change reloads the agent's view of the conversation.
   useEffect(() => {
@@ -140,8 +143,8 @@ export function ConversationView({
   // What the agent has on screen counts as read, including messages that arrive while it's open.
   const lastId = messages.length > 0 ? messages[messages.length - 1].id : null;
   useEffect(() => {
-    if (lastId) api.markRead(id, lastId).catch(() => {});
-  }, [api, id, lastId]);
+    if (lastId && !readOnly) api.markRead(id, lastId).catch(() => {});
+  }, [api, id, lastId, readOnly]);
 
   async function act(action: () => Promise<{ conversation: AgentConversation }>) {
     setBusy(true);
@@ -235,12 +238,12 @@ export function ConversationView({
   const { status } = conversation;
   const mine = conversation.assignee?.sub === me.sub;
   const customer = conversation.customer?.name ?? conversation.customer?.email ?? "Guest";
-  const canReply = status === "WAITING" || (status === "HUMAN" && mine);
-  const canBlock = !!conversation.customer?.contactId && !conversation.customer.blocked && (status !== "HUMAN" || mine);
+  const canReply = !readOnly && (status === "WAITING" || (status === "HUMAN" && mine));
+  const canBlock = !readOnly && !!conversation.customer?.contactId && !conversation.customer.blocked && (status !== "HUMAN" || mine);
   const writing: Mode = canReply ? mode : "note";
   const timeline: TimelineItem[] = [...messages, ...notes.map(noteItem)].sort((a, b) => (a.id < b.id ? -1 : 1));
 
-  const actions = [
+  const actions = readOnly ? [] : [
     status === "HUMAN" && mine && { label: "Transfer…", run: () => (setMenu(false), setDialog("transfer")) },
     status === "HUMAN" && mine && { label: "Return to bot", run: () => act(() => api.returnToBot(id)) },
     (status === "WAITING" || (status === "HUMAN" && mine)) && { label: "Resolve", run: () => act(() => api.resolve(id)) },
@@ -279,12 +282,12 @@ export function ConversationView({
             </span>
           </button>
           <div className="conversation-actions">
-            {status === "WAITING" && (
+            {status === "WAITING" && !readOnly && (
               <button type="button" className="button" disabled={busy} onClick={() => act(() => api.accept(id))}>
                 Accept
               </button>
             )}
-            {status === "RESOLVED" && (
+            {status === "RESOLVED" && !readOnly && (
               <button type="button" className="button button-quiet" disabled={busy} onClick={() => act(() => api.reopen(id))}>
                 Reopen
               </button>
@@ -335,57 +338,63 @@ export function ConversationView({
               : undefined
           }
         />
-        <div className="console-composer">
-          {canReply ? (
-            <div className="composer-modes" role="tablist" aria-label="Write">
-              <button type="button" role="tab" aria-selected={writing === "reply"} onClick={() => setMode("reply")}>
-                Reply
-              </button>
-              <button type="button" role="tab" aria-selected={writing === "note"} onClick={() => setMode("note")}>
-                Private note
-              </button>
-              {status === "WAITING" && writing === "reply" && (
-                <span className="muted composer-hint">Sending assigns this chat to you</span>
-              )}
-            </div>
-          ) : (
-            <p className="composer-hint-line muted">{readOnlyHint(conversation, mine)}</p>
-          )}
-          <Composer
-            key={writing}
-            onSend={(body) => void (writing === "note" ? addPrivateNote(body) : reply(body))}
-            disabled={busy}
-            focus
-            note={writing === "note"}
-            replies={writing === "reply" ? fillName(saved, conversation.customer?.name) : []}
-            quote={
-              writing === "reply" && replyingTo
-                ? { label: quoteLabel(replyingTo, "AGENT", customer), preview: previewOf(replyingTo) }
-                : null
-            }
-            onCancelQuote={() => setReplyingTo(null)}
-            onTyping={writing === "reply" ? () => void api.typing(id).catch(() => {}) : undefined}
-            onAttach={
-              writing === "reply" && imagesAllowed(conversation.tenantSlug) ? (file) => void sendImage(file) : undefined
-            }
-            onSuggest={
-              writing === "reply" && aiAllowed(conversation.tenantSlug)
-                ? () =>
-                    api.suggestion(id).then(
-                      (s) => ({ text: s.text, note: suggestionNote(s) }),
-                      (e) => ({
-                        text: null,
-                        note:
-                          e instanceof ApiError && e.status === 429
-                            ? "Too many suggestions. Wait a minute."
-                            : "Couldn't get a suggestion.",
-                      }),
-                    )
-                : undefined
-            }
-            placeholder={writing === "note" ? "Only your team sees this…" : `Reply to ${customer}…`}
-          />
-        </div>
+        {readOnly ? (
+          <div className="console-composer">
+            <p className="composer-hint-line muted">You can read this chat but not reply. Replying needs agent access.</p>
+          </div>
+        ) : (
+          <div className="console-composer">
+            {canReply ? (
+              <div className="composer-modes" role="tablist" aria-label="Write">
+                <button type="button" role="tab" aria-selected={writing === "reply"} onClick={() => setMode("reply")}>
+                  Reply
+                </button>
+                <button type="button" role="tab" aria-selected={writing === "note"} onClick={() => setMode("note")}>
+                  Private note
+                </button>
+                {status === "WAITING" && writing === "reply" && (
+                  <span className="muted composer-hint">Sending assigns this chat to you</span>
+                )}
+              </div>
+            ) : (
+              <p className="composer-hint-line muted">{readOnlyHint(conversation, mine)}</p>
+            )}
+            <Composer
+              key={writing}
+              onSend={(body) => void (writing === "note" ? addPrivateNote(body) : reply(body))}
+              disabled={busy}
+              focus
+              note={writing === "note"}
+              replies={writing === "reply" ? fillName(saved, conversation.customer?.name) : []}
+              quote={
+                writing === "reply" && replyingTo
+                  ? { label: quoteLabel(replyingTo, "AGENT", customer), preview: previewOf(replyingTo) }
+                  : null
+              }
+              onCancelQuote={() => setReplyingTo(null)}
+              onTyping={writing === "reply" ? () => void api.typing(id).catch(() => {}) : undefined}
+              onAttach={
+                writing === "reply" && imagesAllowed(conversation.tenantSlug) ? (file) => void sendImage(file) : undefined
+              }
+              onSuggest={
+                writing === "reply" && aiAllowed(conversation.tenantSlug)
+                  ? () =>
+                      api.suggestion(id).then(
+                        (s) => ({ text: s.text, note: suggestionNote(s) }),
+                        (e) => ({
+                          text: null,
+                          note:
+                            e instanceof ApiError && e.status === 429
+                              ? "Too many suggestions. Wait a minute."
+                              : "Couldn't get a suggestion.",
+                        }),
+                      )
+                  : undefined
+              }
+              placeholder={writing === "note" ? "Only your team sees this…" : `Reply to ${customer}…`}
+            />
+          </div>
+        )}
       </div>
 
       <Details
@@ -394,7 +403,7 @@ export function ConversationView({
         conversation={conversation}
         events={events}
         busy={busy}
-        onUnblock={unblock}
+        onUnblock={readOnly ? undefined : unblock}
         onClose={() => setDetails(false)}
       />
 
@@ -519,7 +528,7 @@ function Details({
   conversation: AgentConversation;
   events: ConversationEvent[];
   busy: boolean;
-  onUnblock: (contactId: string) => void;
+  onUnblock?: (contactId: string) => void;
   onClose: () => void;
 }) {
   const contact = c.customer;
@@ -541,14 +550,16 @@ function Details({
         {contact?.blocked && (
           <div className="details-blocked">
             <span className="badge badge-urgent">Blocked</span>
-            <button
-              type="button"
-              className="link-button"
-              disabled={busy}
-              onClick={() => contact.contactId && onUnblock(contact.contactId)}
-            >
-              Unblock
-            </button>
+            {onUnblock && (
+              <button
+                type="button"
+                className="link-button"
+                disabled={busy}
+                onClick={() => contact.contactId && onUnblock(contact.contactId)}
+              >
+                Unblock
+              </button>
+            )}
           </div>
         )}
       </section>

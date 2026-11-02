@@ -202,7 +202,13 @@ Subscribe to the new conversation's topic from here on. `403 CONTACT_BLOCKED` fo
 
 ## 4. Agent endpoints
 
-All require an agent token. The agent only sees tenants they're a member of (`tenant_agents`).
+All require an agent token. Agents see the tenants they're a member of (`tenant_agents`).
+
+**Reading vs. acting.** `GET` endpoints are also open to people who may only watch: company admins (for the
+companies they manage) and server admins (all companies). They see the same lists, conversations, notes and
+history (also live over the socket), and `/agent/me` returns `agent: false` with those tenants. Every other
+method (accept, reply, notes, typing, read receipts, transfer, resolve, block, presence) needs the agent role
+and membership of the conversation's tenant; anyone else gets `403`.
 
 ### 4.1 `GET /agent/tenants`
 
@@ -440,7 +446,7 @@ Validation (`400 VALIDATION_ERROR`, the message names the field): slug of 2–40
 
 **Invites:** an invited agent joins on their first `GET /agent/me` whose token has that `email` with `email_verified: true`. Unverified emails never match.
 
-`GET /agent/me` also says what the caller may use: `{ …, "agent": true, "admin": false, "manages": ["acme"] }`. `admin` is server admin; `manages` lists the companies they're company admin of. Admins without the agent role only get Settings. It needs no role, so company admins named only in their token can call it.
+`GET /agent/me` also says what the caller may use: `{ …, "agent": true, "admin": false, "manages": ["acme"] }`. `admin` is server admin; `manages` lists the companies they're company admin of. Admins without the agent role can read their companies' chats (see [Reading vs. acting](#4-agent-endpoints)) and use Settings. It needs no role, so company admins named only in their token can call it.
 
 ---
 

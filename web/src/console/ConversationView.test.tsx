@@ -1,12 +1,12 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ApiError, type AgentApi, type AgentConversation } from "../lib/api";
+import { ApiError, type AgentApi, type AgentConversation, type Me } from "../lib/api";
 import type { Socket } from "../lib/realtime";
 import { ConversationView } from "./ConversationView";
 
 afterEach(cleanup);
 
-const me = { sub: "sam", name: "Sam", tenants: ["acme"], agent: true, admin: false, manages: [] };
+const me: Me = { sub: "sam", name: "Sam", tenants: ["acme"], agent: true, admin: false, manages: [] };
 const socket: Socket = { subscribe: () => () => {}, close: () => {} };
 
 function conversation(overrides: Partial<AgentConversation> = {}): AgentConversation {
@@ -75,12 +75,12 @@ function fakeApi(start: AgentConversation, extra: Partial<AgentApi> = {}) {
   } as unknown as AgentApi & Record<string, ReturnType<typeof vi.fn>>;
 }
 
-function renderView(api: AgentApi, onOpen: (id: string) => void = () => {}) {
+function renderView(api: AgentApi, onOpen: (id: string) => void = () => {}, who = me) {
   return render(
     <ConversationView
       id="c1"
       api={api}
-      me={me}
+      me={who}
       socket={socket}
       onBack={() => {}}
       onOpen={onOpen}
@@ -97,6 +97,17 @@ function send(text: string) {
 }
 
 describe("ConversationView", () => {
+  it("lets admins who aren't agents read a chat but not act on it", async () => {
+    const api = fakeApi(conversation());
+    renderView(api, () => {}, { ...me, agent: false, manages: ["acme"] });
+
+    expect(await screen.findByText(/You can read this chat but not reply/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Accept" })).toBeNull();
+    expect(screen.queryByLabelText("Message")).toBeNull();
+    expect(api.markRead).not.toHaveBeenCalled();
+    expect(api.replies).not.toHaveBeenCalled();
+  });
+
   it("offers Accept for a waiting conversation and shows who it is", async () => {
     renderView(fakeApi(conversation()));
 
