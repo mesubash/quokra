@@ -88,7 +88,7 @@ class TranscriptTests {
 
     @Test
     void emailsTheChatWithoutNotesToTheCustomersOwnEmail() {
-        UUID id = chat("pat@example.test");
+        UUID id = chat("pat.one@example.test");
         post(BASE + "/messages", "{\"clientMessageId\":\"c-1\",\"body\":\"Where is my parcel?\"}");
         service.handoff(id, HandoffReason.CUSTOMER_REQUEST, SenderType.CUSTOMER);
         service.accept(id, sam);
@@ -107,7 +107,7 @@ class TranscriptTests {
             .bodyJson().extractingPath("$.sentTo").isEqualTo("p…@example.test");
         var mail = ArgumentCaptor.forClass(SimpleMailMessage.class);
         verify(sender).send(mail.capture());
-        assertThat(mail.getValue().getTo()).containsExactly("pat@example.test");
+        assertThat(mail.getValue().getTo()).containsExactly("pat.one@example.test");
         assertThat(mail.getValue().getFrom()).isEqualTo("Support <support@example.test>");
         assertThat(mail.getValue().getSubject()).startsWith("Your chat with Acme on ");
         String text = mail.getValue().getText();
@@ -130,13 +130,32 @@ class TranscriptTests {
 
     @Test
     void threeAnHourPerChat() {
-        chat("pat@example.test");
+        chat("pat.two@example.test");
         for (int i = 0; i < 3; i++) {
             assertThat(post(BASE + "/transcript", null)).hasStatus(HttpStatus.ACCEPTED);
         }
 
         assertThat(post(BASE + "/transcript", null)).hasStatus(HttpStatus.TOO_MANY_REQUESTS)
             .bodyJson().extractingPath("$.error.code").isEqualTo("RATE_LIMITED");
+    }
+
+    @Test
+    void threeADayToTheSameAddressAcrossChats() {
+        // Fresh sessions and chats each time, from an address no other test uses, so only the per-address limit can bite.
+        for (int i = 0; i < 4; i++) {
+            token = sessionTokens.issue(tenant).token();
+            chat("Same.Person@example.test");
+            var result = mvc.post().uri(BASE + "/transcript").header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .with(r -> {
+                    r.setRemoteAddr("10.9.9.9");
+                    return r;
+                }).exchange();
+            if (i < 3) {
+                assertThat(result).hasStatus(HttpStatus.ACCEPTED);
+            } else {
+                assertThat(result).hasStatus(HttpStatus.TOO_MANY_REQUESTS);
+            }
+        }
     }
 
     private MvcTestResult get(String uri) {
