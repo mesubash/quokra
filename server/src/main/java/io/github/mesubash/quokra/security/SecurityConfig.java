@@ -49,6 +49,8 @@ public class SecurityConfig {
             .requestMatchers("/api/v1/admin/**").access(access.anyCompany())
             // Admins who aren't agents (including company admins named in the token) still need to know who they are.
             .requestMatchers("/api/v1/agent/me").authenticated()
+            // Reading chats is open to admins too; acting on them (any other method) needs the agent role.
+            .requestMatchers(HttpMethod.GET, "/api/v1/agent/**").access(access.anyReadable())
             .anyRequest().hasRole(AgentJwtConverter.AGENT_ROLE));
         return http.build();
     }

@@ -137,7 +137,7 @@ public class AgentController {
             tenantAgents.acceptInvites(jwt.getSubject(), name, email);
         }
         tenantAgents.rememberProfile(jwt.getSubject(), name, email);
-        return new Me(jwt.getSubject(), name, myTenants(jwt).values().stream().map(Tenant::getSlug).sorted().toList(),
+        return new Me(jwt.getSubject(), name, readableTenants(auth).values().stream().map(Tenant::getSlug).sorted().toList(),
             hasRole(auth, AgentJwtConverter.AGENT_ROLE), hasRole(auth, AgentJwtConverter.ADMIN_ROLE),
             List.copyOf(access.managed(auth)));
     }
@@ -147,8 +147,8 @@ public class AgentController {
     }
 
     @GetMapping("/tenants")
-    public Page<TenantItem> tenants(@AuthenticationPrincipal Jwt jwt) {
-        return new Page<>(myTenants(jwt).values().stream()
+    public Page<TenantItem> tenants(Authentication auth) {
+        return new Page<>(readableTenants(auth).values().stream()
             .map(t -> new TenantItem(t.getId(), t.getSlug(), t.getDisplayName(), service.imagesAllowed(t),
                 t.getPrimaryColor(), suggester.availableFor(t)))
             .sorted((a, b) -> a.slug().compareTo(b.slug()))
@@ -156,7 +156,7 @@ public class AgentController {
     }
 
     @GetMapping("/conversations")
-    public Page<Summary> conversations(@AuthenticationPrincipal Jwt jwt,
+    public Page<Summary> conversations(@AuthenticationPrincipal Jwt jwt, Authentication auth,
                                        @RequestParam Status status,
                                        @RequestParam(required = false) String tenant,
                                        @RequestParam(required = false) String assignee,
@@ -166,7 +166,7 @@ public class AgentController {
         if (status == Status.BOT) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "status must be WAITING, HUMAN or RESOLVED");
         }
-        Map<UUID, Tenant> mine = myTenants(jwt);
+        Map<UUID, Tenant> mine = readableTenants(auth);
         List<UUID> ids = tenant == null ? List.copyOf(mine.keySet())
             : mine.values().stream().filter(t -> t.getSlug().equals(tenant)).map(Tenant::getId).toList();
         String assigneeSub = "me".equals(assignee) ? jwt.getSubject() : null;
@@ -188,15 +188,15 @@ public class AgentController {
     record CountsView(long waiting, long mine, long myUnread) {}
 
     @GetMapping("/conversations/counts")
-    public CountsView counts(@AuthenticationPrincipal Jwt jwt) {
-        var tenantIds = myTenants(jwt).keySet();
+    public CountsView counts(@AuthenticationPrincipal Jwt jwt, Authentication auth) {
+        var tenantIds = readableTenants(auth).keySet();
         var counts = service.counts(tenantIds, jwt.getSubject());
         return new CountsView(counts.waiting(), counts.mine(), reads.unreadInMyChats(jwt.getSubject(), tenantIds));
     }
 
     @GetMapping("/conversations/{id}")
-    public Detail conversation(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
-        Conversation c = visible(jwt, id);
+    public Detail conversation(Authentication auth, @PathVariable UUID id) {
+        Conversation c = readable(auth, id);
         return new Detail(view(c),
             service.messages(id, null, HISTORY_LIMIT).stream().map(MessageView::of).toList(),
             service.events(id).stream().map(EventView::of).toList(),
@@ -238,9 +238,9 @@ public class AgentController {
     }
 
     @GetMapping("/conversations/{id}/messages/{messageId}/attachment")
-    public ResponseEntity<byte[]> image(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id,
+    public ResponseEntity<byte[]> image(Authentication auth, @PathVariable UUID id,
                                         @PathVariable UUID messageId) {
-        visible(jwt, id);
+        readable(auth, id);
         var image = service.image(id, messageId);
         return Images.response(image.bytes(), image.contentType(), image.name());
     }
@@ -277,8 +277,8 @@ public class AgentController {
 
     // The same customer's other conversations, for the details panel.
     @GetMapping("/conversations/{id}/history")
-    public Page<Summary> history(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
-        Conversation c = visible(jwt, id);
+    public Page<Summary> history(Authentication auth, @PathVariable UUID id) {
+        Conversation c = readable(auth, id);
         String slug = tenants.findById(c.getTenantId()).map(Tenant::getSlug).orElse(null);
         // ponytail: one query per row for the preview, like the lists; at most 20 rows.
         List<Summary> items = service.history(id, HISTORY_ITEMS).stream()
@@ -303,8 +303,8 @@ public class AgentController {
 
     // Who the conversation can be transferred to.
     @GetMapping("/conversations/{id}/agents")
-    public Page<MemberView> agents(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
-        List<TenantAgents.Member> members = tenantAgents.members(visible(jwt, id).getTenantId());
+    public Page<MemberView> agents(Authentication auth, @PathVariable UUID id) {
+        List<TenantAgents.Member> members = tenantAgents.members(readable(auth, id).getTenantId());
         var online = presence.online(members.stream().map(TenantAgents.Member::sub).toList());
         return new Page<>(members.stream().map(m -> new MemberView(m.sub(), m.name(), online.contains(m.sub())))
             .toList(), null);
@@ -318,8 +318,8 @@ public class AgentController {
 
     // Saved replies of the conversation's tenant.
     @GetMapping("/conversations/{id}/replies")
-    public Page<CannedReplies.Reply> replies(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
-        return new Page<>(replies.list(visible(jwt, id).getTenantId()), null);
+    public Page<CannedReplies.Reply> replies(Authentication auth, @PathVariable UUID id) {
+        return new Page<>(replies.list(readable(auth, id).getTenantId()), null);
     }
 
     @PostMapping("/conversations/{id}/transfer")
@@ -364,6 +364,21 @@ public class AgentController {
         return new NoteResponse(NoteView.of(service.addNote(id, agent(jwt), request.body())));
     }
 
+    // For reads: any company this person may read (see TenantAccess.readable).
+    private Conversation readable(Authentication auth, UUID id) {
+        Conversation c;
+        try {
+            c = service.get(id);
+        } catch (ApiException e) {
+            throw notFound();
+        }
+        if (!access.readable(auth).contains(c.getTenantId())) {
+            throw notFound();
+        }
+        return c;
+    }
+
+    // For acting on a chat: only companies the agent is a member of.
     private Conversation visible(Jwt jwt, UUID id) {
         Conversation c;
         try {
@@ -383,8 +398,8 @@ public class AgentController {
         return ConversationView.of(c, tenants.findById(c.getTenantId()).map(Tenant::getSlug).orElse(null), blocked);
     }
 
-    private Map<UUID, Tenant> myTenants(Jwt jwt) {
-        return tenants.findAllById(tenantAgents.tenantIdsFor(jwt.getSubject())).stream()
+    private Map<UUID, Tenant> readableTenants(Authentication auth) {
+        return tenants.findAllById(access.readable(auth)).stream()
             .collect(Collectors.toMap(Tenant::getId, Function.identity()));
     }
 

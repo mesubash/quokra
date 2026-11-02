@@ -3,12 +3,13 @@ package io.github.mesubash.quokra.realtime;
 import io.github.mesubash.quokra.conversation.Conversation;
 import io.github.mesubash.quokra.conversation.ConversationService;
 import io.github.mesubash.quokra.security.AgentJwtConverter;
+import io.github.mesubash.quokra.security.TenantAccess;
 import io.github.mesubash.quokra.session.SessionTokens;
 import io.github.mesubash.quokra.session.SessionTokens.Session;
-import io.github.mesubash.quokra.tenant.TenantAgents;
 import java.security.Principal;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.messaging.Message;
@@ -40,22 +41,20 @@ class StompAuthInterceptor implements ChannelInterceptor {
         return TENANT_TOPIC + tenantId + QUEUE_SUFFIX;
     }
 
-    private static final String AGENT_AUTHORITY = "ROLE_" + AgentJwtConverter.AGENT_ROLE;
-
     private final SessionTokens sessionTokens;
     private final ConversationService conversations;
     private final ObjectProvider<JwtDecoder> jwtDecoder;
     private final AgentJwtConverter agentConverter;
-    private final TenantAgents tenantAgents;
+    private final TenantAccess access;
 
     StompAuthInterceptor(SessionTokens sessionTokens, ConversationService conversations,
                          ObjectProvider<JwtDecoder> jwtDecoder, AgentJwtConverter agentConverter,
-                         TenantAgents tenantAgents) {
+                         TenantAccess access) {
         this.sessionTokens = sessionTokens;
         this.conversations = conversations;
         this.jwtDecoder = jwtDecoder;
         this.agentConverter = agentConverter;
-        this.tenantAgents = tenantAgents;
+        this.access = access;
     }
 
     @Override
@@ -90,7 +89,8 @@ class StompAuthInterceptor implements ChannelInterceptor {
         if (decoder != null) {
             try {
                 AbstractAuthenticationToken agent = agentConverter.convert(decoder.decode(token));
-                if (agent.getAuthorities().stream().anyMatch(a -> AGENT_AUTHORITY.equals(a.getAuthority()))) {
+                // Agents, and anyone who may at least read a company's chats (admins).
+                if (access.mayRead(agent)) {
                     return agent;
                 }
             } catch (JwtException e) {
@@ -107,7 +107,7 @@ class StompAuthInterceptor implements ChannelInterceptor {
         if (user instanceof PreAuthenticatedAuthenticationToken auth && auth.getPrincipal() instanceof Session session) {
             checkCustomer(session, destination);
         } else if (user instanceof JwtAuthenticationToken agent) {
-            checkAgent(agent.getToken().getSubject(), destination);
+            checkAgent(agent, destination);
         } else {
             throw new AccessDeniedException("Not connected");
         }
@@ -122,9 +122,10 @@ class StompAuthInterceptor implements ChannelInterceptor {
         }
     }
 
-    // Agents may follow their tenants' queues and any conversation of those tenants.
-    private void checkAgent(String agentSub, String destination) {
-        List<UUID> tenants = tenantAgents.tenantIdsFor(agentSub);
+    // Agents (and admins, read-only) may follow the queues of the tenants they can read and any conversation
+    // of those, notes included.
+    private void checkAgent(JwtAuthenticationToken agent, String destination) {
+        Set<UUID> tenants = access.readable(agent);
         UUID tenantId;
         if (destination.startsWith(TENANT_TOPIC)) {
             tenantId = idAfter(destination, TENANT_TOPIC, QUEUE_SUFFIX);

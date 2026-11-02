@@ -134,8 +134,10 @@ class CompanyAdminTests {
             .extractingPath("$.manages").isEqualTo(List.of("globex"));
         assertThat(call("GET", lee, "/tenants/globex", null)).hasStatusOk();
         assertThat(call("GET", lee, "/tenants/acme", null)).hasStatus(HttpStatus.FORBIDDEN);
-        // Still not an agent.
-        assertThat(call("GET", lee, "/api/v1/agent/tenants", null)).hasStatus(HttpStatus.FORBIDDEN);
+        // Can watch that company's chats, but isn't an agent, so can't act on them.
+        assertThat(call("GET", lee, "/api/v1/agent/tenants", null)).bodyJson()
+            .extractingPath("$.items[*].slug").asArray().containsExactly("globex");
+        assertThat(call("POST", lee, "/api/v1/agent/presence", null)).hasStatus(HttpStatus.FORBIDDEN);
     }
 
     @Test
