@@ -75,6 +75,33 @@ A version starts only when the previous one is in real use and there's a clear n
 3. **Done. Email** (only when SMTP is configured and answering): to the team when a chat has waited longer than X minutes with no agent online; to the customer when an agent's reply has gone unanswered for a few minutes (per company, off by default).
 4. **Mobile push:** later, with a PWA or an app.
 
+### v3 AI answers, plan
+
+The bot answers questions from each company's own documents, shows where the answer came from, and hands
+over to a person when it can't answer. The FAQ menu, keywords and handoff stay as they are; AI answers only
+the free-text messages nothing else matched.
+
+**Decided**
+- Chunks and their vectors live in PostgreSQL with pgvector (Neon has it), per company, deleted with it.
+- Companies add knowledge in Settings as pasted text or uploaded `.txt` / `.md` files. PDFs and websites later.
+- Answers only from the company's documents. No good match, or the model isn't sure: the usual fallback,
+  then handoff. Errors or the AI being off never block the chat.
+- Every AI answer shows its sources and is marked as AI in the chat and the console.
+
+**Still to decide** (see §7, 8–10): which provider and models, whether the AI part runs in the Spring Boot
+server or in a separate Python service, and how costs are limited.
+
+**Steps**, each done when its tests pass:
+1. **Knowledge:** documents table, Settings → Knowledge (add, edit, remove), split into chunks.
+2. **Search:** embeddings for chunks and questions, pgvector search per company; evaluation set of
+   questions with the document that should answer them, and a recall check in the tests.
+3. **Answers:** the model answers from the top chunks only, with sources; a confidence rule for handing over.
+4. **In the chat and console:** AI answers marked, sources shown, "Talk to a person" always there; agents see
+   which chunks were used.
+5. **Limits and ops:** on / off per company, the cost limits from decision 10, health check, logs without
+   customer text.
+6. **Handoff summary:** a short AI summary for the agent when a chat reaches the queue.
+
 ---
 
 ## 5. v1 scope
@@ -132,6 +159,9 @@ Admin tab (companies, keys and embed snippets, allowed sites, agents by email in
 | 5 | Message retention | Each company chooses (default 12 months) within the server's limits (`QUOKRA_RETENTION_MIN_MONTHS` / `_MAX_MONTHS`, default 1–60); resolved chats are deleted nightly. Done in v2 |
 | 6 | Languages | English in v1; more via per-language bot files in v2 |
 | 7 | Repository licence | AGPL-3.0, public on GitHub (decided 2026-10-30) |
+| 8 | v3: AI provider and models (answers and embeddings) | Open |
+| 9 | v3: AI inside the Spring Boot server, or a separate Python service | Open |
+| 10 | v3: cost limits (server-wide, per company, or both) | Open |
 
 ---
 
