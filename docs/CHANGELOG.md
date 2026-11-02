@@ -10,6 +10,8 @@ What changed, newest first. Each entry says what people notice; the commits have
 
 - Opening hours can run past midnight (`22:00-02:00`) and close at midnight (`18:00-24:00`); `00:00-24:00`
   is all day.
+- Groundwork for AI answers (v3): knowledge documents per company, through the admin API
+  (`/admin/tenants/{slug}/knowledge`). Not shown in Settings and not used for answers yet.
 - A company admin can no longer switch off their own Admin or remove themselves by mistake; another admin
   of the company (or a server admin) still can.
 

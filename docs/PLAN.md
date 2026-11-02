@@ -92,7 +92,9 @@ the free-text messages nothing else matched.
 server or in a separate Python service, and how costs are limited.
 
 **Steps**, each done when its tests pass:
-1. **Knowledge:** documents table, Settings → Knowledge (add, edit, remove), split into chunks.
+1. **Knowledge:** documents table, Settings → Knowledge (add, edit, remove), split into chunks. **Done**; the
+   Settings section stays hidden (`KNOWLEDGE_READY` in `AdminArea.tsx`) until step 3, so nobody fills it in
+   before it does anything. Stored in the database, edited in Settings; importing from files can come later.
 2. **Search:** embeddings for chunks and questions, pgvector search per company; evaluation set of
    questions with the document that should answer them, and a recall check in the tests.
 3. **Answers:** the model answers from the top chunks only, with sources; a confidence rule for handing over.

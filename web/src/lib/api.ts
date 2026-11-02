@@ -341,6 +341,24 @@ export interface AdminAgents {
   invites: { email: string; admin: boolean; createdAt: string }[];
 }
 
+// A knowledge document (v3): what AI answers will come from. chunks: how many parts it was split into.
+export interface KnowledgeSummary {
+  id: string;
+  title: string;
+  length: number;
+  chunks: number;
+  updatedBy: string | null;
+  updatedAt: string;
+}
+
+export interface KnowledgeDocument {
+  id: string;
+  title: string;
+  body: string;
+  updatedBy: string | null;
+  updatedAt: string;
+}
+
 // A saved answer; {name} becomes the customer's name when it's inserted.
 export interface SavedReply {
   id: string;
@@ -402,6 +420,13 @@ export function adminApi(getToken: () => string, refresh?: FreshToken) {
     updateReply: (s: string, { id, ...reply }: SavedReply) =>
       call<SavedReply>("PUT", `/tenants/${slug(s)}/replies/${id}`, reply),
     removeReply: (s: string, id: string) => call<void>("DELETE", `/tenants/${slug(s)}/replies/${id}`),
+    knowledge: (s: string) => call<{ items: KnowledgeSummary[] }>("GET", `/tenants/${slug(s)}/knowledge`),
+    document: (s: string, id: string) => call<KnowledgeDocument>("GET", `/tenants/${slug(s)}/knowledge/${id}`),
+    addDocument: (s: string, doc: { title: string; body: string }) =>
+      call<KnowledgeDocument>("POST", `/tenants/${slug(s)}/knowledge`, doc),
+    updateDocument: (s: string, id: string, doc: { title: string; body: string }) =>
+      call<KnowledgeDocument>("PUT", `/tenants/${slug(s)}/knowledge/${id}`, doc),
+    removeDocument: (s: string, id: string) => call<void>("DELETE", `/tenants/${slug(s)}/knowledge/${id}`),
   };
 }
 
