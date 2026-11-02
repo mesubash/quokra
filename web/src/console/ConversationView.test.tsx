@@ -2,7 +2,8 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApiError, type AgentApi, type AgentConversation, type Me } from "../lib/api";
 import type { Socket } from "../lib/realtime";
-import { ConversationView } from "./ConversationView";
+import { createRef } from "react";
+import { ConversationView, type ConversationShortcuts } from "./ConversationView";
 
 afterEach(cleanup);
 
@@ -115,6 +116,32 @@ describe("ConversationView", () => {
     expect(screen.getByRole("button", { name: "Pat: show details" })).toBeTruthy();
     expect(screen.getByText("· pat@example.test")).toBeTruthy();
     expect(screen.getByText("Sending assigns this chat to you")).toBeTruthy();
+  });
+
+  it("accepts from the keyboard shortcut, and focuses the reply box", async () => {
+    const api = fakeApi(conversation());
+    const shortcuts = createRef<ConversationShortcuts>();
+    render(
+      <ConversationView
+        id="c1"
+        api={api}
+        me={me}
+        socket={socket}
+        onBack={() => {}}
+        onChanged={() => {}}
+        onError={() => {}}
+        shortcuts={shortcuts}
+        focusComposer={false}
+      />,
+    );
+    await screen.findByRole("button", { name: "Accept" });
+    expect(document.activeElement).not.toBe(screen.getByLabelText("Message"));
+
+    shortcuts.current?.accept();
+    await waitFor(() => expect(api.accept).toHaveBeenCalledWith("c1"));
+
+    shortcuts.current?.focusReply();
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText("Message")));
   });
 
   it("accepts and replies in one go", async () => {

@@ -1,3 +1,4 @@
+import { createElement, type ReactNode } from "react";
 import type { HandoffReason, Priority } from "../lib/api";
 
 export function ago(iso: string | null) {
@@ -29,6 +30,22 @@ export function reasonLabel(reason: HandoffReason) {
 export function initials(name: string | null) {
   if (!name) return "?";
   return name.split(/\s+/).filter(Boolean).map((p) => p[0]).join("").slice(0, 2).toUpperCase();
+}
+
+// One of the eight .tone-N avatar colours, always the same for the same key.
+export function toneOf(key: string) {
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) | 0;
+  return Math.abs(hash) % 8;
+}
+
+// The text with each match of the search wrapped in <mark>, ignoring case.
+export function highlight(text: string, query: string): ReactNode {
+  if (!query) return text;
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pattern = new RegExp(`(${escaped})`, "gi");
+  // With a capture group, split puts the matches at the odd indexes.
+  return text.split(pattern).map((part, i) => (i % 2 ? createElement("mark", { key: i }, part) : part));
 }
 
 export function dateTime(iso: string | null) {

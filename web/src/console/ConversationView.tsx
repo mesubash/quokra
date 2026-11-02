@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from "react";
 import {
   ApiError,
   MAX_IMAGE_BYTES,
@@ -19,7 +19,7 @@ import { Composer } from "../chat/Composer";
 import { MessageList, previewOf, quoteLabel, type TimelineItem } from "../chat/MessageList";
 import { useTypingSignal } from "../chat/typing";
 import { mergeMessages } from "../chat/messages";
-import { dateTime, eventLabel, eventTone, initials, priorityLabel, reasonLabel, shortTime } from "./format";
+import { dateTime, eventLabel, eventTone, initials, priorityLabel, reasonLabel, shortTime, toneOf } from "./format";
 import { copyText } from "../lib/copy";
 
 interface Props {
@@ -40,6 +40,10 @@ interface Props {
   imagesAllowed?: (tenantSlug: string) => boolean;
   // Whether agents of that company can ask for suggested replies.
   aiAllowed?: (tenantSlug: string) => boolean;
+  // What the console's keyboard shortcuts can do here.
+  shortcuts?: Ref<ConversationShortcuts>;
+  // Off when the chat was opened from the keyboard, so the arrow keys keep moving through the list.
+  focusComposer?: boolean;
 }
 
 // What the agent reads under the reply box after asking for a suggestion.
@@ -64,6 +68,11 @@ export function suggestionNote(s: Suggestion): string {
   }
 }
 
+export interface ConversationShortcuts {
+  accept: () => void;
+  focusReply: () => void;
+}
+
 const STATUS_LABEL = { BOT: "With the bot", WAITING: "Waiting", HUMAN: "Open", RESOLVED: "Resolved" };
 
 type Mode = "reply" | "note";
@@ -82,6 +91,8 @@ export function ConversationView({
   onError,
   imagesAllowed = () => false,
   aiAllowed = () => false,
+  shortcuts,
+  focusComposer = true,
 }: Props) {
   const [conversation, setConversation] = useState<AgentConversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -98,6 +109,19 @@ export function ConversationView({
   const customerTyping = useTypingSignal();
   // Admins who aren't agents can watch a chat but never act on it.
   const readOnly = !me.agent;
+  const composer = useRef<HTMLDivElement>(null);
+
+  useImperativeHandle(shortcuts, () => ({
+    accept: () => {
+      if (conversation?.status === "WAITING" && !readOnly && !busy) void accept();
+    },
+    focusReply: () => {
+      if (readOnly) return;
+      setMode("reply");
+      // Switching from a note remounts the composer, so wait for it.
+      setTimeout(() => composer.current?.querySelector("textarea")?.focus());
+    },
+  }));
 
   const load = useCallback(() => {
     api
@@ -164,6 +188,10 @@ export function ConversationView({
     } finally {
       setBusy(false);
     }
+  }
+
+  function accept() {
+    return act(() => api.accept(id));
   }
 
   function explain(e: unknown) {
@@ -276,7 +304,9 @@ export function ConversationView({
             aria-expanded={details}
             onClick={() => setDetails(true)}
           >
-            <span className="avatar avatar-customer">{initials(customer)}</span>
+            <span className={`avatar avatar-customer tone-${toneOf(conversation.customer?.name ?? conversation.id)}`}>
+              {initials(customer)}
+            </span>
             <span className="conversation-title">
               <span className="conversation-name">{customer}</span>
               <span className={`conversation-sub status-text-${status.toLowerCase()}`}>
@@ -294,7 +324,7 @@ export function ConversationView({
           </button>
           <div className="conversation-actions">
             {status === "WAITING" && !readOnly && (
-              <button type="button" className="button" disabled={busy} onClick={() => act(() => api.accept(id))}>
+              <button type="button" className="button" disabled={busy} onClick={() => void accept()}>
                 Accept
               </button>
             )}
@@ -354,7 +384,7 @@ export function ConversationView({
             <p className="composer-hint-line muted">You can read this chat but not reply. Replying needs agent access.</p>
           </div>
         ) : (
-          <div className="console-composer">
+          <div className="console-composer" ref={composer}>
             {canReply ? (
               <div className="composer-modes" role="tablist" aria-label="Write">
                 <button type="button" role="tab" aria-selected={writing === "reply"} onClick={() => setMode("reply")}>
@@ -374,7 +404,7 @@ export function ConversationView({
               key={writing}
               onSend={(body) => void (writing === "note" ? addPrivateNote(body) : reply(body))}
               disabled={busy}
-              focus
+              focus={focusComposer}
               note={writing === "note"}
               replies={writing === "reply" ? fillName(saved, conversation.customer?.name) : []}
               quote={
@@ -560,7 +590,9 @@ function Details({
       </header>
 
       <section className="details-card details-contact">
-        <span className="avatar avatar-customer avatar-lg">{initials(contact?.name ?? contact?.email ?? null)}</span>
+        <span className={`avatar avatar-customer avatar-lg tone-${toneOf(contact?.name ?? c.id)}`}>
+          {initials(contact?.name ?? contact?.email ?? null)}
+        </span>
         <div className="details-contact-text">
           <strong>{contact?.name ?? "Guest"}</strong>
           {contact?.email ? <CopyEmail email={contact.email} /> : <span className="muted">No email yet</span>}
@@ -728,7 +760,7 @@ function CopyEmail({ email }: { email: string }) {
 }
 
 // A native <dialog>: it traps focus and closes on Escape by itself.
-function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+export function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const dialog = ref.current;

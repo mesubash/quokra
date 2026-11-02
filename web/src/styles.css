@@ -34,6 +34,23 @@
   --dot-waiting: #e08a00;
   --dot-off: #9ca3af;
   --shadow-rgb: 16 24 40;
+  /* Customer avatars: one soft colour pair per customer (toneOf). */
+  --tone-0-bg: #e0ecfb;
+  --tone-0-text: #1f4f8a;
+  --tone-1-bg: #e2f3e6;
+  --tone-1-text: #1f6b3a;
+  --tone-2-bg: #fbf0d9;
+  --tone-2-text: #7a5200;
+  --tone-3-bg: #fbe4ea;
+  --tone-3-text: #8f2546;
+  --tone-4-bg: #ece6fb;
+  --tone-4-text: #4f3594;
+  --tone-5-bg: #dcf2f1;
+  --tone-5-text: #13625e;
+  --tone-6-bg: #fde8db;
+  --tone-6-text: #8a3d12;
+  --tone-7-bg: #e6eaf0;
+  --tone-7-text: #364152;
   color-scheme: light;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   font-size: 15px;
@@ -74,6 +91,22 @@
   --dot-waiting: #e3a008;
   --dot-off: #71717a;
   --shadow-rgb: 0 0 0;
+  --tone-0-bg: #172a42;
+  --tone-0-text: #93bdf2;
+  --tone-1-bg: #13301e;
+  --tone-1-text: #86d6a0;
+  --tone-2-bg: #33270f;
+  --tone-2-text: #f2c96b;
+  --tone-3-bg: #3a1822;
+  --tone-3-text: #f3a1b8;
+  --tone-4-bg: #251d40;
+  --tone-4-text: #c0aef5;
+  --tone-5-bg: #102e2d;
+  --tone-5-text: #7fd4cd;
+  --tone-6-bg: #3a2014;
+  --tone-6-text: #f5ad84;
+  --tone-7-bg: #222831;
+  --tone-7-text: #b6c0cf;
   color-scheme: dark;
 }
 
@@ -356,6 +389,46 @@ button {
 .avatar-customer {
   background: var(--accent-bg);
   color: var(--accent-text);
+}
+
+.avatar-customer.tone-0 {
+  background: var(--tone-0-bg);
+  color: var(--tone-0-text);
+}
+
+.avatar-customer.tone-1 {
+  background: var(--tone-1-bg);
+  color: var(--tone-1-text);
+}
+
+.avatar-customer.tone-2 {
+  background: var(--tone-2-bg);
+  color: var(--tone-2-text);
+}
+
+.avatar-customer.tone-3 {
+  background: var(--tone-3-bg);
+  color: var(--tone-3-text);
+}
+
+.avatar-customer.tone-4 {
+  background: var(--tone-4-bg);
+  color: var(--tone-4-text);
+}
+
+.avatar-customer.tone-5 {
+  background: var(--tone-5-bg);
+  color: var(--tone-5-text);
+}
+
+.avatar-customer.tone-6 {
+  background: var(--tone-6-bg);
+  color: var(--tone-6-text);
+}
+
+.avatar-customer.tone-7 {
+  background: var(--tone-7-bg);
+  color: var(--tone-7-text);
 }
 
 /* Messages */
@@ -1308,6 +1381,12 @@ button {
 .item-middle .count {
   flex: none;
   margin-left: auto;
+}
+
+.console-item mark {
+  border-radius: 3px;
+  background: var(--note-bg);
+  color: inherit;
 }
 
 .item-preview.unread {
@@ -2830,6 +2909,55 @@ button {
   justify-content: flex-end;
   gap: 8px;
   margin-top: 16px;
+}
+
+/* Keyboard shortcuts */
+
+kbd {
+  display: inline-block;
+  min-width: 1.6em;
+  padding: 1px 5px;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.shortcuts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0 0;
+}
+
+.shortcuts div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.shortcuts dt {
+  display: flex;
+  gap: 4px;
+  min-width: 64px;
+}
+
+.shortcuts dd {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.console-shortcuts-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 0.85rem;
 }
 
 .pick-list {
