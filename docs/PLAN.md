@@ -88,8 +88,26 @@ the free-text messages nothing else matched.
   then handoff. Errors or the AI being off never block the chat.
 - Every AI answer shows its sources and is marked as AI in the chat and the console.
 
-**Still to decide** (see §7, 8–10): which provider and models, whether the AI part runs in the Spring Boot
-server or in a separate Python service, and how costs are limited.
+- One OpenAI-compatible client in the Spring Boot server (no Python service, no new dependency), set by
+  `QUOKRA_AI_BASE_URL`, `QUOKRA_AI_KEY` and model names. Gemini's free tier for local development and the
+  public demo, so both behave the same; Ollama, OpenAI, Groq and others work by changing those values.
+  Free tiers may use the data to improve their models, so real companies set their own provider and key.
+  Tests use a fake AI server, so CI needs no key.
+- First the AI only helps agents (3a); answering customers directly is a per-company option on top (3b).
+
+**Guardrails** (for 3b, and most of them for 3a too)
+- Only on topic: the documents are searched first; without a close enough match the AI isn't called at all,
+  so off-topic requests ("write me a poem") cost nothing and get the usual fallback and handoff.
+- Only from the documents: a fixed instruction, the found passages and the question kept apart, and "say you
+  don't know" when the passages don't cover it.
+- The server checks the answer cites passages it was given; otherwise it's dropped and the chat hands over.
+  Plain text, a length limit, no links that aren't in the documents.
+- Limits per chat, per IP, per company per day and per server per day; reaching one means FAQ and handoff,
+  never an error. AI on / off per company and a server-wide switch.
+- Marked as AI with its sources, "Talk to a person" always there, agents see every AI message. No customer
+  text in logs, only counts.
+
+**Still to decide** (§7, 10): the actual numbers for the limits.
 
 **Steps**, each done when its tests pass:
 1. **Knowledge:** documents table, Settings → Knowledge (add, edit, remove), split into chunks. **Done**; the
@@ -97,9 +115,13 @@ server or in a separate Python service, and how costs are limited.
    before it does anything. Stored in the database, edited in Settings; importing from files can come later.
 2. **Search:** embeddings for chunks and questions, pgvector search per company; evaluation set of
    questions with the document that should answer them, and a recall check in the tests.
-3. **Answers:** the model answers from the top chunks only, with sources; a confidence rule for handing over.
+3. **Answers:**
+   - **3a, for agents:** in the console, a suggested reply from the documents with its sources; the agent
+     edits or sends it. Nothing reaches the customer without a person.
+   - **3b, for customers** (per company, off by default): free-text questions the FAQ didn't match get an
+     answer from the documents, with the guardrails above; otherwise fallback and handoff.
 4. **In the chat and console:** AI answers marked, sources shown, "Talk to a person" always there; agents see
-   which chunks were used.
+   which chunks were used. Settings → Knowledge shown.
 5. **Limits and ops:** on / off per company, the cost limits from decision 10, health check, logs without
    customer text.
 6. **Handoff summary:** a short AI summary for the agent when a chat reaches the queue.
@@ -161,9 +183,9 @@ Admin tab (companies, keys and embed snippets, allowed sites, agents by email in
 | 5 | Message retention | Each company chooses (default 12 months) within the server's limits (`QUOKRA_RETENTION_MIN_MONTHS` / `_MAX_MONTHS`, default 1–60); resolved chats are deleted nightly. Done in v2 |
 | 6 | Languages | English in v1; more via per-language bot files in v2 |
 | 7 | Repository licence | AGPL-3.0, public on GitHub (decided 2026-10-30) |
-| 8 | v3: AI provider and models (answers and embeddings) | Open |
-| 9 | v3: AI inside the Spring Boot server, or a separate Python service | Open |
-| 10 | v3: cost limits (server-wide, per company, or both) | Open |
+| 8 | v3: AI provider and models (answers and embeddings) | OpenAI-compatible client; Gemini free tier locally and on the demo (decided 2026-11-02) |
+| 9 | v3: AI inside the Spring Boot server, or a separate Python service | Spring Boot (decided 2026-11-02) |
+| 10 | v3: cost limits | Per chat, per IP, per company per day and per server per day (decided); the numbers are open |
 
 ---
 
