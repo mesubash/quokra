@@ -78,6 +78,9 @@ curl -X POST localhost:8080/dev/agent-token -H 'Content-Type: application/json' 
 
 ### Environment
 
+With the `dev` profile, the server also reads `server/.env` if it exists (`KEY=value` lines, git-ignored), so
+local settings like `OIDC_ISSUER_URI` don't need exporting.
+
 | Variable | Used by | Local default |
 |---|---|---|
 | `SPRING_DATASOURCE_URL` / `_USERNAME` / `_PASSWORD` | server | not needed: Postgres starts from `compose.yaml` |
