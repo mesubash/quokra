@@ -75,6 +75,14 @@ export interface Conversation {
   createdAt: string;
   lastMessageAt: string;
   resolvedAt: string | null;
+  // Closed after a chat with an agent and not rated yet; rating is the customer's, once given.
+  canRate?: boolean;
+  rating?: Rating | null;
+}
+
+export interface Rating {
+  positive: boolean;
+  comment: string | null;
 }
 
 export class ApiError extends Error {
@@ -186,6 +194,13 @@ export const widgetApi = {
   // Emails the chat to the address the customer gave in it; sentTo is that address, lightly masked.
   emailTranscript: (token: string) =>
     request<{ sentTo: string }>("/widget/conversation/transcript", { method: "POST", token }),
+  // Rates the closed chat: the thumb first, then optionally a comment (once, with the same thumb).
+  rate: (token: string, positive: boolean, comment?: string) =>
+    request<{ conversation: Conversation }>("/widget/conversation/rating", {
+      method: "POST",
+      token,
+      body: JSON.stringify({ positive, comment }),
+    }),
 
   // The customer is typing (sent every few seconds while they do).
   typing: (token: string) => request<void>("/widget/conversation/typing", { method: "POST", token }),
@@ -218,6 +233,8 @@ export interface ConversationSummary {
   assignee: Person | null;
   // Customer messages this agent hasn't read yet.
   unreadCount: number;
+  // The customer's thumb when they rated the chat (true: up).
+  rating?: boolean | null;
 }
 
 export interface AgentConversation {
@@ -418,6 +435,22 @@ export interface AdminBot {
   bot: BotFields | null;
 }
 
+// GET /admin/tenants/{slug}/ratings. percentPositive is null without ratings; recent: the newest comments.
+export interface RatingSummary {
+  positive: number;
+  total: number;
+  percentPositive: number | null;
+  agents: { sub: string; name: string | null; positive: number; total: number }[];
+  recent: {
+    conversationId: string;
+    customerName: string | null;
+    agentName: string | null;
+    positive: boolean;
+    comment: string;
+    createdAt: string;
+  }[];
+}
+
 export function adminApi(getToken: () => string, refresh?: FreshToken) {
   const call = <T,>(method: string, path: string, body?: unknown) =>
     authed<T>(
@@ -461,6 +494,7 @@ export function adminApi(getToken: () => string, refresh?: FreshToken) {
     updateDocument: (s: string, id: string, doc: { title: string; body: string }) =>
       call<KnowledgeDocument>("PUT", `/tenants/${slug(s)}/knowledge/${id}`, doc),
     removeDocument: (s: string, id: string) => call<void>("DELETE", `/tenants/${slug(s)}/knowledge/${id}`),
+    ratings: (s: string, days = 30) => call<RatingSummary>("GET", `/tenants/${slug(s)}/ratings?days=${days}`),
   };
 }
 
@@ -507,9 +541,13 @@ export function agentApi(getToken: () => string, refresh?: FreshToken) {
     counts: () =>
       get<{ waiting: number; mine: number; myUnread: number; resolvedUnread?: number }>("/conversations/counts"),
     detail: (id: string) =>
-      get<{ conversation: AgentConversation; messages: Message[]; events: ConversationEvent[]; notes: Note[] }>(
-        `/conversations/${id}`,
-      ),
+      get<{
+        conversation: AgentConversation;
+        messages: Message[];
+        events: ConversationEvent[];
+        notes: Note[];
+        rating?: { positive: boolean; comment: string | null } | null;
+      }>(`/conversations/${id}`),
     accept: (id: string) => post<One>(`/conversations/${id}/accept`),
     reply: (id: string, clientMessageId: string, body: string, replyTo?: string) =>
       post<{ message: Message }>(`/conversations/${id}/messages`, { clientMessageId, body, replyTo }),

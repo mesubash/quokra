@@ -14,7 +14,7 @@ import {
   type Suggestion,
 } from "../lib/api";
 import type { Socket } from "../lib/realtime";
-import { BackIcon, BanIcon, BotIcon, CheckIcon, CloseIcon, CopyIcon, ExpandIcon, MoreIcon, PanelIcon, TransferIcon } from "../lib/icons";
+import { BackIcon, BanIcon, BotIcon, CheckIcon, CloseIcon, CopyIcon, ExpandIcon, MoreIcon, PanelIcon, ThumbIcon, TransferIcon } from "../lib/icons";
 import { Composer } from "../chat/Composer";
 import { MessageList, previewOf, quoteLabel, type TimelineItem } from "../chat/MessageList";
 import { useTypingSignal } from "../chat/typing";
@@ -98,6 +98,7 @@ export function ConversationView({
   const [messages, setMessages] = useState<Message[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
   const [events, setEvents] = useState<ConversationEvent[]>([]);
+  const [rating, setRating] = useState<{ positive: boolean; comment: string | null } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState<Mode>("reply");
@@ -131,6 +132,7 @@ export function ConversationView({
         setMessages((current) => mergeMessages(current, d.messages));
         setNotes(d.notes);
         setEvents(d.events);
+        setRating(d.rating ?? null);
       })
       .catch(onError);
   }, [api, id, onError]);
@@ -379,6 +381,15 @@ export function ConversationView({
               : undefined
           }
         />
+        {rating && (
+          <div className={`chat-rating-note ${rating.positive ? "up" : "down"}`} role="note">
+            <ThumbIcon size={16} down={!rating.positive} />
+            <span>
+              <strong>{customer}</strong> rated this chat {rating.positive ? "good" : "bad"}
+              {rating.comment && <q>{rating.comment}</q>}
+            </span>
+          </div>
+        )}
         {readOnly ? (
           <div className="console-composer">
             <p className="composer-hint-line muted">You can read this chat but not reply. Replying needs agent access.</p>
@@ -443,6 +454,7 @@ export function ConversationView({
         onOpen={onOpen}
         conversation={conversation}
         events={events}
+        rating={rating}
         busy={busy}
         onUnblock={readOnly ? undefined : unblock}
         onClose={() => setDetails(false)}
@@ -567,6 +579,7 @@ function Details({
   onOpen,
   conversation: c,
   events,
+  rating,
   busy,
   onUnblock,
   onClose,
@@ -575,6 +588,7 @@ function Details({
   onOpen?: (id: string) => void;
   conversation: AgentConversation;
   events: ConversationEvent[];
+  rating: { positive: boolean; comment: string | null } | null;
   busy: boolean;
   onUnblock?: (contactId: string) => void;
   onClose: () => void;
@@ -629,6 +643,18 @@ function Details({
               <span className={`badge badge-${c.priority.toLowerCase()}`}>{priorityLabel(c.priority)}</span>
             )}
           </dd>
+          {rating && (
+            <>
+              <dt>Rating</dt>
+              <dd>
+                <span className={`badge rating-badge ${rating.positive ? "up" : "down"}`}>
+                  <ThumbIcon size={13} down={!rating.positive} />
+                  {rating.positive ? "Good" : "Bad"}
+                </span>
+                {rating.comment && <p className="details-rating-comment">{rating.comment}</p>}
+              </dd>
+            </>
+          )}
           {c.handoffReason && (
             <>
               <dt>Reason</dt>

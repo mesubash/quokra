@@ -28,6 +28,8 @@ interface Props {
   loadImage?: (messageId: string) => Promise<Blob>;
   // Shows a Reply button on customers' and agents' messages.
   onReply?: (message: TimelineItem) => void;
+  // Shown under the last message (the chat panel's rating card).
+  footer?: ReactNode;
 }
 
 // Who a quote is from, as the reader sees it.
@@ -203,6 +205,7 @@ export function MessageList({
   customerName = "Customer",
   loadImage,
   onReply,
+  footer,
 }: Props) {
   const end = useRef<HTMLDivElement>(null);
   const list = useRef<HTMLDivElement>(null);
@@ -371,6 +374,7 @@ export function MessageList({
           ))}
         </div>
       )}
+      {footer}
       {away && (
         <button
           type="button"

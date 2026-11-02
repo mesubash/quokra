@@ -208,3 +208,11 @@ export function BanIcon({ size = 18 }: { size?: number }) {
     </svg>
   );
 }
+
+export function ThumbIcon({ size = 18, down = false }: { size?: number; down?: boolean }) {
+  return (
+    <svg {...base} width={size} height={size} style={down ? { transform: "rotate(180deg)" } : undefined}>
+      <path d="M7 10v11H4a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1zM7 10l4-8a3 3 0 0 1 3 3v4h5.5a2 2 0 0 1 2 2.3l-1.4 8a2 2 0 0 1-2 1.7H7" />
+    </svg>
+  );
+}

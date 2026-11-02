@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { adminApi, agentApi, ApiError, type ConversationSummary, type FreshToken, type Me, type TenantItem } from "../lib/api";
 import { embedded, onHostMessage, postToHost } from "../lib/bridge";
 import { accent, applyColor } from "../lib/theme";
-import { ChatBubblesIcon, CloseIcon, ExpandIcon, SearchIcon, SettingsIcon } from "../lib/icons";
+import { ChatBubblesIcon, CloseIcon, ExpandIcon, SearchIcon, SettingsIcon, ThumbIcon } from "../lib/icons";
 import { loadPrefs, savePrefs, type NotifyPrefs } from "../lib/notifyPrefs";
 import { chime } from "../lib/sound";
 import { NotifyMenu, type HostNotifications } from "./NotifyMenu";
@@ -453,6 +453,14 @@ export function ConsoleApp({ getToken, freshToken, onUnauthorized, onSignOut, on
           scope={SCOPE}
           notifications={{ prefs, onChange: setPrefs, host: hostNotify, onTurnOn: askPermission }}
           onClose={adminOnly ? undefined : () => setSettingsOpen(false)}
+          onOpenChat={
+            adminOnly
+              ? undefined
+              : (id) => {
+                  setSettingsOpen(false);
+                  open(id);
+                }
+          }
         />
       )}
       {help && <ShortcutsHelp agent={!!me?.agent} onClose={() => setHelp(false)} />}
@@ -550,6 +558,11 @@ function Row({
           )}
         </span>
         <span className="item-tags">
+          {c.rating != null && (
+            <span className={`badge rating-badge ${c.rating ? "up" : "down"}`} aria-label={c.rating ? "Rated good" : "Rated bad"}>
+              <ThumbIcon size={12} down={!c.rating} />
+            </span>
+          )}
           {c.priority !== "NORMAL" && (
             <span className={`badge badge-${c.priority.toLowerCase()}`}>{priorityLabel(c.priority)}</span>
           )}

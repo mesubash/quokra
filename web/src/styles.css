@@ -830,6 +830,85 @@ button {
   cursor: default;
 }
 
+/* Rating card, under a closed chat */
+
+.rating-card {
+  align-self: center;
+  width: min(100%, 320px);
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--raised);
+  color: var(--text);
+  font-size: 0.9rem;
+  text-align: center;
+  animation: rise 0.25s ease;
+}
+
+.rating-card p {
+  margin: 0;
+}
+
+.rating-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+}
+
+.rating-card textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  resize: vertical;
+}
+
+.rating-thumbs {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.rating-thumbs button {
+  width: 48px;
+  height: 40px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.rating-thumbs button:hover:not(:disabled) {
+  border-color: var(--primary);
+  background: var(--hover);
+}
+
+.rating-thumbs button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.rating-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+}
+
+.rating-card .rating-error {
+  margin-top: 8px;
+  color: var(--danger);
+  font-size: 0.8rem;
+}
+
 /* Composer */
 
 .composer {
@@ -2474,6 +2553,29 @@ button {
   border-bottom: var(--pane-border);
 }
 
+.rating-stats {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 8px 0 0;
+}
+
+.rating-stats strong {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.rating-thumb {
+  font-size: 1.1rem;
+}
+
+.admin-person .rating-comment {
+  color: var(--text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .settings .admin-reply-form {
   max-width: 560px;
   margin-top: 24px;
@@ -3364,4 +3466,50 @@ kbd {
 
 .menu-switch.on::after {
   transform: translateX(12px);
+}
+
+
+/* A chat's rating, for the team: a line under the thread, a row in Details, a badge in the list. */
+.chat-rating-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 16px 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+}
+
+.chat-rating-note.up,
+.rating-badge.up {
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.chat-rating-note.down,
+.rating-badge.down {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.chat-rating-note svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.chat-rating-note q {
+  display: block;
+  margin-top: 2px;
+  color: var(--text);
+}
+
+.rating-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.details-rating-comment {
+  margin: 4px 0 0;
+  font-size: 0.82rem;
 }

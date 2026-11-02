@@ -32,17 +32,18 @@ final class AgentViews {
 
     record Summary(UUID id, String tenantSlug, Status status, Priority priority, HandoffReason handoffReason,
                    String customerName, String lastMessagePreview, Instant lastMessageAt, Instant waitingSince,
-                   Person assignee, int unreadCount) {
+                   Person assignee, int unreadCount, Boolean rating) {
 
         static final int PREVIEW_LENGTH = 120;
 
-        static Summary of(Conversation c, String tenantSlug, Message last, int unreadCount) {
+        // rating: the customer's thumb (true: up) when the chat was rated, else null.
+        static Summary of(Conversation c, String tenantSlug, Message last, int unreadCount, Boolean rating) {
             String preview = last == null ? "" : last.getBody();
             if (preview.length() > PREVIEW_LENGTH) {
                 preview = preview.substring(0, PREVIEW_LENGTH);
             }
             return new Summary(c.getId(), tenantSlug, c.getStatus(), c.getPriority(), c.getHandoffReason(),
-                c.getCustomerName(), preview, c.getLastMessageAt(), c.getWaitingSince(), assigneeOf(c), unreadCount);
+                c.getCustomerName(), preview, c.getLastMessageAt(), c.getWaitingSince(), assigneeOf(c), unreadCount, rating);
         }
     }
 

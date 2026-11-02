@@ -7,6 +7,7 @@ import io.github.mesubash.quokra.ai.AiUsage;
 import io.github.mesubash.quokra.attachment.StorageCheck;
 import io.github.mesubash.quokra.bot.BotConfigRegistry;
 import io.github.mesubash.quokra.presence.AgentPresence;
+import io.github.mesubash.quokra.rating.ChatRatings;
 import io.github.mesubash.quokra.bot.TenantBots;
 import io.github.mesubash.quokra.canned.CannedReplies;
 import io.github.mesubash.quokra.common.ApiException;
@@ -36,6 +37,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -83,13 +85,15 @@ public class AdminController {
     private final TenantAccess access;
     private final AiClient ai;
     private final AiUsage aiUsage;
+    private final ChatRatings ratings;
 
     public AdminController(TenantAdmin tenants, TenantAgents agents, TenantSecrets secrets, BotConfigRegistry bots,
                            CannedReplies replies, TenantBots tenantBots, TenantRepository tenantRepository,
                            StorageCheck storage, AgentPresence presence, RetentionLimits retention,
-                           MailCheck mail, TenantAccess access, AiClient ai, AiUsage aiUsage) {
+                           MailCheck mail, TenantAccess access, AiClient ai, AiUsage aiUsage, ChatRatings ratings) {
         this.ai = ai;
         this.aiUsage = aiUsage;
+        this.ratings = ratings;
         this.access = access;
         this.mail = mail;
         this.retention = retention;
@@ -292,6 +296,12 @@ public class AdminController {
         if (!replies.remove(tenants.get(slug).id(), id)) {
             throw replyNotFound();
         }
+    }
+
+    // How customers rated their chats over the last `days` days (1 to 365).
+    @GetMapping("/tenants/{slug}/ratings")
+    public ChatRatings.Summary ratings(@PathVariable String slug, @RequestParam(defaultValue = "30") int days) {
+        return ratings.summary(tenants.get(slug).id(), Math.clamp(days, 1, 365));
     }
 
     private static ApiException replyNotFound() {
