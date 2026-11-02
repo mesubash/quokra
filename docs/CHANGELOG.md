@@ -8,6 +8,30 @@ What changed, newest first. Each entry says what people notice; the commits have
 
 ## Unreleased
 
+**Chat and console**
+- Notification sounds now play when the console or chat is embedded: `sdk.js` plays them on the host page,
+  where people actually click. Customers hear a sound for a new reply while the chat is closed or the tab
+  is in the background, and can turn it off in the chat's **⋯** menu.
+- Web addresses in messages are clickable (with `http(s)://`, `www.` or a known ending like `.com`); emails
+  stay text.
+- Copy buttons work inside an embedded console, and copying a customer's email says **Copied**.
+- A go-to-latest button shows while scrolled up in a chat; new messages no longer pull you down while you
+  read older ones (your own still do).
+- Options-only bots: with `free_text: false` in the bot file (or **Customers can type to the bot** off in
+  Settings → Bot), customers pick a topic instead of typing while the bot answers.
+
+**Admins**
+- Company admins and server admins who aren't agents can read their companies' chats, notes and history,
+  read-only. Acting on a chat still needs the agent role and membership.
+- An agent's name is never shown as an email: a name claim like `sam.lee@…` shows as `Sam Lee`.
+
+**Fixes**
+- Agent tokens with a `type` claim other than `access` (refresh tokens from some providers) are refused.
+- The typing dots no longer sit in a stretched bubble; long agent names in the console header end in "…".
+- The dev `compose.yaml` has its own project name (`quokra-dev`), so it no longer shares containers with
+  other checkouts. Remove the old containers once (`docker compose -p server down`), since both use port
+  8180; the dev database starts fresh with the dev seed.
+
 - Handoff summary: when a chat joins the queue, the AI leaves the agent a private note saying what the
   customer wants and the details they gave (with **Suggest replies to agents** on).
 - New guide: [Set up AI](guides/10-set-up-ai.md).
