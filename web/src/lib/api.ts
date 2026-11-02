@@ -496,7 +496,8 @@ export function agentApi(getToken: () => string, refresh?: FreshToken) {
       if (options.cursor) query.set("cursor", options.cursor);
       return get<Page<ConversationSummary>>(`/conversations?${query}`);
     },
-    counts: () => get<{ waiting: number; mine: number; myUnread: number }>("/conversations/counts"),
+    counts: () =>
+      get<{ waiting: number; mine: number; myUnread: number; resolvedUnread?: number }>("/conversations/counts"),
     detail: (id: string) =>
       get<{ conversation: AgentConversation; messages: Message[]; events: ConversationEvent[]; notes: Note[] }>(
         `/conversations/${id}`,

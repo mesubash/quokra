@@ -13,6 +13,7 @@ import { ConversationView } from "./ConversationView";
 import { Settings, useAdmin } from "./admin/AdminArea";
 import { ago, initials, listTime, priorityLabel, reasonLabel } from "./format";
 import { useConversationList, type Tab } from "./useConversationList";
+import { SignOutButton } from "./SignOutButton";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "queue", label: "Queue" },
@@ -46,7 +47,11 @@ export function ConsoleApp({ getToken, freshToken, onUnauthorized, onSignOut, on
   useCompanyColor(tenants);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [tab, setTab] = useState<Tab>("queue");
-  const [counts, setCounts] = useState({ waiting: 0, mine: 0, myUnread: 0 });
+  const [counts, setCounts] = useState<{ waiting: number; mine: number; myUnread: number; resolvedUnread?: number }>({
+    waiting: 0,
+    mine: 0,
+    myUnread: 0,
+  });
   const [selected, setSelected] = useState<string | null>(
     initialConversation && UUID.test(initialConversation) ? initialConversation : null,
   );
@@ -225,7 +230,7 @@ export function ConsoleApp({ getToken, freshToken, onUnauthorized, onSignOut, on
   }
 
   function badge(id: Tab) {
-    const n = id === "queue" ? counts.waiting : id === "mine" ? counts.mine : 0;
+    const n = id === "queue" ? counts.waiting : id === "mine" ? counts.mine : (counts.resolvedUnread ?? 0);
     return n > 0 ? <span className="count">{n > 99 ? "99+" : n}</span> : null;
   }
 
@@ -256,15 +261,7 @@ export function ConsoleApp({ getToken, freshToken, onUnauthorized, onSignOut, on
               <SettingsIcon size={17} />
             </button>
           )}
-          {onSignOut && (
-            <button
-              type="button"
-              className="link-button"
-              onClick={() => void presence.change("AWAY").finally(onSignOut)}
-            >
-              Sign out
-            </button>
-          )}
+          {onSignOut && <SignOutButton onConfirm={() => void presence.change("AWAY").finally(onSignOut)} />}
           {onExpand && (
             <button
               type="button"
