@@ -1,5 +1,9 @@
 # Local development services. Started automatically by spring-boot-docker-compose
 # when running the server from this directory.
+# Own project name, so it never shares containers with another checkout's server/ folder, nor with the
+# demo stack at the repo root (project "quokra" in a checkout named quokra).
+name: quokra-dev
+
 services:
   postgres:
     image: 'pgvector/pgvector:pg17'
