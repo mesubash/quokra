@@ -30,4 +30,12 @@ interface MessageRepository extends JpaRepository<Message, UUID> {
     // Newest first; callers reverse for display.
     @Query("select m from Message m where m.conversationId = :conversationId order by m.id desc")
     List<Message> findLatest(UUID conversationId, Limit limit);
+
+    // The latest messages from one kind of sender, newest first.
+    @Query("select m from Message m where m.conversationId = :conversationId and m.senderType = :sender "
+        + "order by m.id desc")
+    List<Message> findLatestFrom(UUID conversationId, SenderType sender, Limit limit);
+
+    // How many AI answers the conversation has.
+    long countByConversationIdAndSourcesIsNotNull(UUID conversationId);
 }

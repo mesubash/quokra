@@ -25,6 +25,9 @@ public final class FakeAi {
     public volatile String lastChat;
     // HTTP status to answer with instead of 200, e.g. 429 or 500; 0 for normal answers.
     public volatile int failWith;
+    // How many of the next requests fail with failNextWith before answering normally again.
+    public final AtomicInteger failNext = new AtomicInteger();
+    public volatile int failNextWith = 503;
 
     private final HttpServer server;
 
@@ -38,7 +41,7 @@ public final class FakeAi {
             requests.incrementAndGet();
             JsonNode body = JSON.readTree(exchange.getRequestBody());
             byte[] reply;
-            int status = failWith == 0 ? 200 : failWith;
+            int status = status();
             if (status == 200) {
                 List<Object> data = new ArrayList<>();
                 for (JsonNode text : body.path("input")) {
@@ -56,7 +59,7 @@ public final class FakeAi {
         server.createContext("/chat/completions", exchange -> {
             chats.incrementAndGet();
             lastChat = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-            int status = failWith == 0 ? 200 : failWith;
+            int status = status();
             byte[] reply = status == 200
                 ? JSON.writeValueAsBytes(java.util.Map.of("choices",
                     List.of(java.util.Map.of("message", java.util.Map.of("role", "assistant", "content", chatReply)))))
@@ -67,6 +70,13 @@ public final class FakeAi {
             exchange.close();
         });
         server.start();
+    }
+
+    private int status() {
+        if (failNext.getAndUpdate(n -> Math.max(0, n - 1)) > 0) {
+            return failNextWith;
+        }
+        return failWith == 0 ? 200 : failWith;
     }
 
     public String baseUrl() {

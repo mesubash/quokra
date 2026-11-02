@@ -177,7 +177,8 @@ function Chat({ tenant, token, visible, onUnauthorized }: ChatProps) {
   // The typing dots never hang around if a reply doesn't come.
   useEffect(() => {
     if (!awaitingBot) return;
-    const timer = setTimeout(() => setAwaitingBot(false), 6000);
+    // Long enough for an AI answer (QUOKRA_AI_TIMEOUT is 15 seconds).
+    const timer = setTimeout(() => setAwaitingBot(false), 16000);
     return () => clearTimeout(timer);
   }, [awaitingBot, lastId]);
 

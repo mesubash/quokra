@@ -9,6 +9,7 @@ import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.JsonNode;
@@ -26,6 +27,8 @@ public class AiClient {
     }
 
     private static final JsonMapper JSON = JsonMapper.builder().build();
+    private static final Set<Integer> BUSY = Set.of(429, 500, 502, 503, 504);
+    static final Duration RETRY_AFTER = Duration.ofSeconds(1);
 
     private final HttpClient http;
     private final String baseUrl;
@@ -114,6 +117,11 @@ public class AiClient {
             .build();
         try {
             HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+            // Busy or briefly down (free tiers often are): one more try after a second.
+            if (BUSY.contains(response.statusCode())) {
+                Thread.sleep(RETRY_AFTER.toMillis());
+                response = http.send(request, HttpResponse.BodyHandlers.ofString());
+            }
             if (response.statusCode() != 200) {
                 // Only the status: provider messages can echo what was sent.
                 throw new AiException(path + ": HTTP " + response.statusCode());

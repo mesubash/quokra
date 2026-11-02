@@ -24,6 +24,20 @@ function renderList(extra: Partial<Parameters<typeof MessageList>[0]> = {}) {
 }
 
 describe("MessageList", () => {
+  it("marks an AI answer and says where it came from", () => {
+    const answer = {
+      ...message("07", "BOT", "Refunds take 5 working days."),
+      sources: [
+        { title: "Handbook", heading: "Returns and refunds › Refunds" },
+        { title: "FAQ", heading: null },
+      ],
+    };
+    renderList({ messages: [message("06", "CUSTOMER", "Refund?"), answer] });
+
+    expect(screen.getByText("AI answer · from Refunds, FAQ")).toBeTruthy();
+    expect(screen.queryAllByText(/AI answer/)).toHaveLength(1);
+  });
+
   it("shows an image message as the image, fetched with the page's token", async () => {
     URL.createObjectURL = vi.fn(() => "blob:shot");
     URL.revokeObjectURL = vi.fn();

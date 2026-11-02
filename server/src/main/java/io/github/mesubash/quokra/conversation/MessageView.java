@@ -7,10 +7,10 @@ import java.util.List;
 import java.util.UUID;
 
 // A message as customers and agents see it. attachment is set for an image (fetched from its own URL);
-// replyTo for a reply to an earlier message.
+// replyTo for a reply to an earlier message; sources for an AI answer (shown as such, with where it came from).
 public record MessageView(UUID id, SenderType senderType, String senderName, String body,
                           List<Option> options, String clientMessageId, Instant createdAt, Attachment attachment,
-                          Message.Quote replyTo) {
+                          Message.Quote replyTo, List<Message.Source> sources) {
 
     public record Attachment(String name, String contentType, int size) {}
 
@@ -20,6 +20,6 @@ public record MessageView(UUID id, SenderType senderType, String senderName, Str
         Message.Quote replyTo = m.getReplyToId() == null ? null
             : new Message.Quote(m.getReplyToId(), m.getReplyToSender(), m.getReplyToName(), m.getReplyToPreview());
         return new MessageView(m.getId(), m.getSenderType(), m.getSenderName(), m.getBody(), m.getOptions(),
-            m.getClientMessageId(), m.getCreatedAt(), attachment, replyTo);
+            m.getClientMessageId(), m.getCreatedAt(), attachment, replyTo, m.getSources());
     }
 }

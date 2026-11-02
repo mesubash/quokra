@@ -30,6 +30,12 @@ interface Props {
 }
 
 // Who a quote is from, as the reader sees it.
+// Under an AI answer, so it's never taken for a person, and shows where it came from.
+export function aiLabel(sources: { title: string; heading: string | null }[]): string {
+  const parts = [...new Set(sources.map((x) => x.heading?.split(" › ").pop() ?? x.title))];
+  return `AI answer · from ${parts.join(", ")}`;
+}
+
 export function quoteLabel(quote: { senderType: string; senderName: string | null }, mine: string, customerName: string) {
   if (quote.senderType === mine) return "You";
   return quote.senderName ?? (quote.senderType === "CUSTOMER" ? customerName : "Agent");
@@ -243,7 +249,8 @@ export function MessageList({
         <div className="group-body">
           {!isMine && <span className="sender">{name}</span>}
           {group.messages.map((m) => (
-            <div key={m.id} id={`m-${m.id}`} className="bubble-row">
+            <Fragment key={m.id}>
+            <div id={`m-${m.id}`} className="bubble-row">
               <Bubble
                 message={m}
                 loadImage={loadImage}
@@ -255,6 +262,8 @@ export function MessageList({
                 </button>
               )}
             </div>
+            {m.sources && m.sources.length > 0 && <p className="ai-label">{aiLabel(m.sources)}</p>}
+            </Fragment>
           ))}
           {sentId && group.messages.some((m) => m.id === sentId) && (
             <span className="delivery">Sent</span>
