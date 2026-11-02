@@ -482,6 +482,14 @@ button {
   overflow-wrap: anywhere;
 }
 
+/* Links in messages keep the bubble's own colour, so they read on light and dark bubbles alike. */
+.bubble a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  overflow-wrap: anywhere;
+}
+
 /* Small and quiet, in the bubble's bottom-right corner. */
 .bubble-time {
   align-self: flex-start;
@@ -1691,6 +1699,11 @@ button {
 .icon-button.copy-button {
   width: 26px;
   height: 26px;
+}
+
+.copied {
+  color: var(--success-text);
+  font-size: 0.75rem;
 }
 
 .details-blocked {

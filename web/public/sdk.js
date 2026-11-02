@@ -850,6 +850,7 @@
     var frame = document.createElement("iframe");
     frame.id = "quokra-console-frame";
     frame.title = "Support console";
+    frame.allow = "clipboard-write"; // copy buttons in the console (e.g. a customer's email)
     var theme = themeOf(options.theme);
     var applied = resolveTheme(theme);
     var extra = accentParam(options.accent);

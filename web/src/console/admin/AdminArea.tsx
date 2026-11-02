@@ -19,6 +19,7 @@ import { NotifyOptions, type NotifyOptionsProps } from "../NotifyMenu";
 import { BotCard } from "./BotCard";
 import { KnowledgeCard } from "./KnowledgeCard";
 import { Row } from "./Row";
+import { copyText } from "../../lib/copy";
 
 // Settings for admins: the companies (tenants) that use Quokra and everything about each one. Server admins
 // see every company and can add new ones; company admins only see theirs. The server checks every call anyway.
@@ -1170,12 +1171,7 @@ function CopyButton({ text, label }: { text: string; label: string }) {
       className="icon-button quiet copy-button"
       aria-label={copied ? "Copied" : label}
       title={copied ? "Copied" : "Copy"}
-      onClick={() =>
-        navigator.clipboard?.writeText(text).then(
-          () => setCopied(true),
-          () => {},
-        )
-      }
+      onClick={() => void copyText(text).then(setCopied)}
     >
       {copied ? <CheckIcon size={14} /> : <CopyIcon size={14} />}
     </button>

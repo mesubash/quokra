@@ -2,6 +2,7 @@ import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import type { Message, Option, Quote } from "../lib/api";
 import { CloseIcon, ReplyIcon } from "../lib/icons";
+import { linkify } from "./links";
 import { RobotAvatar } from "./RobotAvatar";
 import { dayKey, dayLabel } from "./messages";
 import type { PendingMessage } from "./useChat";
@@ -106,7 +107,7 @@ function Bubble({
   return (
     <p className="bubble">
       {quote}
-      <span className="bubble-text">{message.body}</span>
+      <span className="bubble-text">{linkify(message.body)}</span>
       <time className="bubble-time" dateTime={message.createdAt}>
         {time(message.createdAt)}
       </time>
@@ -291,7 +292,7 @@ export function MessageList({
           <div className="group-body">
             {pending.map((p) => (
               <div key={p.clientMessageId} className={`pending pending-${p.status}`}>
-                <p className="bubble">{p.body}</p>
+                <p className="bubble">{linkify(p.body)}</p>
                 {p.status === "sending" ? (
                   <span className="delivery">Sending…</span>
                 ) : (
