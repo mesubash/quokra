@@ -1945,6 +1945,75 @@ button {
   background: var(--surface);
 }
 
+/* The way out of Settings, first thing in its sidebar. */
+.settings-back {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 12px 12px 0;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--hover);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.settings-back:hover {
+  background: var(--track);
+}
+
+.sign-out-confirm {
+  width: 250px;
+  padding: 12px;
+}
+
+.sign-out-confirm p {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0 0 10px;
+  font-size: 0.85rem;
+}
+
+.sign-out-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+/* Real buttons here, not the menu's plain rows. */
+.sign-out-actions .button {
+  display: inline-block;
+  width: auto;
+  padding: 5px 12px;
+  border-radius: 8px;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-weight: 600;
+  text-align: center;
+}
+
+.sign-out-actions .button-quiet {
+  border: 1px solid var(--border);
+  background: var(--raised);
+  color: var(--text);
+  font-weight: 500;
+}
+
+.sign-out-actions .button:hover,
+.sign-out-actions .button:focus-visible {
+  filter: brightness(0.95);
+}
+
+.sign-out-actions .button:not(.button-quiet):hover,
+.sign-out-actions .button:not(.button-quiet):focus-visible {
+  background: var(--primary);
+}
+
 .settings-side-head {
   display: flex;
   align-items: center;

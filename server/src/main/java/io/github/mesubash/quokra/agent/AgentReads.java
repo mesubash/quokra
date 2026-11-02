@@ -45,6 +45,23 @@ class AgentReads {
         return count == null ? 0 : count;
     }
 
+    // Resolved chats the agent handled that still have customer messages they haven't read.
+    long resolvedUnread(String agentSub, Collection<UUID> tenantIds) {
+        if (tenantIds.isEmpty()) {
+            return 0;
+        }
+        Array ids = jdbc.execute((ConnectionCallback<Array>) c -> c.createArrayOf("uuid", tenantIds.toArray()));
+        Long count = jdbc.queryForObject("""
+            select count(distinct c.id)
+            from conversations c
+            join messages m on m.conversation_id = c.id and m.sender_type = 'CUSTOMER'
+            left join conversation_reads r on r.conversation_id = c.id and r.agent_sub = ?
+            where c.tenant_id = any(?) and c.status = 'RESOLVED' and c.assignee_sub = ?
+              and (r.last_read_message_id is null or m.id > r.last_read_message_id)
+            """, Long.class, agentSub, ids, agentSub);
+        return count == null ? 0 : count;
+    }
+
     // Customer messages the agent hasn't read yet, per conversation. Conversations with none are left out.
     Map<UUID, Integer> unreadCounts(String agentSub, Collection<UUID> conversationIds) {
         Map<UUID, Integer> counts = new HashMap<>();

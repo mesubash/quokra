@@ -13,7 +13,7 @@ import {
   type StorageStatus,
   type TenantForm,
 } from "../../lib/api";
-import { CheckIcon, CloseIcon, CopyIcon } from "../../lib/icons";
+import { BackIcon, CheckIcon, CopyIcon } from "../../lib/icons";
 import { initials } from "../format";
 import { NotifyOptions, type NotifyOptionsProps } from "../NotifyMenu";
 import { BotCard } from "./BotCard";
@@ -135,13 +135,14 @@ export function Settings({
   return (
     <div className="settings" role="dialog" aria-modal="true" aria-label="Settings">
       <aside className="settings-side">
+        {onClose && (
+          <button type="button" className="settings-back" onClick={onClose}>
+            <BackIcon size={16} />
+            Back to chats
+          </button>
+        )}
         <div className="settings-side-head">
           <h2>Settings</h2>
-          {onClose && (
-            <button type="button" className="icon-button quiet" aria-label="Close settings" onClick={onClose}>
-              <CloseIcon size={18} />
-            </button>
-          )}
         </div>
         <nav className="settings-nav" aria-label="Settings sections">
           {admin && api && !scope && tenants.length > 1 && (

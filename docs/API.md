@@ -340,7 +340,7 @@ Per agent. Marking an older message changes nothing. `ConversationSummary.unread
 
 ### 4.15 `GET /agent/conversations/counts`
 
-`200 { "waiting": 3, "mine": 1, "myUnread": 2 }`: waiting conversations across the caller's tenants, the caller's open (`HUMAN`) chats, and unread customer messages in them. For badges, so the console doesn't have to load whole lists to count them.
+`200 { "waiting": 3, "mine": 1, "myUnread": 2, "resolvedUnread": 1 }`: waiting conversations across the caller's tenants, the caller's open (`HUMAN`) chats, unread customer messages in them, and resolved chats the caller handled that have customer messages they haven't read. For badges, so the console doesn't have to load whole lists to count them.
 
 ### 4.18 `GET /agent/conversations/{id}/replies`
 
@@ -525,7 +525,7 @@ interface ConversationSummary {
   lastMessageAt: string;
   waitingSince: string | null;
   assignee: { sub: string; name: string } | null;
-  unreadCount: number;          // customer messages this agent hasn't read
+  unreadCount: number;          // customer messages this agent hasn't read (0 on resolved chats someone else handled)
 }
 
 interface Message {

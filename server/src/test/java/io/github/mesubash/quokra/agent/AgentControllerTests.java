@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.jayway.jsonpath.JsonPath;
 import io.github.mesubash.quokra.TestcontainersConfiguration;
 import io.github.mesubash.quokra.attachment.ImagesTests;
+import io.github.mesubash.quokra.conversation.AgentRef;
 import io.github.mesubash.quokra.conversation.ConversationService;
 import io.github.mesubash.quokra.conversation.Enums.HandoffReason;
 import io.github.mesubash.quokra.conversation.Enums.SenderType;
@@ -490,6 +491,20 @@ class AgentControllerTests {
         assertThat(get(alice, "/conversations/counts")).bodyJson().extractingPath("$.myUnread").asNumber()
             .satisfies(n -> assertThat(n.intValue()).isGreaterThanOrEqualTo(2));
         assertThat(get(bob, "/conversations/counts")).bodyJson().extractingPath("$.myUnread").isEqualTo(0);
+    }
+
+    @Test
+    void resolvedChatsOnlyCountAsUnreadForTheAgentWhoHandledThem() {
+        UUID id = taken(alice);
+        service.addCustomerMessage(id, "c-9", "one more thing", null);
+        service.resolve(id, new AgentRef("alice", "Alice"));
+
+        assertThat(get(alice, "/conversations/counts")).bodyJson().extractingPath("$.resolvedUnread").isEqualTo(1);
+        assertThat(get(bob, "/conversations/counts")).bodyJson().extractingPath("$.resolvedUnread").isEqualTo(0);
+        assertThat(get(bob, "/conversations?status=RESOLVED")).bodyJson()
+            .extractingPath("$.items[0].unreadCount").isEqualTo(0);
+        assertThat(get(alice, "/conversations?status=RESOLVED")).bodyJson()
+            .extractingPath("$.items[0].unreadCount").asNumber().satisfies(n -> assertThat(n.intValue()).isPositive());
     }
 
     @Test

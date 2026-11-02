@@ -176,22 +176,26 @@ public class AgentController {
             cursor == null ? null : PageCursor.decode(cursor), size);
         // ponytail: one query per row for the preview; fine for a page of 50, batch it if lists grow.
         Map<UUID, Integer> unread = reads.unreadCounts(jwt.getSubject(), page.stream().map(Conversation::getId).toList());
+        // A resolved chat's unread badge only matters to the agent who handled it.
         List<Summary> items = page.stream()
             .map(c -> Summary.of(c, mine.get(c.getTenantId()).getSlug(), service.lastMessage(c.getId()).orElse(null),
-                unread.getOrDefault(c.getId(), 0)))
+                c.getStatus() == Status.RESOLVED && !jwt.getSubject().equals(c.getAssigneeSub()) ? 0
+                    : unread.getOrDefault(c.getId(), 0)))
             .toList();
         String next = page.size() == size ? PageCursor.after(page.getLast()).encode() : null;
         return new Page<>(items, next);
     }
 
-    // waiting: the queue; mine: my open chats; myUnread: unread customer messages in them.
-    record CountsView(long waiting, long mine, long myUnread) {}
+    // waiting: the queue; mine: my open chats; myUnread: unread customer messages in them;
+    // resolvedUnread: resolved chats I handled that have customer messages I haven't read.
+    record CountsView(long waiting, long mine, long myUnread, long resolvedUnread) {}
 
     @GetMapping("/conversations/counts")
     public CountsView counts(@AuthenticationPrincipal Jwt jwt, Authentication auth) {
         var tenantIds = readableTenants(auth).keySet();
         var counts = service.counts(tenantIds, jwt.getSubject());
-        return new CountsView(counts.waiting(), counts.mine(), reads.unreadInMyChats(jwt.getSubject(), tenantIds));
+        return new CountsView(counts.waiting(), counts.mine(), reads.unreadInMyChats(jwt.getSubject(), tenantIds),
+            reads.resolvedUnread(jwt.getSubject(), tenantIds));
     }
 
     @GetMapping("/conversations/{id}")
