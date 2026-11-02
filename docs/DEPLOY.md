@@ -57,6 +57,8 @@ All through environment variables. Generate random secrets with `openssl rand -b
 | `QUOKRA_BOTS_DIR` | | A folder with your bot files (`*.yml`), mounted into the container |
 | `QUOKRA_AI_KEY` | for AI | Key for an OpenAI-compatible API. Without it, AI is off and nothing is sent anywhere. A free Google AI Studio key without billing can't cost anything, but free tiers may use the data to improve their models: use a paid tier or your own model for real customers |
 | `QUOKRA_AI_BASE_URL` | | Default Gemini's `https://generativelanguage.googleapis.com/v1beta/openai/`; e.g. `https://api.openai.com/v1/` or Ollama's `http://localhost:11434/v1/` |
+| `QUOKRA_AI_CHAT_MODEL` | | Default `gemini-3.1-flash-lite`, for suggested replies. Use a fast model: answers slower than `QUOKRA_AI_TIMEOUT` are dropped |
+| `QUOKRA_AI_REASONING_EFFORT` | | Default `none` (keeps Gemini's flash models fast). Set it empty for providers that don't take `reasoning_effort` |
 | `QUOKRA_AI_EMBEDDING_MODEL` | | Default `gemini-embedding-001`. Must give 768 numbers (the request asks for 768). Changing it embeds every document again |
 | `QUOKRA_AI_MIN_SCORE` | | Default `0.55`, how close a document part must be to a question to count. Tuned for `gemini-embedding-001`; check it with `KnowledgeEvalTests` for another model |
 | `QUOKRA_AI_TIMEOUT` | | Default `PT15S`; slower answers count as no answer |

@@ -168,6 +168,9 @@ the chunking or `QUOKRA_AI_MIN_SCORE`:
 cd server && QUOKRA_AI_KEY="$(grep '^QUOKRA_AI_KEY=' .env | cut -d= -f2-)" ./mvnw test -Dtest=KnowledgeEvalTests
 ```
 
+`SuggestionEvalTests` does the same for suggested replies and their guardrails (off-topic questions, prompt
+injection, injected links). Run it after changing the chat model or the instruction in `ReplySuggester`.
+
 ---
 
 ## 6. Releasing

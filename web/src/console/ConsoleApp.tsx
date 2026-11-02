@@ -358,6 +358,7 @@ export function ConsoleApp({ getToken, freshToken, onUnauthorized, onSignOut, on
             onChanged={refreshCounts}
             onError={failed}
             imagesAllowed={(slug) => tenants.some((t) => t.slug === slug && t.attachments)}
+            aiAllowed={(slug) => tenants.some((t) => t.slug === slug && t.ai)}
           />
         ) : (
           <div className="console-empty">

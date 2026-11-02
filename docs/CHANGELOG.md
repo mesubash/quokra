@@ -10,9 +10,14 @@ What changed, newest first. Each entry says what people notice; the commits have
 
 - Opening hours can run past midnight (`22:00-02:00`) and close at midnight (`18:00-24:00`); `00:00-24:00`
   is all day.
-- Groundwork for AI answers (v3): knowledge documents per company, through the admin API
-  (`/admin/tenants/{slug}/knowledge`), and search over them with an AI provider's embeddings
-  (`/knowledge/search`). Not shown in Settings and not used for answers yet. AI is off without `QUOKRA_AI_KEY`.
+**AI suggestions (v3)**
+- Agents can ask for a reply drafted from the company's own documents (the ✨ button in the reply box). It
+  shows where it came from, and the agent edits or sends it; nothing reaches the customer without them.
+- Companies add documents in Settings → Knowledge (text or Markdown) and turn on **AI suggestions** in
+  Settings → General. Off by default, since it sends customers' recent messages to the AI provider.
+- Guardrails: the AI is only asked when the documents have a close match, answers only from them, and the
+  server drops answers that don't cite them, link elsewhere or aren't plain text.
+- Needs an OpenAI-compatible provider: `QUOKRA_AI_KEY` and friends (DEPLOY.md). Without a key, AI is off.
 
 **Upgrading:** the database now needs the **pgvector** extension. Neon and most hosted PostgreSQL have it; with
 Docker, use `pgvector/pgvector:pg17` instead of `postgres:17-alpine`. Back up first: the pgvector image is

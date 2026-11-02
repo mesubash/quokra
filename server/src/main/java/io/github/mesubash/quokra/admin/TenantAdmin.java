@@ -31,7 +31,7 @@ public class TenantAdmin {
     public record TenantView(UUID id, String slug, String displayName, String publishableKey,
                              List<String> widgetOrigins, List<String> consoleOrigins, String logoUrl,
                              String primaryColor, String botConfig, int autoResolveMinutes,
-                             OpeningHours openingHours, boolean attachmentsEnabled, int retentionMonths,
+                             OpeningHours openingHours, boolean attachmentsEnabled, boolean aiEnabled, int retentionMonths,
                              String alertEmail, int waitingAlertMinutes, boolean emailCustomers, boolean hasSecret, int agentCount, int inviteCount,
                              Instant createdAt) {}
 
@@ -40,7 +40,7 @@ public class TenantAdmin {
     // openingHours: null means always open.
     public record TenantForm(String slug, String displayName, List<String> widgetOrigins, List<String> consoleOrigins,
                              String logoUrl, String primaryColor, String botConfig, Integer autoResolveMinutes,
-                             OpeningHours openingHours, Boolean attachmentsEnabled, Integer retentionMonths,
+                             OpeningHours openingHours, Boolean attachmentsEnabled, Boolean aiEnabled, Integer retentionMonths,
                              String alertEmail, Integer waitingAlertMinutes, Boolean emailCustomers) {}
 
     static final Pattern EMAIL = Pattern.compile("[^\\s@,]+@[^\\s@,]+\\.[^\\s@,]+");
@@ -57,7 +57,7 @@ public class TenantAdmin {
 
     private static final String SELECT = """
         select t.id, t.slug, t.display_name, t.publishable_key, t.widget_origins, t.console_origins, t.logo_url,
-               t.primary_color, t.bot_config, t.auto_resolve_minutes, t.opening_hours, t.attachments_enabled, t.retention_months, t.alert_email, t.waiting_alert_minutes,
+               t.primary_color, t.bot_config, t.auto_resolve_minutes, t.opening_hours, t.attachments_enabled, t.ai_enabled, t.retention_months, t.alert_email, t.waiting_alert_minutes,
                t.email_customers, t.secret_key_enc is not null as has_secret,
                t.created_at,
                (select count(*) from tenant_agents a where a.tenant_id = t.id) as agents,
@@ -103,12 +103,12 @@ public class TenantAdmin {
             jdbc.update("""
                 insert into tenants (id, slug, display_name, publishable_key, widget_origins, console_origins,
                                      logo_url, primary_color, bot_config, auto_resolve_minutes, opening_hours,
-                                     attachments_enabled, retention_months, alert_email, waiting_alert_minutes,
-                                     email_customers)
-                values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                     attachments_enabled, ai_enabled, retention_months, alert_email,
+                                     waiting_alert_minutes, email_customers)
+                values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, UUID.randomUUID(), slug, c.displayName(), newPublishableKey(), array(c.widgetOrigins()),
                 array(c.consoleOrigins()), c.logoUrl(), c.primaryColor(), c.botConfig(), c.autoResolveMinutes(),
-                c.openingHours(), c.attachmentsEnabled(), c.retentionMonths(), c.alertEmail(),
+                c.openingHours(), c.attachmentsEnabled(), c.aiEnabled(), c.retentionMonths(), c.alertEmail(),
                 c.waitingAlertMinutes(), c.emailCustomers());
         } catch (DuplicateKeyException e) {
             throw new ApiException(HttpStatus.CONFLICT, "SLUG_TAKEN", "That slug is already used");
@@ -123,12 +123,12 @@ public class TenantAdmin {
         jdbc.update("""
             update tenants set display_name = ?, widget_origins = ?, console_origins = ?, logo_url = ?,
                                primary_color = ?, bot_config = ?, auto_resolve_minutes = ?, opening_hours = ?,
-                               attachments_enabled = ?, retention_months = ?, alert_email = ?,
+                               attachments_enabled = ?, ai_enabled = ?, retention_months = ?, alert_email = ?,
                                waiting_alert_minutes = ?, email_customers = ?
             where slug = ?
             """, c.displayName(), array(c.widgetOrigins()), array(c.consoleOrigins()), c.logoUrl(), c.primaryColor(),
-            c.botConfig(), c.autoResolveMinutes(), c.openingHours(), c.attachmentsEnabled(), c.retentionMonths(),
-            c.alertEmail(), c.waitingAlertMinutes(), c.emailCustomers(), slug);
+            c.botConfig(), c.autoResolveMinutes(), c.openingHours(), c.attachmentsEnabled(), c.aiEnabled(),
+            c.retentionMonths(), c.alertEmail(), c.waitingAlertMinutes(), c.emailCustomers(), slug);
         return get(slug);
     }
 
@@ -142,7 +142,7 @@ public class TenantAdmin {
 
     private record Clean(String displayName, List<String> widgetOrigins, List<String> consoleOrigins, String logoUrl,
                          String primaryColor, String botConfig, int autoResolveMinutes, String openingHours,
-                         boolean attachmentsEnabled, int retentionMonths, String alertEmail,
+                         boolean attachmentsEnabled, boolean aiEnabled, int retentionMonths, String alertEmail,
                          int waitingAlertMinutes, boolean emailCustomers) {}
 
     private Clean clean(TenantForm form) {
@@ -194,7 +194,8 @@ public class TenantAdmin {
         }
         return new Clean(name, origins(form.widgetOrigins(), "widgetOrigins"),
             origins(form.consoleOrigins(), "consoleOrigins"), logo, color, bot, autoResolve, hours,
-            Boolean.TRUE.equals(form.attachmentsEnabled()), retention, alertEmail, waitingAlert,
+            Boolean.TRUE.equals(form.attachmentsEnabled()), Boolean.TRUE.equals(form.aiEnabled()), retention,
+            alertEmail, waitingAlert,
             Boolean.TRUE.equals(form.emailCustomers()));
     }
 
@@ -233,7 +234,7 @@ public class TenantAdmin {
             strings(rs.getArray("console_origins")), rs.getString("logo_url"), rs.getString("primary_color"),
             rs.getString("bot_config"), rs.getInt("auto_resolve_minutes"),
             HOURS.convertToEntityAttribute(rs.getString("opening_hours")), rs.getBoolean("attachments_enabled"),
-            rs.getInt("retention_months"), rs.getString("alert_email"), rs.getInt("waiting_alert_minutes"),
+            rs.getBoolean("ai_enabled"), rs.getInt("retention_months"), rs.getString("alert_email"), rs.getInt("waiting_alert_minutes"),
             rs.getBoolean("email_customers"),
             rs.getBoolean("has_secret"),
             rs.getInt("agents"), rs.getInt("invites"),

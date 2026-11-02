@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { IMAGE_TYPES } from "../lib/api";
 import { TYPING_EVERY_MS } from "./typing";
-import { CloseIcon, PaperclipIcon, SendIcon } from "../lib/icons";
+import { CloseIcon, PaperclipIcon, SendIcon, SparkleIcon } from "../lib/icons";
 
 const MAX_LENGTH = 2000;
 const MAX_HEIGHT = 120;
@@ -26,6 +26,9 @@ interface Props {
   onCancelQuote?: () => void;
   // Called while the person types, at most every few seconds, so the other side can show it.
   onTyping?: () => void;
+  // Shows the ✨ button (agents, with AI on): puts a suggested reply in the input to edit, and says where it
+  // came from, or why there's none.
+  onSuggest?: () => Promise<{ text: string | null; note: string }>;
 }
 
 // Replies whose title matches what's typed after "/". Only while the input is a single "/word".
@@ -47,6 +50,7 @@ export function Composer({
   quote = null,
   onCancelQuote,
   onTyping,
+  onSuggest,
 }: Props) {
   const lastTyping = useRef(0);
   const input = useRef<HTMLTextAreaElement>(null);
@@ -54,6 +58,8 @@ export function Composer({
   const [text, setText] = useState("");
   const [active, setActive] = useState(0);
   const [hidden, setHidden] = useState(false);
+  const [suggesting, setSuggesting] = useState(false);
+  const [suggestNote, setSuggestNote] = useState<string | null>(null);
   const matches = hidden ? [] : matchReplies(text, replies);
 
   useEffect(() => {
@@ -78,7 +84,22 @@ export function Composer({
     if (!body || disabled) return;
     onSend(body);
     setText("");
+    setSuggestNote(null);
     input.current?.focus();
+  }
+
+  async function suggest() {
+    if (!onSuggest) return;
+    setSuggesting(true);
+    setSuggestNote(null);
+    try {
+      const { text: suggestion, note } = await onSuggest();
+      if (suggestion) setText(suggestion);
+      setSuggestNote(note);
+      input.current?.focus();
+    } finally {
+      setSuggesting(false);
+    }
   }
 
   function submit(e: FormEvent) {
@@ -166,7 +187,24 @@ export function Composer({
           </button>
         </div>
       )}
+      {suggestNote && (
+        <p className="composer-suggestion muted" role="status">
+          {suggestNote}
+        </p>
+      )}
       <div className="composer-row">
+        {onSuggest && (
+          <button
+            type="button"
+            className="attach"
+            aria-label="Suggest a reply"
+            title="Suggest a reply from your documents"
+            disabled={disabled || suggesting}
+            onClick={() => void suggest()}
+          >
+            <SparkleIcon size={18} />
+          </button>
+        )}
         {onAttach && (
           <>
             <button

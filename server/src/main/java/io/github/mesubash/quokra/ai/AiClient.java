@@ -6,6 +6,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,17 +30,23 @@ public class AiClient {
     private final HttpClient http;
     private final String baseUrl;
     private final String key;
+    private final String chatModel;
+    private final String reasoningEffort;
     private final String embeddingModel;
     private final int dimensions;
     private final Duration timeout;
 
     public AiClient(@Value("${quokra.ai.base-url}") String baseUrl,
                     @Value("${quokra.ai.key:}") String key,
+                    @Value("${quokra.ai.chat-model}") String chatModel,
+                    @Value("${quokra.ai.reasoning-effort:}") String reasoningEffort,
                     @Value("${quokra.ai.embedding-model}") String embeddingModel,
                     @Value("${quokra.ai.dimensions}") int dimensions,
                     @Value("${quokra.ai.timeout}") Duration timeout) {
         this.baseUrl = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
         this.key = key.strip();
+        this.chatModel = chatModel;
+        this.reasoningEffort = reasoningEffort.strip();
         this.embeddingModel = embeddingModel;
         this.dimensions = dimensions;
         this.timeout = timeout;
@@ -48,6 +55,10 @@ public class AiClient {
 
     public boolean enabled() {
         return !key.isEmpty();
+    }
+
+    public String chatModel() {
+        return chatModel;
     }
 
     public String embeddingModel() {
@@ -72,6 +83,23 @@ public class AiClient {
             }
             return vector;
         }).toList();
+    }
+
+    // The model's reply to one instruction and one message, asked for as a JSON object.
+    public String chat(String system, String user) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("model", chatModel);
+        body.put("temperature", 0);
+        body.put("response_format", Map.of("type", "json_object"));
+        body.put("messages", List.of(Map.of("role", "system", "content", system), Map.of("role", "user", "content", user)));
+        if (!reasoningEffort.isEmpty()) {
+            body.put("reasoning_effort", reasoningEffort);
+        }
+        JsonNode content = post("chat/completions", body).path("choices").path(0).path("message").path("content");
+        if (!content.isString()) {
+            throw new AiException("chat/completions: no answer");
+        }
+        return content.asString();
     }
 
     private JsonNode post(String path, Object body) {
