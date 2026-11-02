@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { embedded, onHostMessage, postToHost } from "../lib/bridge";
 import { accent, applyColor } from "../lib/theme";
-import { CloseIcon, MoreIcon } from "../lib/icons";
+import { BellIcon, CloseIcon, MoreIcon, PlusIcon } from "../lib/icons";
 import { ApiError, widgetApi, type Conversation, type Tenant } from "../lib/api";
 import { Composer } from "./Composer";
 import { MessageList, previewOf, quoteLabel, type TimelineItem } from "./MessageList";
@@ -350,6 +350,9 @@ function ChatMenu({ conversation, onStartNew }: { conversation: Conversation | n
           ) : (
             <>
               <button type="button" disabled={busy} onClick={() => (withTeam ? setConfirming(true) : void start())}>
+                <span className="menu-icon" aria-hidden="true">
+                  <PlusIcon size={16} />
+                </span>
                 Start a new chat
               </button>
               <button
@@ -358,7 +361,11 @@ function ChatMenu({ conversation, onStartNew }: { conversation: Conversation | n
                 aria-checked={sound}
                 onClick={() => setSound(setSoundOn(!sound))}
               >
-                {sound ? "Turn sound off" : "Turn sound on"}
+                <span className="menu-icon" aria-hidden="true">
+                  <BellIcon size={16} off={!sound} />
+                </span>
+                Reply sound
+                <span className={`menu-switch ${sound ? "on" : ""}`} aria-hidden="true" />
               </button>
             </>
           )}

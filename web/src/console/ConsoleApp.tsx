@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { adminApi, agentApi, ApiError, type ConversationSummary, type FreshToken, type Me, type TenantItem } from "../lib/api";
 import { embedded, onHostMessage, postToHost } from "../lib/bridge";
 import { accent, applyColor } from "../lib/theme";
-import { CloseIcon, ExpandIcon, SearchIcon, SettingsIcon } from "../lib/icons";
+import { ChatBubblesIcon, CloseIcon, ExpandIcon, SearchIcon, SettingsIcon } from "../lib/icons";
 import { loadPrefs, savePrefs, type NotifyPrefs } from "../lib/notifyPrefs";
 import { chime } from "../lib/sound";
 import { NotifyMenu, type HostNotifications } from "./NotifyMenu";
@@ -328,7 +328,10 @@ export function ConsoleApp({ getToken, freshToken, onUnauthorized, onSignOut, on
         )}
         <ul className="console-list">
           {list.items.length === 0 && !list.loading && (
-            <li className="empty muted">{search ? "No conversations match your search." : emptyText(tab)}</li>
+            <li className="empty muted">
+              <ChatBubblesIcon size={22} />
+              <span>{search ? "No conversations match your search." : emptyText(tab)}</span>
+            </li>
           )}
           {list.items.map((c) => (
             <li key={c.id}>
@@ -364,7 +367,36 @@ export function ConsoleApp({ getToken, freshToken, onUnauthorized, onSignOut, on
           />
         ) : (
           <div className="console-empty">
-            <p className="muted">Pick a conversation to start.</p>
+            <div className="console-empty-card">
+              <span className="console-empty-icon" aria-hidden="true">
+                <ChatBubblesIcon size={28} />
+              </span>
+              <h2>No chat open</h2>
+              <p className="muted">Pick one from the list, or wait here: new chats show up and notify you.</p>
+              <dl className="console-stats">
+                <div>
+                  <dt>Waiting</dt>
+                  <dd>{counts.waiting}</dd>
+                </div>
+                <div>
+                  <dt>Your open chats</dt>
+                  <dd>{counts.mine}</dd>
+                </div>
+                <div>
+                  <dt>Unread in yours</dt>
+                  <dd>{counts.myUnread}</dd>
+                </div>
+              </dl>
+              {me?.agent && presence.status === "AWAY" && (
+                <div className="console-away">
+                  <p>You're away, so the team's "online" status doesn't count you.</p>
+                  <button type="button" className="button button-small" onClick={() => void presence.change("ONLINE")}>
+                    Go online
+                  </button>
+                </div>
+              )}
+              {me && !me.agent && <p className="muted">You can read chats here; replying needs agent access.</p>}
+            </div>
           </div>
         )}
       </section>
