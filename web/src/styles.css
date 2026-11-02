@@ -1121,6 +1121,18 @@ button {
   font-size: 0.78rem;
 }
 
+/* Long names end in "…" instead of running under the buttons beside them. */
+.pane-title strong,
+.pane-title .muted {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pane-header > :not(.pane-title) {
+  flex: none;
+}
+
 /* Tabs as a segmented control */
 
 .segmented {
