@@ -19,7 +19,29 @@ const LINK = new RegExp(
 // Punctuation that ends a sentence rather than the address: "see example.net." or "(example.net)".
 const TRAILING = /[.,;:!?'")\]]+$/;
 
-export function linkify(text: string): ReactNode[] {
+// The bot may write [Claims terms](https://…) to show a short label instead of the address. Only the bot's own
+// messages get this (labels:true), so customers and agents can't hide where a link goes.
+const LABELLED = /\[([^\]\n]{1,80})\]\((https?:\/\/[^\s)]+)\)/g;
+
+export function linkify(text: string, { labels = false } = {}): ReactNode[] {
+  if (!labels) return plainLinks(text, 0);
+  const out: ReactNode[] = [];
+  let at = 0;
+  for (const match of text.matchAll(LABELLED)) {
+    out.push(...plainLinks(text.slice(at, match.index), at));
+    out.push(
+      <a key={`l${match.index}`} href={match[2]} target="_blank" rel="noopener noreferrer nofollow">
+        {match[1]} ↗
+      </a>,
+    );
+    at = match.index + match[0].length;
+  }
+  out.push(...plainLinks(text.slice(at), at));
+  return out;
+}
+
+// offset keeps keys unique when called on pieces of one message.
+function plainLinks(text: string, offset: number): ReactNode[] {
   const out: ReactNode[] = [];
   let at = 0;
   for (const match of text.matchAll(LINK)) {
@@ -32,7 +54,7 @@ export function linkify(text: string): ReactNode[] {
     if (start > at) out.push(text.slice(at, start));
     const href = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
     out.push(
-      <a key={start} href={href} target="_blank" rel="noopener noreferrer nofollow">
+      <a key={offset + start} href={href} target="_blank" rel="noopener noreferrer nofollow">
         {raw}
       </a>,
     );
