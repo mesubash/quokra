@@ -1,4 +1,6 @@
-// Black or white text, whichever reads better on the given #rrggbb background.
+// Text and icons on the brand colour: white, unless the colour is so light that white doesn't read
+// (under 3:1, e.g. yellow or pale blue). Strictly "whichever contrasts more" picks black for mid tones
+// like orange or red, which looks wrong on most brands.
 export function textOn(background: string | null | undefined): string {
   const m = /^#([0-9a-f]{6})$/i.exec(background ?? "");
   if (!m) return "#fff";
@@ -8,6 +10,6 @@ export function textOn(background: string | null | undefined): string {
     return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
   });
   const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-  // Contrast against white is (1.05)/(L+0.05); against black (L+0.05)/0.05. Pick the higher.
-  return 1.05 / (luminance + 0.05) >= (luminance + 0.05) / 0.05 ? "#fff" : "#1f2328";
+  // Contrast against white is 1.05 / (L + 0.05).
+  return 1.05 / (luminance + 0.05) >= 3 ? "#fff" : "#1f2328";
 }

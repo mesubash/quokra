@@ -1,17 +1,18 @@
-// A small, friendly robot head in the brand colour. The launcher keeps the full robot.
+// A small robot head on the brand colour, drawn in the text colour that reads on it (white on most brands,
+// dark on very light ones).
 export function RobotAvatar({ size = 32 }: { size?: number }) {
   return (
     <span className="avatar avatar-robot" style={{ width: size, height: size }} aria-hidden="true">
       <svg viewBox="0 0 32 32" width={size} height={size}>
         <circle cx="16" cy="16" r="16" className="robot-bg" />
-        <path d="M16 6.5v3" className="robot-line" />
-        <circle cx="16" cy="6" r="1.6" className="robot-face" />
-        <rect x="6.5" y="13.5" width="2" height="5" rx="1" className="robot-face" />
-        <rect x="23.5" y="13.5" width="2" height="5" rx="1" className="robot-face" />
-        <rect x="8.5" y="9.5" width="15" height="13" rx="5" className="robot-face" />
-        <circle cx="13" cy="15" r="1.7" className="robot-eye" />
-        <circle cx="19" cy="15" r="1.7" className="robot-eye" />
-        <path d="M13 18.6q3 2.2 6 0" className="robot-smile" />
+        <circle cx="16" cy="6.6" r="1.7" className="robot-face" />
+        <rect x="15.3" y="7.8" width="1.4" height="2.6" className="robot-face" />
+        <rect x="9" y="10.4" width="14" height="13" rx="5.4" className="robot-head" />
+        <rect x="6.4" y="14.6" width="2" height="4.6" rx="1" className="robot-face" />
+        <rect x="23.6" y="14.6" width="2" height="4.6" rx="1" className="robot-face" />
+        <circle cx="13.4" cy="16.2" r="1.4" className="robot-face" />
+        <circle cx="18.6" cy="16.2" r="1.4" className="robot-face" />
+        <path d="M13.6 19.4q2.4 1.9 4.8 0" className="robot-smile" />
       </svg>
     </span>
   );
