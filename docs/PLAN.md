@@ -107,7 +107,20 @@ the free-text messages nothing else matched.
 - Marked as AI with its sources, "Talk to a person" always there, agents see every AI message. No customer
   text in logs, only counts.
 
-**Still to decide** (§7, 10): the actual numbers for the limits.
+**Limits** (env, the defaults below; built in step 5)
+
+| Limit | Default | Env |
+|---|---|---|
+| AI answers per chat | 10 | `QUOKRA_AI_PER_CHAT` |
+| Per IP | 20 per hour | `QUOKRA_AI_PER_IP_HOUR` |
+| Per company per day | 200 | `QUOKRA_AI_PER_COMPANY_DAY` |
+| Whole server per day | 1,000 | `QUOKRA_AI_PER_SERVER_DAY` |
+| AI at all | on only when a key is set | `QUOKRA_AI_ENABLED` |
+
+Reaching a limit, or the provider answering 429, means no AI answer that time: fallback and handoff as
+usual, and "AI limit reached" in the console. Counts per company and day are kept in the database. A key
+from Google AI Studio without billing can't cost anything; it just stops at Google's free quota, which
+Google can change at any time. With billing on, set a spending cap and quotas there too.
 
 **Steps**, each done when its tests pass:
 1. **Knowledge:** documents table, Settings → Knowledge (add, edit, remove), split into chunks. **Done**; the
@@ -185,7 +198,7 @@ Admin tab (companies, keys and embed snippets, allowed sites, agents by email in
 | 7 | Repository licence | AGPL-3.0, public on GitHub (decided 2026-10-30) |
 | 8 | v3: AI provider and models (answers and embeddings) | OpenAI-compatible client; Gemini free tier locally and on the demo (decided 2026-11-02) |
 | 9 | v3: AI inside the Spring Boot server, or a separate Python service | Spring Boot (decided 2026-11-02) |
-| 10 | v3: cost limits | Per chat, per IP, per company per day and per server per day (decided); the numbers are open |
+| 10 | v3: cost limits | 10 per chat, 20 per IP per hour, 200 per company per day, 1,000 per server per day, all set by env (decided 2026-11-02) |
 
 ---
 
