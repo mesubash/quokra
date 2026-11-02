@@ -15,6 +15,7 @@ import { CheckIcon, CloseIcon, CopyIcon } from "../../lib/icons";
 import { initials } from "../format";
 import { NotifyOptions, type NotifyOptionsProps } from "../NotifyMenu";
 import { BotCard } from "./BotCard";
+import { KnowledgeCard } from "./KnowledgeCard";
 import { Row } from "./Row";
 
 // Settings for admins: the companies (tenants) that use Quokra and everything about each one. Server admins
@@ -52,12 +53,16 @@ export function useAdmin(api: AdminApi, enabled: boolean) {
 
 type Admin = ReturnType<typeof useAdmin>;
 
-type Section = "notifications" | "general" | "bot" | "replies" | "agents" | "embed";
+type Section = "notifications" | "general" | "bot" | "knowledge" | "replies" | "agents" | "embed";
 
 // Notifications are each agent's own; the rest is per company, for admins.
+// ponytail: Knowledge stays hidden until AI answers use it (v3 step 3); then drop the flag.
+const KNOWLEDGE_READY = false;
+
 const COMPANY_SECTIONS: { id: Section; label: string }[] = [
   { id: "general", label: "General" },
   { id: "bot", label: "Bot" },
+  ...(KNOWLEDGE_READY ? [{ id: "knowledge" as const, label: "Knowledge" }] : []),
   { id: "replies", label: "Saved replies" },
   { id: "agents", label: "Agents" },
   { id: "embed", label: "Embed & keys" },
@@ -67,6 +72,7 @@ const INTRO: Record<Section, (company: string) => string> = {
   notifications: () => "What alerts you, and how. Kept in this browser.",
   general: (c) => `How ${c} looks in the chat, and when chats are answered.`,
   bot: () => "The questions and answers customers can pick from before they reach a person.",
+  knowledge: (c) => `Documents about ${c} that the bot answers questions from. Text or Markdown.`,
   replies: () => "Answers agents insert by typing / in the reply box. {name} becomes the customer's name.",
   agents: (c) =>
     `People who answer chats for ${c}. They sign in with your own login and need the agent role there. Admins can also change these settings.`,
@@ -192,6 +198,7 @@ export function Settings({
               <TenantFormView api={api} bots={admin.bots} tenant={tenant} onSaved={admin.reload} />
             )}
             {section === "bot" && <BotCard api={api} tenant={tenant} />}
+            {section === "knowledge" && <KnowledgeCard api={api} tenant={tenant} />}
             {section === "replies" && <RepliesCard api={api} tenant={tenant} />}
             {section === "agents" && <AgentsCard api={api} tenant={tenant} onChanged={admin.reload} />}
             {section === "embed" && (

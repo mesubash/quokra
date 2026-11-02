@@ -409,6 +409,11 @@ interface Tenant {
 | `POST /admin/tenants/{slug}/replies` | `{ title, body }` → `201 { id, title, body }`. Title up to 80 characters, body up to 2,000; `{name}` in the body becomes the customer's name |
 | `PUT /admin/tenants/{slug}/replies/{id}` | Change one (same body). `404 REPLY_NOT_FOUND` |
 | `DELETE /admin/tenants/{slug}/replies/{id}` | Remove one (`204`). `404 REPLY_NOT_FOUND` |
+| `GET /admin/tenants/{slug}/knowledge` | Knowledge documents (v3, not used for answers yet): `{ "items": [{ id, title, length, chunks, updatedBy, updatedAt }] }`. `chunks` is how many parts it was split into |
+| `GET /admin/tenants/{slug}/knowledge/{id}` | One, with its text: `{ id, title, body, updatedBy, updatedAt }`. `404 DOCUMENT_NOT_FOUND` |
+| `POST /admin/tenants/{slug}/knowledge` | `{ title, body }` → `201` the document. Plain text or Markdown; title up to 120 characters, body up to 200,000. Up to 200 per company (`409 TOO_MANY_DOCUMENTS`). Markdown headings start a new part and name it ("Shipping › Returns"); parts are up to 1,000 characters |
+| `PUT /admin/tenants/{slug}/knowledge/{id}` | Replace title and text (same body); it's split again. `404 DOCUMENT_NOT_FOUND` |
+| `DELETE /admin/tenants/{slug}/knowledge/{id}` | Remove one and its parts (`204`). `404 DOCUMENT_NOT_FOUND` |
 
 Validation (`400 VALIDATION_ERROR`, the message names the field): slug of 2–40 lowercase letters, digits or dashes; sites as plain origins (`https://www.example.com`, no path); colour `#rrggbb`; logo `https://`; an existing bot file; opening hours with a real time zone (`Europe/Berlin`), `HH:mm-HH:mm` ranges, and at least one day. A range that closes at or before it opens runs into the next day (`22:00-02:00` on `FRI` is open until 02:00 on Saturday); closing at `24:00` or `00:00` means midnight and is saved as `24:00`, so `00:00-24:00` is all day.
 
