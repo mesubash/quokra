@@ -11,6 +11,8 @@ export interface Tenant {
   attachments: boolean;
   // Someone of the team is answering chats right now.
   teamOnline: boolean;
+  // false: while the bot answers, customers pick an option instead of typing.
+  freeText?: boolean;
 }
 
 export interface Session {
@@ -397,6 +399,7 @@ export interface BotFields {
   fallback: string;
   max_fallbacks: number;
   handoff_message: string;
+  free_text?: boolean;
   texts: Record<string, string>;
 }
 

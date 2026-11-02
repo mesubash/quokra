@@ -51,6 +51,14 @@ class BotConfigParserTests {
     }
 
     @Test
+    void customersMayTypeUnlessTheFileSaysNo() {
+        assertThat(BotConfigParser.parse("valid.yaml", VALID).freeText()).isTrue();
+        assertThat(BotConfigParser.parse("valid.yaml", "free_text: false\n" + VALID).freeText()).isFalse();
+        assertThatThrownBy(() -> BotConfigParser.parse("bad.yaml", "free_text: sometimes\n" + VALID))
+            .hasMessageContaining("free_text must be true or false");
+    }
+
+    @Test
     void textsKeepTheirDefaultsUnlessChanged() {
         assertThat(BotConfigParser.parse("valid.yaml", VALID).texts()).isEqualTo(BotConfig.Texts.DEFAULT);
 

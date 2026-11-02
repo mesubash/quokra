@@ -36,9 +36,9 @@ import org.springframework.web.bind.annotation.RestController;
 public class WidgetController {
 
     // open: inside the tenant's opening hours (always, when it has none). attachments: images can be sent.
-    // teamOnline: someone of the team is answering chats right now.
+    // teamOnline: someone of the team is answering chats right now. freeText: customers may type to the bot.
     public record TenantView(String slug, String displayName, Branding branding, String teaser, Texts texts,
-                             boolean open, boolean attachments, boolean teamOnline) {
+                             boolean open, boolean attachments, boolean teamOnline, boolean freeText) {
         public record Branding(String logoUrl, String primaryColor) {}
 
         // The wording the chat panel shows itself; the bot's own lines stay on the server.
@@ -89,7 +89,8 @@ public class WidgetController {
             new TenantView.Branding(tenant.getLogoUrl(), tenant.getPrimaryColor()),
             bot.map(BotConfig::teaser).orElse(null),
             TenantView.Texts.of(bot.map(BotConfig::texts).orElse(BotConfig.Texts.DEFAULT)),
-            tenant.isOpen(clock.instant()), conversations.imagesAllowed(tenant), presence.anyoneOnline(tenant.getId()));
+            tenant.isOpen(clock.instant()), conversations.imagesAllowed(tenant), presence.anyoneOnline(tenant.getId()),
+            bot.map(BotConfig::freeText).orElse(true));
     }
 
     @PostMapping("/sessions")

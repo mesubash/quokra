@@ -242,34 +242,43 @@ function Chat({ tenant, token, visible, onUnauthorized }: ChatProps) {
               {notice}
             </p>
           )}
-          <Composer
-            onSend={(body) => void send({ body })}
-            disabled={!chat.conversation}
-            focus={visible}
-            asking={chat.conversation?.asking ?? null}
-            placeholder={placeholder(chat.conversation, tenant)}
-            quote={
-              replyingTo && {
-                label: quoteLabel(replyingTo, "CUSTOMER", "you"),
-                preview: previewOf(replyingTo),
+          {pickOnly(chat.conversation, tenant) ? (
+            <p className="composer pick-only">Please pick an option above.</p>
+          ) : (
+            <Composer
+              onSend={(body) => void send({ body })}
+              disabled={!chat.conversation}
+              focus={visible}
+              asking={chat.conversation?.asking ?? null}
+              placeholder={placeholder(chat.conversation, tenant)}
+              quote={
+                replyingTo && {
+                  label: quoteLabel(replyingTo, "CUSTOMER", "you"),
+                  preview: previewOf(replyingTo),
+                }
               }
-            }
-            onCancelQuote={() => setReplyingTo(null)}
-            onTyping={chat.sendTyping}
-            onAttach={
-              tenant.attachments
-                ? (file) => {
-                    setNotice(null);
-                    void chat.sendImage(file, replyingTo ?? undefined).then(setNotice);
-                    setReplyingTo(null);
-                  }
-                : undefined
-            }
-          />
+              onCancelQuote={() => setReplyingTo(null)}
+              onTyping={chat.sendTyping}
+              onAttach={
+                tenant.attachments
+                  ? (file) => {
+                      setNotice(null);
+                      void chat.sendImage(file, replyingTo ?? undefined).then(setNotice);
+                      setReplyingTo(null);
+                    }
+                  : undefined
+              }
+            />
+          )}
         </>
       )}
     </main>
   );
+}
+
+// The company wants options only while the bot answers; email, name and the team still get typed answers.
+export function pickOnly(conversation: Conversation | null, tenant: Tenant) {
+  return tenant.freeText === false && conversation?.status === "BOT" && !conversation.asking;
 }
 
 function placeholder(conversation: Conversation | null, tenant: Tenant) {

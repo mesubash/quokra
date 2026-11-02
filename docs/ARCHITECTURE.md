@@ -209,6 +209,8 @@ urgent:
 fallback: "Sorry, I didn't get that. Pick a topic below or choose 'Talk to a person'."
 max_fallbacks: 2
 handoff_message: "Connecting you with our team. Someone will reply shortly."
+# Optional, default true. false: customers pick a topic instead of typing while the bot answers.
+free_text: true
 
 # Optional: the chat's own wording. Leave any out to keep the default shown here.
 texts:

@@ -76,6 +76,7 @@ public class TenantBots {
         map.put("fallback", bot.fallback());
         map.put("max_fallbacks", bot.maxFallbacks());
         map.put("handoff_message", bot.handoffMessage());
+        map.put("free_text", bot.freeText());
         BotConfig.Texts t = bot.texts();
         var texts = new LinkedHashMap<String, Object>();
         texts.put("online", t.online());
