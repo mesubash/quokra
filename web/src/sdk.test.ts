@@ -84,7 +84,7 @@ describe("sdk.js", () => {
 
     document.dispatchEvent(new Event("pointerdown"));
     fromFrame({ source: "quokra", type: "chat.sound" });
-    expect(notes).toEqual([880]);
+    expect(notes).toEqual([880, 1760]); // the note and its soft octave
     vi.unstubAllGlobals();
   });
 

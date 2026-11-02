@@ -1,6 +1,9 @@
 // What each agent wants to be notified about, kept in this browser.
+import type { Volume } from "./sound";
+
 export interface NotifyPrefs {
   sound: boolean;
+  volume: Volume;
   browser: boolean; // system notifications while the dashboard isn't in front (if the dashboard allows them)
   waiting: boolean; // a new chat is waiting
   myMessages: boolean; // a customer writes in my chat
@@ -13,6 +16,7 @@ const OLD_SOUND_KEY = "quokra.sound";
 
 export const DEFAULT_PREFS: NotifyPrefs = {
   sound: true,
+  volume: "high",
   browser: true,
   waiting: true,
   myMessages: true,

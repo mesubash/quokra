@@ -627,7 +627,7 @@ The host side (`sdk.js`) only accepts messages from the Quokra origin. The panel
 | console → host | `auth.request` | `reason` (`initial`, `expired`, `unauthorized`) | Please send a fresh agent token |
 | host → console | `auth.token` | `token` | Agent access token |
 | console → host | `console.unread` | `count` | Waiting conversations (for a nav badge) |
-| console → host | `console.sound` | `kind` (`waiting`, `message`, `transfer`, `note`) | Play this notification sound; `sdk.js` plays it once the dashboard page has been clicked or typed in |
+| console → host | `console.sound` | `kind` (`waiting`, `message`, `transfer`, `note`), `volume` (0–1, the agent's choice) | Play this notification sound; `sdk.js` plays it once the dashboard page has been clicked or typed in |
 | console → host | `console.color` | `color` | The company's colour, used by a console embedded with `tenant` (unless `accent` is set); `sdk.js` paints the floating button with it |
 | console → host | `console.close` | | The agent closed the drawer (bubble mode) |
 | console → host | `console.notify` | `kind`, `title`, `body`, `conversationId` | Something to tell the agent; `sdk.js` shows it as a browser notification if allowed and the console isn't in front |

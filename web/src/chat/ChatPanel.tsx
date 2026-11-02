@@ -8,7 +8,7 @@ import { MessageList, previewOf, quoteLabel, type TimelineItem } from "./Message
 import { RatingCard } from "./RatingCard";
 import { RobotAvatar } from "./RobotAvatar";
 import { activeOptions, countUnread } from "./messages";
-import { chime } from "../lib/sound";
+import { chime, VOLUME } from "../lib/sound";
 import { forgetSession, getSession, saveSession } from "./session";
 import { useChat } from "./useChat";
 
@@ -184,7 +184,7 @@ function Chat({ tenant, token, visible, onUnauthorized }: ChatProps) {
     heard.current = lastId;
     if (!isNew || last?.senderType === "CUSTOMER" || (visible && !document.hidden) || !soundOn()) return;
     if (embedded) postToHost({ type: "chat.sound" });
-    else chime("message");
+    else chime("message", VOLUME.medium);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastId]);
 
