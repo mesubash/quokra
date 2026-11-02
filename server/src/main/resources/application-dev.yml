@@ -1,4 +1,7 @@
 spring:
+  config:
+    # Local secrets such as QUOKRA_AI_KEY (git-ignored). Only for the dev profile, so tests never use a real key.
+    import: optional:file:.env[.properties]
   flyway:
     locations: classpath:db/migration,classpath:db/dev
 

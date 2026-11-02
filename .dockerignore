@@ -5,5 +5,5 @@ server/src/main/resources/static
 notes
 .git
 .idea
-.env
+**/.env
 **/.DS_Store

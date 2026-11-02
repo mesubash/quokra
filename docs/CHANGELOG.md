@@ -11,7 +11,12 @@ What changed, newest first. Each entry says what people notice; the commits have
 - Opening hours can run past midnight (`22:00-02:00`) and close at midnight (`18:00-24:00`); `00:00-24:00`
   is all day.
 - Groundwork for AI answers (v3): knowledge documents per company, through the admin API
-  (`/admin/tenants/{slug}/knowledge`). Not shown in Settings and not used for answers yet.
+  (`/admin/tenants/{slug}/knowledge`), and search over them with an AI provider's embeddings
+  (`/knowledge/search`). Not shown in Settings and not used for answers yet. AI is off without `QUOKRA_AI_KEY`.
+
+**Upgrading:** the database now needs the **pgvector** extension. Neon and most hosted PostgreSQL have it; with
+Docker, use `pgvector/pgvector:pg17` instead of `postgres:17-alpine`. Back up first: the pgvector image is
+Debian-based, so either move the data with `pg_dump` / `pg_restore`, or reindex text indexes after switching.
 - A company admin can no longer switch off their own Admin or remove themselves by mistake; another admin
   of the company (or a server admin) still can.
 

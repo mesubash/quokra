@@ -23,6 +23,8 @@ admins of the demo company only, never server admins, so visitors can't add comp
    - `SPRING_DATASOURCE_USERNAME` = the user
    - `SPRING_DATASOURCE_PASSWORD` = the password
 
+   Neon has pgvector, which Quokra turns on by itself (`create extension vector`).
+
 ## 2. Quokra (Render)
 
 1. Sign up at [render.com](https://render.com) with your GitHub account, and allow it to see the Quokra
