@@ -54,6 +54,11 @@ class SpaControllerTests {
     }
 
     @Test
+    void theServersAddressOpensTheConsole() {
+        assertThat(mvc.get().uri("/")).hasStatus3xxRedirection().hasRedirectedUrl("/console");
+    }
+
+    @Test
     void consoleLoadsTheUi() {
         assertThat(mvc.get().uri("/console")).hasStatusOk().hasForwardedUrl("/index.html");
     }
