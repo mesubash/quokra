@@ -10,7 +10,12 @@ interface Item {
   title: string;
   keywords: string;
   answer: string;
+  // Ids of the questions offered as buttons after this answer.
+  followUps: string[];
+  inMenu: boolean;
 }
+
+const NEW_ITEM: Item = { id: "", title: "", keywords: "", answer: "", followUps: [], inMenu: true };
 
 interface Draft {
   bot: BotFields;
@@ -28,7 +33,14 @@ const words = (text: string) =>
 function toDraft(bot: BotFields): Draft {
   return {
     bot,
-    menu: bot.menu.map((m) => ({ ...m, keywords: m.keywords.join(", ") })),
+    menu: bot.menu.map((m) => ({
+      id: m.id,
+      title: m.title,
+      keywords: m.keywords.join(", "),
+      answer: m.answer,
+      followUps: m.follow_ups ?? [],
+      inMenu: m.in_menu ?? true,
+    })),
     humanKeywords: bot.human.keywords.join(", "),
     urgentKeywords: bot.urgent.keywords.join(", "),
   };
@@ -38,6 +50,7 @@ function toDraft(bot: BotFields): Draft {
 export function fromDraft(d: Draft): BotFields {
   const used = new Set(d.menu.map((m) => m.id).filter(Boolean));
   used.add("human");
+  used.add("menu");
   const menu = d.menu.map((m, i) => {
     let id = m.id;
     if (!id) {
@@ -46,14 +59,18 @@ export function fromDraft(d: Draft): BotFields {
       for (let n = 2; used.has(id); n++) id = `${base}-${n}`;
       used.add(id);
     }
-    return { id, title: m.title, keywords: words(m.keywords), answer: m.answer };
+    return { id, title: m.title, keywords: words(m.keywords), answer: m.answer, inMenu: m.inMenu, followUps: m.followUps };
   });
-  // An emptied wording falls back to the default, so it's left out rather than sent blank.
-  const texts = Object.fromEntries(Object.entries(d.bot.texts).filter(([, text]) => text.trim() !== ""));
+  // Follow-ups only to questions still there (a removed one would be refused).
+  const ids = new Set(menu.map((m) => m.id));
   return {
     ...d.bot,
-    texts,
-    menu,
+    menu: menu.map(({ inMenu, followUps, ...m }) => ({
+      ...m,
+      in_menu: inMenu,
+      follow_ups: followUps.filter((f) => f !== m.id && ids.has(f)),
+    })),
+    texts: Object.fromEntries(Object.entries(d.bot.texts).filter(([, text]) => text.trim() !== "")),
     human: { ...d.bot.human, keywords: words(d.humanKeywords) },
     urgent: { ...d.bot.urgent, keywords: words(d.urgentKeywords) },
   };
@@ -230,13 +247,18 @@ export function BotCard({ api, tenant }: { api: AdminApi; tenant: AdminTenant })
                 placeholder="Keywords: hours, open, closing time"
                 aria-label={`Question ${i + 1} keywords`}
               />
+              <label className="bot-question-menu">
+                <input type="checkbox" checked={m.inMenu} onChange={(e) => setItem(i, { inMenu: e.target.checked })} />
+                In the main topics
+              </label>
+              <FollowUps item={m} all={draft.menu} onChange={(followUps) => setItem(i, { followUps })} />
             </li>
           ))}
         </ol>
         <button
           type="button"
           className="button button-quiet bot-add"
-          onClick={() => setDraft({ ...draft, menu: [...draft.menu, { id: "", title: "", keywords: "", answer: "" }] })}
+          onClick={() => setDraft({ ...draft, menu: [...draft.menu, NEW_ITEM] })}
         >
           Add a question
         </button>
@@ -325,5 +347,29 @@ export function BotCard({ api, tenant }: { api: AdminApi; tenant: AdminTenant })
         </button>
       </div>
     </form>
+  );
+}
+
+// Buttons after this answer: any other saved question. None means the main topics, as before.
+function FollowUps({ item, all, onChange }: { item: Item; all: Item[]; onChange: (followUps: string[]) => void }) {
+  const others = all.filter((o) => o.id && o.id !== item.id);
+  if (others.length === 0) return null;
+  const toggle = (id: string) =>
+    onChange(item.followUps.includes(id) ? item.followUps.filter((f) => f !== id) : [...item.followUps, id]);
+  return (
+    <fieldset className="bot-follow-ups">
+      <legend>Buttons after this answer {item.followUps.length === 0 && <span className="muted">(main topics)</span>}</legend>
+      {others.map((o) => (
+        <button
+          key={o.id}
+          type="button"
+          className={item.followUps.includes(o.id) ? "on" : ""}
+          aria-pressed={item.followUps.includes(o.id)}
+          onClick={() => toggle(o.id)}
+        >
+          {o.title || o.id}
+        </button>
+      ))}
+    </fieldset>
   );
 }
