@@ -997,7 +997,7 @@ function HoursField({ value, onChange }: { value: OpeningHours | null; onChange:
   return (
     <Row
       label="Opening hours"
-      help="Outside them the chat says the team is away and when it's back. Chats still reach the queue."
+      help="Outside them the chat says the team is away and when it's back. Chats still reach the queue. A closing time before the opening time runs into the next day."
     >
       <label className="admin-check">
         <input
@@ -1026,6 +1026,8 @@ function HoursField({ value, onChange }: { value: OpeningHours | null; onChange:
           {DAYS.map(([day, label]) => {
             const range = value.days[day];
             const [from, to] = (range ?? NINE_TO_FIVE).split("-");
+            // The server says 24:00 for midnight, which a time input can't show.
+            const until = to === "24:00" ? "00:00" : to;
             return (
               <div className="admin-day" key={day}>
                 <label className="admin-check">
@@ -1049,11 +1051,12 @@ function HoursField({ value, onChange }: { value: OpeningHours | null; onChange:
                     <span className="muted">to</span>
                     <input
                       type="time"
-                      value={to}
+                      value={until}
                       onChange={(e) => setDay(day, `${from}-${e.target.value}`)}
                       aria-label={`${label} until`}
                       required
                     />
+                    {until !== "00:00" && until <= from && <span className="muted">next day</span>}
                   </span>
                 ) : (
                   <span className="muted">Closed</span>

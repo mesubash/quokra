@@ -37,12 +37,35 @@ class OpeningHoursTests {
     void rejectsWhatDoesntMakeSense() {
         assertThatThrownBy(() -> new OpeningHours("Mars/Base", Map.of("MON", "09:00-17:00")).validated())
             .hasMessageContaining("time zone");
-        assertThatThrownBy(() -> new OpeningHours("UTC", Map.of("MON", "17:00-09:00")).validated())
+        assertThatThrownBy(() -> new OpeningHours("UTC", Map.of("MON", "09:00-09:00")).validated())
+            .hasMessageContaining("09:00-17:00");
+        assertThatThrownBy(() -> new OpeningHours("UTC", Map.of("MON", "25:00-26:00")).validated())
             .hasMessageContaining("09:00-17:00");
         assertThatThrownBy(() -> new OpeningHours("UTC", Map.of("MONDAY", "09:00-17:00")).validated())
             .hasMessageContaining("MON, TUE");
         assertThatThrownBy(() -> new OpeningHours("UTC", Map.of()).validated())
             .hasMessageContaining("at least one day");
+    }
+
+    @Test
+    void overnightHoursRunIntoTheNextDay() {
+        // Friday 22:00 to Saturday 02:00, and Sunday all day.
+        var hours = new OpeningHours("UTC", Map.of("FRI", "22:00-02:00", "SUN", "00:00-24:00")).validated();
+        assertThat(hours.isOpen(Instant.parse("2026-10-30T21:59:00Z"))).isFalse();  // Fri 21:59
+        assertThat(hours.isOpen(Instant.parse("2026-10-30T23:30:00Z"))).isTrue();   // Fri 23:30
+        assertThat(hours.isOpen(Instant.parse("2026-10-31T01:59:00Z"))).isTrue();   // Sat 01:59
+        assertThat(hours.isOpen(Instant.parse("2026-10-31T02:00:00Z"))).isFalse();  // Sat 02:00
+        assertThat(hours.isOpen(Instant.parse("2026-11-01T00:00:00Z"))).isTrue();   // Sun 00:00
+        assertThat(hours.isOpen(Instant.parse("2026-11-01T23:59:00Z"))).isTrue();   // Sun 23:59
+        assertThat(hours.isOpen(Instant.parse("2026-11-02T00:00:00Z"))).isFalse();  // Mon 00:00
+        assertThat(hours.nextOpening(Instant.parse("2026-10-31T03:00:00Z")))
+            .hasValue("tomorrow at 00:00 (UTC)");
+    }
+
+    @Test
+    void midnightAsClosingTimeIs2400() {
+        var hours = new OpeningHours("UTC", Map.of("MON", "18:00-00:00", "TUE", "22:00-02:00")).validated();
+        assertThat(hours.days()).containsEntry("MON", "18:00-24:00").containsEntry("TUE", "22:00-02:00");
     }
 
     @Test

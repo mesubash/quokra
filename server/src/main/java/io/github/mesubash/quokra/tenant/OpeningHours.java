@@ -15,11 +15,24 @@ import java.util.Map;
 import java.util.Optional;
 
 // When a tenant's team answers chats. days maps MON..SUN to "09:00-17:00"; days left out are closed.
+// Closing at 24:00 (or 00:00) means midnight; closing before opening runs into the next day, so
+// "22:00-02:00" on Friday is open until 02:00 on Saturday.
 public record OpeningHours(String timezone, Map<String, String> days) {
 
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm");
+    private static final int DAY = 24 * 60;
 
-    private record Range(LocalTime from, LocalTime to) {}
+    // Minutes after midnight; to is up to DAY, and less than from when it ends the next day.
+    private record Range(int from, int to) {
+        boolean overnight() {
+            return to < from;
+        }
+
+        @Override
+        public String toString() {
+            return time(from) + "-" + time(to);
+        }
+    }
 
     // Throws IllegalArgumentException with a message for the admin when something doesn't make sense.
     public OpeningHours validated() {
@@ -38,8 +51,7 @@ public record OpeningHours(String timezone, Map<String, String> days) {
             if (value == null || value.isBlank()) {
                 continue;
             }
-            Range r = range(value);
-            clean.put(key(day), TIME.format(r.from()) + "-" + TIME.format(r.to()));
+            clean.put(key(day), range(value).toString());
         }
         if (clean.isEmpty()) {
             throw new IllegalArgumentException("Open on at least one day, or turn opening hours off");
@@ -49,9 +61,15 @@ public record OpeningHours(String timezone, Map<String, String> days) {
 
     public boolean isOpen(Instant at) {
         ZonedDateTime local = at.atZone(ZoneId.of(timezone));
-        return rangeOn(local.getDayOfWeek())
-            .map(r -> !local.toLocalTime().isBefore(r.from()) && local.toLocalTime().isBefore(r.to()))
+        int now = minutes(local.toLocalTime());
+        boolean today = rangeOn(local.getDayOfWeek())
+            .map(r -> now >= r.from() && (r.overnight() || now < r.to()))
             .orElse(false);
+        // Still open from yesterday's overnight hours.
+        boolean fromYesterday = rangeOn(local.getDayOfWeek().minus(1))
+            .map(r -> r.overnight() && now < r.to())
+            .orElse(false);
+        return today || fromYesterday;
     }
 
     // When the team is next in, e.g. "tomorrow at 09:00 (Europe/Berlin)". Empty while open.
@@ -63,7 +81,7 @@ public record OpeningHours(String timezone, Map<String, String> days) {
         for (int ahead = 0; ahead <= 7; ahead++) {
             ZonedDateTime date = local.plusDays(ahead);
             Optional<Range> r = rangeOn(date.getDayOfWeek());
-            if (r.isEmpty() || (ahead == 0 && !local.toLocalTime().isBefore(r.get().from()))) {
+            if (r.isEmpty() || (ahead == 0 && minutes(local.toLocalTime()) >= r.get().from())) {
                 continue;
             }
             String when = switch (ahead) {
@@ -71,7 +89,7 @@ public record OpeningHours(String timezone, Map<String, String> days) {
                 case 1 -> "tomorrow";
                 default -> date.getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.ENGLISH);
             };
-            return Optional.of(when + " at " + TIME.format(r.get().from()) + " (" + timezone + ")");
+            return Optional.of(when + " at " + time(r.get().from()) + " (" + timezone + ")");
         }
         return Optional.empty();
     }
@@ -84,15 +102,28 @@ public record OpeningHours(String timezone, Map<String, String> days) {
         String[] parts = value.strip().split("\\s*-\\s*");
         try {
             if (parts.length == 2) {
-                Range r = new Range(LocalTime.parse(parts[0]), LocalTime.parse(parts[1]));
-                if (r.from().isBefore(r.to())) {
-                    return r;
+                int from = minutes(LocalTime.parse(parts[0]));
+                // 24:00 isn't a LocalTime; 00:00 as closing time means the same.
+                int to = parts[1].equals("24:00") ? DAY : minutes(LocalTime.parse(parts[1]));
+                if (to == 0) {
+                    to = DAY;
+                }
+                if (from != to) {
+                    return new Range(from, to);
                 }
             }
         } catch (DateTimeParseException ignored) {
             // falls through to the message below
         }
-        throw new IllegalArgumentException("'" + value + "' isn't a range like 09:00-17:00 (closing after opening)");
+        throw new IllegalArgumentException("'" + value + "' isn't a range like 09:00-17:00 or 22:00-02:00");
+    }
+
+    private static int minutes(LocalTime time) {
+        return time.getHour() * 60 + time.getMinute();
+    }
+
+    private static String time(int minutes) {
+        return minutes == DAY ? "24:00" : TIME.format(LocalTime.of(minutes / 60, minutes % 60));
     }
 
     private static String key(DayOfWeek day) {

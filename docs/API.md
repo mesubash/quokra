@@ -410,7 +410,7 @@ interface Tenant {
 | `PUT /admin/tenants/{slug}/replies/{id}` | Change one (same body). `404 REPLY_NOT_FOUND` |
 | `DELETE /admin/tenants/{slug}/replies/{id}` | Remove one (`204`). `404 REPLY_NOT_FOUND` |
 
-Validation (`400 VALIDATION_ERROR`, the message names the field): slug of 2–40 lowercase letters, digits or dashes; sites as plain origins (`https://www.example.com`, no path); colour `#rrggbb`; logo `https://`; an existing bot file; opening hours with a real time zone (`Europe/Berlin`), `HH:mm-HH:mm` ranges that close after they open, and at least one day.
+Validation (`400 VALIDATION_ERROR`, the message names the field): slug of 2–40 lowercase letters, digits or dashes; sites as plain origins (`https://www.example.com`, no path); colour `#rrggbb`; logo `https://`; an existing bot file; opening hours with a real time zone (`Europe/Berlin`), `HH:mm-HH:mm` ranges, and at least one day. A range that closes at or before it opens runs into the next day (`22:00-02:00` on `FRI` is open until 02:00 on Saturday); closing at `24:00` or `00:00` means midnight and is saved as `24:00`, so `00:00-24:00` is all day.
 
 **Invites:** an invited agent joins on their first `GET /agent/me` whose token has that `email` with `email_verified: true`. Unverified emails never match.
 
