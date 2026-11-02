@@ -157,3 +157,11 @@ export function SearchIcon({ size = 16 }: { size?: number }) {
     </svg>
   );
 }
+
+export function DownIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg {...base} width={size} height={size}>
+      <path d="M12 5v14M5 12l7 7 7-7" />
+    </svg>
+  );
+}

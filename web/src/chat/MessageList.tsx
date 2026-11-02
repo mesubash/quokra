@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import type { Message, Option, Quote } from "../lib/api";
-import { CloseIcon, ReplyIcon } from "../lib/icons";
+import { CloseIcon, DownIcon, ReplyIcon } from "../lib/icons";
 import { linkify } from "./links";
 import { RobotAvatar } from "./RobotAvatar";
 import { dayKey, dayLabel } from "./messages";
@@ -205,13 +205,35 @@ export function MessageList({
   onReply,
 }: Props) {
   const end = useRef<HTMLDivElement>(null);
+  const list = useRef<HTMLDivElement>(null);
   const last = messages[messages.length - 1];
   // "Sent" stays under the customer's latest message until someone replies.
   const sentId = pending.length === 0 && last?.senderType === mine ? last.id : null;
+  // Scrolled up to read older messages: new ones don't pull the reader down; a button takes them there.
+  const [away, setAway] = useState(false);
+  const [unseen, setUnseen] = useState(false);
+  const awayRef = useRef(false);
+
+  const toLatest = () => {
+    end.current?.scrollIntoView?.({ block: "end", behavior: "smooth" });
+    setUnseen(false);
+  };
 
   useEffect(() => {
-    end.current?.scrollIntoView?.({ block: "end", behavior: "smooth" });
+    // Your own message always takes you down; anything else only if you're already there.
+    if (!awayRef.current || pending.length > 0 || last?.senderType === mine) toLatest();
+    else setUnseen(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages.length, typing, typist, options.length, pending.length]);
+
+  const onScroll = () => {
+    const el = list.current;
+    if (!el) return;
+    const isAway = el.scrollHeight - el.scrollTop - el.clientHeight > 120;
+    awayRef.current = isAway;
+    setAway(isAway);
+    if (!isAway) setUnseen(false);
+  };
 
   const groups = groupMessages(messages);
   const renderGroup = (group: Group) => {
@@ -275,7 +297,7 @@ export function MessageList({
   };
 
   return (
-    <div className="messages" role="log" aria-live="polite">
+    <div className="messages" role="log" aria-live="polite" ref={list} onScroll={onScroll}>
       {groups.map((group, i) => (
         <Fragment key={group.key}>
           {(i === 0 || dayKey(group.messages[0].createdAt) !== dayKey(groups[i - 1].messages[0].createdAt)) && (
@@ -348,6 +370,17 @@ export function MessageList({
             </button>
           ))}
         </div>
+      )}
+      {away && (
+        <button
+          type="button"
+          className={`to-latest ${unseen ? "has-new" : ""}`}
+          onClick={toLatest}
+          aria-label={unseen ? "New messages, go to the latest" : "Go to the latest message"}
+        >
+          {unseen && <span>New messages</span>}
+          <DownIcon size={16} />
+        </button>
       )}
       <div ref={end} />
     </div>
