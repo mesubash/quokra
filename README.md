@@ -2,7 +2,7 @@
   <img src="web/public/logo.png" width="96" height="96" alt="Quokra logo" />
 </p>
 
-<h1 align="center">Quokra</h1>
+<h1 align="center"> Quokra </h1>
 
 <p align="center">
   An embeddable support chat: a FAQ bot answers first, and a person on your team takes over in the same conversation.<br />
