@@ -112,6 +112,19 @@ class CompanyAdminTests {
     }
 
     @Test
+    void aCompanyAdminCantLockThemselvesOut() throws Exception {
+        call("POST", root, "/tenants/acme/agents", "{\"email\":\"pat@acme.test\",\"admin\":true}");
+        String pat = signIn("pat", "pat@acme.test");
+
+        assertThat(call("PUT", pat, "/tenants/acme/agents/pat", "{\"admin\":false}")).hasStatus(HttpStatus.CONFLICT)
+            .bodyJson().extractingPath("$.error.code").isEqualTo("CANT_CHANGE_YOURSELF");
+        assertThat(call("DELETE", pat, "/tenants/acme/agents/pat", null)).hasStatus(HttpStatus.CONFLICT);
+        assertThat(call("GET", pat, "/tenants/acme", null)).hasStatusOk();
+        // A server admin still can.
+        assertThat(call("PUT", root, "/tenants/acme/agents/pat", "{\"admin\":false}")).hasStatus(HttpStatus.NO_CONTENT);
+    }
+
+    @Test
     void theTokenCanNameTheCompaniesSomeoneManages() throws Exception {
         // No roles and no membership: only the permissions claim.
         String lee = devTokens.sign("lee", "Lee", List.of(), null,
