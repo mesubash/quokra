@@ -48,8 +48,12 @@ class AgentTokenConfigTests {
     }
 
     static String token(KeyPair signedWith, String issuer, String audience) throws Exception {
+        return token(signedWith, issuer, audience, null);
+    }
+
+    static String token(KeyPair signedWith, String issuer, String audience, String type) throws Exception {
         JWTClaimsSet claims = new JWTClaimsSet.Builder().issuer(issuer).audience(audience).subject("agent-1")
-            .expirationTime(Date.from(Instant.now().plusSeconds(300))).build();
+            .claim("type", type).expirationTime(Date.from(Instant.now().plusSeconds(300))).build();
         SignedJWT jwt = new SignedJWT(new JWSHeader(JWSAlgorithm.RS256), claims);
         jwt.sign(new RSASSASigner(signedWith.getPrivate()));
         return jwt.serialize();
@@ -76,6 +80,14 @@ class AgentTokenConfigTests {
         for (String token : List.of(unknown, otherApp, "not-a-token")) {
             assertThatThrownBy(() -> decoder.decode(token)).isInstanceOf(JwtException.class);
         }
+    }
+
+    @Test
+    void refusesTokensMarkedAsAnotherKind() throws Exception {
+        assertThat(decoder.decode(token(companyKeys, COMPANY, "quokra-api", "access")).getSubject()).isEqualTo("agent-1");
+        String refresh = token(companyKeys, COMPANY, "quokra-api", "refresh");
+
+        assertThatThrownBy(() -> decoder.decode(refresh)).isInstanceOf(JwtException.class);
     }
 
     @Test
