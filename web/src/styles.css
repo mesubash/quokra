@@ -2290,9 +2290,13 @@ button {
 }
 
 .settings-nav button {
-  position: relative;
-  padding: 7px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 1px 10px;
+  padding: 7px 10px;
   border: 0;
+  border-radius: 8px;
   background: none;
   color: var(--muted);
   font: inherit;
@@ -2303,22 +2307,33 @@ button {
 }
 
 .settings-nav button:hover {
+  background: var(--hover);
   color: var(--text);
 }
 
 .settings-nav button[aria-current="page"] {
-  color: var(--text);
+  background: var(--accent-bg);
+  color: var(--accent-text);
   font-weight: 600;
 }
 
-.settings-nav button[aria-current="page"]::before {
-  content: "";
-  position: absolute;
-  top: 6px;
-  bottom: 6px;
-  left: 0;
-  width: 2px;
-  background: var(--primary);
+.settings-nav-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 18px;
+}
+
+.settings-nav-label {
+  margin: 14px 20px 4px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .settings-company {
@@ -2333,9 +2348,9 @@ button {
 }
 
 .settings-nav .settings-new {
-  margin-top: 8px;
-  color: var(--muted);
-  font-size: 0.82rem;
+  margin-top: 10px;
+  border: 1px dashed var(--border);
+  font-size: 0.84rem;
 }
 
 .settings-main {

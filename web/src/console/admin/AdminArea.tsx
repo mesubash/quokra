@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import {
   ApiError,
   type AdminAgents,
@@ -14,7 +14,20 @@ import {
   type StorageStatus,
   type TenantForm,
 } from "../../lib/api";
-import { BackIcon, CheckIcon, CopyIcon } from "../../lib/icons";
+import {
+  BackIcon,
+  BellIcon,
+  BotIcon,
+  CheckIcon,
+  CodeIcon,
+  CopyIcon,
+  PlusIcon,
+  ReplyIcon,
+  SettingsIcon,
+  SparkleIcon,
+  ThumbIcon,
+  UsersIcon,
+} from "../../lib/icons";
 import { dateTime, initials } from "../format";
 import { NotifyOptions, type NotifyOptionsProps } from "../NotifyMenu";
 import { BotCard } from "./BotCard";
@@ -124,10 +137,10 @@ export function Settings({
   const selected = scope ?? admin?.selected ?? tenants[0]?.slug ?? null;
   const tenant = tenants.find((t) => t.slug === selected);
   const creating = canCreate && !scope && selected === "new";
-  // General first, then your own notifications, then the rest of the company's sections.
+  // Your own notifications first, then the company's sections.
   const sections: { id: Section; label: string }[] =
     admin && api && tenant
-      ? [COMPANY_SECTIONS[0], { id: "notifications" as const, label: "Notifications" }, ...COMPANY_SECTIONS.slice(1)].filter(
+      ? [{ id: "notifications" as const, label: "Notifications" }, ...COMPANY_SECTIONS].filter(
           (x) => x.id !== "knowledge" || admin.ai,
         )
       : [{ id: "notifications", label: "Notifications" }];
@@ -167,13 +180,30 @@ export function Settings({
             </select>
           )}
           {sections.map((x) => (
-            <NavItem key={x.id} current={!creating && section === x.id} onClick={() => go(x.id)}>
-              {x.label}
-            </NavItem>
+            <Fragment key={x.id}>
+              {x.id === "notifications" && <p className="settings-nav-label">You</p>}
+              {x.id === (sections.find((s) => s.id !== "notifications")?.id ?? "") && (
+                <p className="settings-nav-label">{tenant?.displayName ?? "Company"}</p>
+              )}
+              <NavItem current={!creating && section === x.id} onClick={() => go(x.id)}>
+                <span className="settings-nav-icon" aria-hidden="true">
+                  {SECTION_ICONS[x.id]}
+                </span>
+                {x.label}
+              </NavItem>
+            </Fragment>
           ))}
           {admin && api && !scope && canCreate && (
-            <button type="button" className="settings-new" onClick={() => admin.select("new")}>
-              + New company
+            <button
+              type="button"
+              className="settings-new"
+              aria-current={creating ? "page" : undefined}
+              onClick={() => admin.select("new")}
+            >
+              <span className="settings-nav-icon" aria-hidden="true">
+                <PlusIcon size={16} />
+              </span>
+              New company
             </button>
           )}
         </nav>
@@ -230,6 +260,17 @@ export function Settings({
     </div>
   );
 }
+
+const SECTION_ICONS: Record<Section, ReactNode> = {
+  notifications: <BellIcon size={16} />,
+  general: <SettingsIcon size={16} />,
+  bot: <BotIcon size={16} />,
+  knowledge: <SparkleIcon size={16} />,
+  replies: <ReplyIcon size={16} />,
+  agents: <UsersIcon size={16} />,
+  ratings: <ThumbIcon size={16} />,
+  embed: <CodeIcon size={16} />,
+};
 
 function NavItem({ current, onClick, children }: { current: boolean; onClick: () => void; children: ReactNode }) {
   return (
