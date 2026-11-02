@@ -347,7 +347,7 @@ class ConversationServiceTests {
 
         service.addCustomerMessage(id, "c-1", "pat@example.test", null);
         assertThat(history(id).getLast().getBody()).isEqualTo(ConversationService.ASK_NAME);
-        assertThat(history(id).getLast().getOptions()).extracting(BotConfig.Option::id).containsExactly("skip");
+        assertThat(history(id).getLast().getOptions()).extracting(BotConfig.Option::id).containsExactly("skip", "menu");
 
         service.addCustomerMessage(id, "c-2", "Pat", null);
 
@@ -356,6 +356,24 @@ class ConversationServiceTests {
         assertThat(c.getCustomerName()).isEqualTo("Pat");
         assertThat(c.getCustomerEmail()).isEqualTo("pat@example.test");
         assertThat(c.getContactId()).isNotNull();
+    }
+
+    @Test
+    void guestCanGoBackInsteadOfLeavingTheirDetails() {
+        UUID id = startAsGuest();
+        service.addCustomerMessage(id, "c-1", null, BotConfig.HUMAN_OPTION);
+        assertThat(history(id).getLast().getOptions()).extracting(BotConfig.Option::id).containsExactly("menu");
+
+        service.addCustomerMessage(id, "c-2", null, BotConfig.MENU_OPTION);
+
+        Conversation c = service.get(id);
+        assertThat(c.getStatus()).isEqualTo(Status.BOT);
+        assertThat(c.getPendingHandoff()).isNull();
+        assertThat(history(id).getLast().getSenderType()).isEqualTo(SenderType.BOT);
+        assertThat(history(id).getLast().getOptions()).extracting(BotConfig.Option::id).contains("human");
+        // The bot answers questions again instead of reading them as an email.
+        service.addCustomerMessage(id, "c-3", "price", null);
+        assertThat(history(id).getLast().getBody()).isNotEqualTo(ConversationService.BAD_EMAIL);
     }
 
     @Test

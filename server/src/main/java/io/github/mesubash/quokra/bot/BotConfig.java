@@ -23,7 +23,7 @@ public record BotConfig(
     public static final String HUMAN_OPTION = "human";
     // Option id that shows the main topics again, after an answer with follow-ups.
     public static final String MENU_OPTION = "menu";
-    static final String MENU_TITLE = "← Main topics";
+    public static final String MENU_TITLE = "← Main topics";
 
     // followUps: ids of the topics offered as buttons after this answer (none: the main topics, as before).
     // inMenu: false keeps a topic out of the main topics; it's still found by its keywords and as a follow-up.

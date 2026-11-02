@@ -52,6 +52,8 @@ public class ConversationService {
     public static final String AI_HELPED_OPTION = "ai-helped";
     static final String AI_HELPED_TITLE = "That helps";
     static final String AI_HELPED_MESSAGE = "Glad that helped. Anything else?";
+    // Under the questions for email and name: changed their mind, back to the bot's topics.
+    private static final BotConfig.Option BACK = new BotConfig.Option(BotConfig.MENU_OPTION, BotConfig.MENU_TITLE);
     static final int MAX_NAME_LENGTH = 100;
     static final int MAX_EMAIL_LENGTH = 254;
     private static final Pattern EMAIL = Pattern.compile("[^\\s@]+@[^\\s@]+\\.[^\\s@]+");
@@ -232,10 +234,18 @@ public class ConversationService {
 
     // The customer's reply while the bot is asking for their details: first the email, then the name.
     private void collectContact(Conversation conversation, String text, String optionId, Instant now) {
+        if (BotConfig.MENU_OPTION.equals(optionId)) {
+            conversation.stopAwaitingContact(now);
+            Optional<BotConfig> bot = botFor(conversation.getTenantId());
+            botMessage(conversation, bot.map(BotConfig::greeting).orElse(BotConfig.MENU_TITLE),
+                bot.map(BotConfig::options).orElse(null), now);
+            publishUpdate(conversation);
+            return;
+        }
         if (conversation.getCustomerEmail() == null) {
             String email = text.strip();
             if (email.length() > MAX_EMAIL_LENGTH || !EMAIL.matcher(email).matches()) {
-                botMessage(conversation, textsFor(conversation).badEmail(), null, now);
+                botMessage(conversation, textsFor(conversation).badEmail(), List.of(BACK), now);
                 return;
             }
             if (contacts.findByEmail(conversation.getTenantId(), email).map(Contact::isBlocked).orElse(false)) {
@@ -243,7 +253,7 @@ public class ConversationService {
             }
             conversation.rememberEmail(email, now);
             BotConfig.Texts texts = textsFor(conversation);
-            botMessage(conversation, texts.askName(), List.of(new BotConfig.Option(SKIP_OPTION, texts.skip())), now);
+            botMessage(conversation, texts.askName(), List.of(new BotConfig.Option(SKIP_OPTION, texts.skip()), BACK), now);
             publishUpdate(conversation);
             return;
         }
@@ -828,7 +838,7 @@ public class ConversationService {
                 conversation.rememberEmail(null, now);
                 conversation.awaitContact(reason, now);
                 conversation.touch(now);
-                botMessage(conversation, textsFor(conversation).askEmail(), null, now);
+                botMessage(conversation, textsFor(conversation).askEmail(), List.of(BACK), now);
                 publishUpdate(conversation);
             }
             return;

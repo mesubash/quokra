@@ -144,6 +144,12 @@ public class Conversation {
         updatedAt = now;
     }
 
+    // The customer changed their mind while asked for their details: back to the bot.
+    void stopAwaitingContact(Instant now) {
+        pendingHandoff = null;
+        updatedAt = now;
+    }
+
     void identify(CustomerIdentity customer, Instant now) {
         customerSub = customer.sub();
         if (customer.name() != null) {
