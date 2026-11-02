@@ -10,6 +10,8 @@ What changed, newest first. Each entry says what people notice; the commits have
 
 - Opening hours can run past midnight (`22:00-02:00`) and close at midnight (`18:00-24:00`); `00:00-24:00`
   is all day.
+- A company admin can no longer switch off their own Admin or remove themselves by mistake; another admin
+  of the company (or a server admin) still can.
 
 ## 2.1.0 (company admins and review fixes), 2026-10-31
 

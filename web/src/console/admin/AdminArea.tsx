@@ -357,12 +357,16 @@ function AgentsCard({ api, tenant, onChanged }: { api: AdminApi; tenant: AdminTe
   }
 
   async function setAdmin(sub: string, admin: boolean) {
-    await api.setAgentAdmin(tenant.slug, sub, admin).catch(() => setMessage("Couldn't change that."));
+    await api.setAgentAdmin(tenant.slug, sub, admin).catch(failed);
     load();
   }
 
+  function failed(err: unknown) {
+    setMessage(err instanceof ApiError && err.status === 409 ? err.message : "Couldn't change that.");
+  }
+
   async function remove(action: () => Promise<void>) {
-    await action().catch(() => {});
+    await action().catch(failed);
     load();
     onChanged();
   }

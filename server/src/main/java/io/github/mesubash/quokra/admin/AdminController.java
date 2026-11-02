@@ -176,7 +176,11 @@ public class AdminController {
     // Makes an agent company admin, or a plain agent again.
     @PutMapping("/tenants/{slug}/agents/{agentSub}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void updateAgent(@PathVariable String slug, @PathVariable String agentSub, @RequestBody AgentForm form) {
+    public void updateAgent(Authentication auth, @PathVariable String slug, @PathVariable String agentSub,
+                            @RequestBody AgentForm form) {
+        if (!form.admin()) {
+            notMyself(auth, agentSub);
+        }
         if (!agents.setAdmin(tenants.get(slug).id(), agentSub, form.admin())) {
             throw ApiException.notFound("AGENT_NOT_FOUND", "That agent isn't in this company");
         }
@@ -184,9 +188,18 @@ public class AdminController {
 
     @DeleteMapping("/tenants/{slug}/agents/{agentSub}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void removeAgent(@PathVariable String slug, @PathVariable String agentSub) {
+    public void removeAgent(Authentication auth, @PathVariable String slug, @PathVariable String agentSub) {
+        notMyself(auth, agentSub);
         if (!agents.remove(tenants.get(slug).id(), agentSub)) {
             throw ApiException.notFound("AGENT_NOT_FOUND", "That agent isn't in this company");
+        }
+    }
+
+    // A company admin can't lock themselves out; another admin of the company (or a server admin) can do it.
+    private static void notMyself(Authentication auth, String agentSub) {
+        if (!TenantAccess.serverAdmin(auth) && agentSub.equals(auth.getName())) {
+            throw new ApiException(HttpStatus.CONFLICT, "CANT_CHANGE_YOURSELF",
+                "Ask another admin to remove you or your admin rights");
         }
     }
 

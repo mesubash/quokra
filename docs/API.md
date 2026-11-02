@@ -399,7 +399,7 @@ interface Tenant {
 | `POST /admin/tenants/{slug}/secret` | New secret key for identifying customers: `{ "secretKey": "sk_…" }`, shown only this once; the old one stops working. `409 SECRETS_DISABLED` without `TENANT_SECRET_ENCRYPTION_KEY` |
 | `GET /admin/tenants/{slug}/agents` | `{ "agents": [{ sub, name, email, admin, online }], "invites": [{ email, admin, createdAt }] }`. `admin` is the switch only; people who are admins through their token aren't listed unless they're agents here too |
 | `POST /admin/tenants/{slug}/agents` | `{ "email": "…", "admin": false }` → `{ "result": "ADDED" }` if someone already signed in with that verified email, else `"INVITED"`. `admin: true` makes them company admin (adding someone again never takes it away) |
-| `PUT /admin/tenants/{slug}/agents/{sub}` | `{ "admin": true }` makes an agent company admin, `false` a plain agent again (`204`). `404 AGENT_NOT_FOUND` |
+| `PUT /admin/tenants/{slug}/agents/{sub}` | `{ "admin": true }` makes an agent company admin, `false` a plain agent again (`204`). `404 AGENT_NOT_FOUND`. Company admins can't take away their own admin or remove themselves (`409 CANT_CHANGE_YOURSELF`); another admin can |
 | `DELETE /admin/tenants/{slug}/agents/{sub}` | Remove an agent (`204`) |
 | `DELETE /admin/tenants/{slug}/invites/{email}` | Cancel an invite (`204`) |
 | `GET /admin/tenants/{slug}/bot` | `{ "custom": false, "file": "demo", "bot": { greeting, teaser?, menu: [{ id, title, keywords, answer }], human, urgent, fallback, max_fallbacks, handoff_message, texts } }`: the same fields as a bot file. `custom` is true once edited here |
