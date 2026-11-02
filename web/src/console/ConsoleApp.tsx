@@ -9,9 +9,10 @@ import { NotifyMenu, type HostNotifications } from "./NotifyMenu";
 import { PresenceMenu, usePresence } from "./PresenceMenu";
 import { noticeFor, type Notice } from "./notifications";
 import { openSocket, type QueueSnapshot, type Socket } from "../lib/realtime";
-import { ConversationView } from "./ConversationView";
+import { ConversationView, type ConversationShortcuts } from "./ConversationView";
+import { shortcutFor, ShortcutsHelp, stepThrough } from "./shortcuts";
 import { Settings, useAdmin } from "./admin/AdminArea";
-import { ago, initials, listTime, priorityLabel, reasonLabel } from "./format";
+import { ago, highlight, initials, listTime, priorityLabel, reasonLabel, toneOf } from "./format";
 import { useConversationList, type Tab } from "./useConversationList";
 import { SignOutButton } from "./SignOutButton";
 
@@ -224,10 +225,43 @@ export function ConsoleApp({ getToken, freshToken, onUnauthorized, onSignOut, on
     return () => observer.disconnect();
   }, [hasMore, loadMore]);
 
-  function open(id: string) {
+  // Opened with the arrow keys: the reply box doesn't take focus, so the next key press still moves.
+  const [fromKeyboard, setFromKeyboard] = useState(false);
+  const [help, setHelp] = useState(false);
+  const view = useRef<ConversationShortcuts>(null);
+
+  function open(id: string, keyboard = false) {
     setSelected(id);
+    setFromKeyboard(keyboard);
     list.markSeen(id);
   }
+
+  // One listener for the console's shortcuts; it reads the latest state through keys.
+  const keys = useRef({ ids: [] as string[], selected, agent: false, blocked: false, open });
+  keys.current = { ids: list.items.map((c) => c.id), selected, agent: !!me?.agent, blocked: showSettings || help, open };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const { ids, selected: current, agent, blocked, open: openOne } = keys.current;
+      const action = blocked ? null : shortcutFor(e, agent);
+      if (!action || (action === "close" && !current)) return;
+      if (action === "leave") return (e.target as HTMLElement).blur();
+      e.preventDefault();
+      if (action === "next" || action === "prev") {
+        const next = stepThrough(ids, current, action === "next" ? 1 : -1);
+        if (next && next !== current) openOne(next, true);
+      } else if (action === "close") setSelected(null);
+      else if (action === "help") setHelp(true);
+      else if (action === "accept") view.current?.accept();
+      else if (action === "reply") view.current?.focusReply();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+
+  // Keeps the open conversation's row in view when the keys move past the edge of the list.
+  useEffect(() => {
+    document.querySelector(".console-item[aria-current]")?.scrollIntoView?.({ block: "nearest" });
+  }, [selected]);
 
   function badge(id: Tab) {
     const n = id === "queue" ? counts.waiting : id === "mine" ? counts.mine : (counts.resolvedUnread ?? 0);
@@ -335,7 +369,13 @@ export function ConsoleApp({ getToken, freshToken, onUnauthorized, onSignOut, on
           )}
           {list.items.map((c) => (
             <li key={c.id}>
-              <Row conversation={c} selected={selected === c.id} showTenant={tenants.length > 1} onSelect={open} />
+              <Row
+                conversation={c}
+                selected={selected === c.id}
+                showTenant={tenants.length > 1}
+                search={search}
+                onSelect={(id) => open(id)}
+              />
             </li>
           ))}
           {list.loading && <li className="empty muted">Loading…</li>}
@@ -359,11 +399,13 @@ export function ConsoleApp({ getToken, freshToken, onUnauthorized, onSignOut, on
             onBack={() => setSelected(null)}
             onClose={onClose}
             onExpand={onExpand ? () => onExpand(selected) : undefined}
-            onOpen={open}
+            onOpen={(id) => open(id)}
             onChanged={refreshCounts}
             onError={failed}
             imagesAllowed={(slug) => tenants.some((t) => t.slug === slug && t.attachments)}
             aiAllowed={(slug) => tenants.some((t) => t.slug === slug && t.ai)}
+            shortcuts={view}
+            focusComposer={!fromKeyboard}
           />
         ) : (
           <div className="console-empty">
@@ -396,6 +438,9 @@ export function ConsoleApp({ getToken, freshToken, onUnauthorized, onSignOut, on
                 </div>
               )}
               {me && !me.agent && <p className="muted">You can read chats here; replying needs agent access.</p>}
+              <button type="button" className="link-button console-shortcuts-link" onClick={() => setHelp(true)}>
+                Keyboard shortcuts <kbd>?</kbd>
+              </button>
             </div>
           </div>
         )}
@@ -410,6 +455,7 @@ export function ConsoleApp({ getToken, freshToken, onUnauthorized, onSignOut, on
           onClose={adminOnly ? undefined : () => setSettingsOpen(false)}
         />
       )}
+      {help && <ShortcutsHelp agent={!!me?.agent} onClose={() => setHelp(false)} />}
       <div className="toasts" aria-live="polite">
         {toasts.map((t) => (
           <button
@@ -465,11 +511,14 @@ function Row({
   conversation: c,
   selected,
   showTenant,
+  search,
   onSelect,
 }: {
   conversation: ConversationSummary;
   selected: boolean;
   showTenant: boolean;
+  // The search the list is filtered by, marked in the name and preview.
+  search: string;
   onSelect: (id: string) => void;
 }) {
   const name = c.customerName ?? "Guest";
@@ -480,17 +529,19 @@ function Row({
       aria-current={selected || undefined}
       onClick={() => onSelect(c.id)}
     >
-      <span className="avatar avatar-customer">{initials(name)}</span>
+      <span className={`avatar avatar-customer tone-${toneOf(c.customerName ?? c.id)}`}>{initials(name)}</span>
       <span className="item-body">
         <span className="item-top">
-          <strong>{name}</strong>
+          <strong>{highlight(name, search)}</strong>
           <span className="muted item-time" title={`${ago(c.waitingSince ?? c.lastMessageAt)} ago`}>
             {listTime(c.lastMessageAt)}
           </span>
         </span>
         <span className="item-middle">
           {c.lastMessagePreview && (
-            <span className={`item-preview ${c.unreadCount > 0 ? "unread" : ""}`}>{c.lastMessagePreview}</span>
+            <span className={`item-preview ${c.unreadCount > 0 ? "unread" : ""}`}>
+              {highlight(c.lastMessagePreview, search)}
+            </span>
           )}
           {c.unreadCount > 0 && (
             <span className="count" aria-label={`${c.unreadCount} unread`}>
