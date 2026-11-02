@@ -20,6 +20,7 @@ import { MessageList, previewOf, quoteLabel, type TimelineItem } from "../chat/M
 import { useTypingSignal } from "../chat/typing";
 import { mergeMessages } from "../chat/messages";
 import { dateTime, eventLabel, eventTone, initials, priorityLabel, reasonLabel, shortTime } from "./format";
+import { copyText } from "../lib/copy";
 
 interface Props {
   id: string;
@@ -684,10 +685,15 @@ function CopyEmail({ email }: { email: string }) {
         className="icon-button quiet copy-button"
         aria-label={copied ? "Copied" : "Copy email"}
         title={copied ? "Copied" : "Copy email"}
-        onClick={() => navigator.clipboard?.writeText(email).then(() => setCopied(true), () => {})}
+        onClick={() => void copyText(email).then(setCopied)}
       >
         {copied ? <CheckIcon size={14} /> : <CopyIcon size={14} />}
       </button>
+      {copied && (
+        <span className="copied" role="status">
+          Copied
+        </span>
+      )}
     </span>
   );
 }
