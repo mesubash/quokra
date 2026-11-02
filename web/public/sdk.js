@@ -69,25 +69,30 @@
     document.addEventListener(type, unlockAudio, { capture: true, passive: true });
   });
 
-  function chime(tune) {
+  // level: peak loudness 0–1 (the console sends the agent's chosen volume; the chat uses a medium default).
+  function chime(tune, level) {
     var notes = Object.prototype.hasOwnProperty.call(TUNES, tune) ? TUNES[tune] : null;
     if (!audio || !notes) return; // nothing clicked yet: the browser wouldn't play it anyway
     try {
       if (audio.state === "suspended") audio.resume();
+      var peak = typeof level === "number" && level > 0 ? Math.min(level, 1) : 0.35;
       var start = audio.currentTime;
+      // A triangle wave with a soft octave above, as in the console's own sounds (src/lib/sound.ts).
       notes.forEach(function (frequency, i) {
-        var at = start + i * 0.12;
-        var osc = audio.createOscillator();
-        var gain = audio.createGain();
-        osc.type = "sine";
-        osc.frequency.value = frequency;
-        gain.gain.setValueAtTime(0.0001, at);
-        gain.gain.exponentialRampToValueAtTime(0.15, at + 0.02);
-        gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.35);
-        osc.connect(gain);
-        gain.connect(audio.destination);
-        osc.start(at);
-        osc.stop(at + 0.4);
+        var at = start + i * 0.14;
+        [[1, 1], [2, 0.25]].forEach(function (part) {
+          var osc = audio.createOscillator();
+          var gain = audio.createGain();
+          osc.type = "triangle";
+          osc.frequency.value = frequency * part[0];
+          gain.gain.setValueAtTime(0.0001, at);
+          gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak * part[1]), at + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.45);
+          osc.connect(gain);
+          gain.connect(audio.destination);
+          osc.start(at);
+          osc.stop(at + 0.5);
+        });
       });
     } catch (e) {
       // Ignore: a missed sound isn't worth an error on the host page.
@@ -822,7 +827,7 @@
       setConsoleBadge(data.count);
       consoleEmit("unread", data.count);
     } else if (data.type === "console.sound" && typeof data.kind === "string") {
-      chime(data.kind);
+      chime(data.kind, data.volume);
     } else if (data.type === "console.notify") {
       showNotification(data);
     } else if (data.type === "console.notifications.check") {

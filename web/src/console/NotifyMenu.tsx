@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { BellIcon } from "../lib/icons";
 import type { NotifyPrefs } from "../lib/notifyPrefs";
-import { chime } from "../lib/sound";
+import { VOLUME, type Volume, chime } from "../lib/sound";
 
 // What the dashboard (through sdk.js) says about browser notifications.
 export interface HostNotifications {
@@ -9,7 +9,7 @@ export interface HostNotifications {
   permission: string; // "default" | "granted" | "denied"
 }
 
-const EVENTS: { key: keyof NotifyPrefs; label: string; help: string }[] = [
+const EVENTS: { key: "waiting" | "myMessages" | "transfers" | "notes"; label: string; help: string }[] = [
   { key: "waiting", label: "New chat waiting", help: "Someone asked for a person and nobody has the chat yet." },
   { key: "myMessages", label: "Customer writes in my chat", help: "A new message in a chat you're handling." },
   { key: "transfers", label: "Chat transferred to me", help: "A teammate hands a chat over to you." },
@@ -66,9 +66,13 @@ export interface NotifyOptionsProps {
 
 // The switches, in the bell menu and in Settings → Notifications.
 export function NotifyOptions({ prefs, onChange, host, onTurnOn, explained = false }: NotifyOptionsProps) {
-  const set = (key: keyof NotifyPrefs, value: boolean) => {
+  const set = (key: Exclude<keyof NotifyPrefs, "volume">, value: boolean) => {
     onChange({ ...prefs, [key]: value });
-    if (key === "sound" && value) chime("message");
+    if (key === "sound" && value) chime("message", VOLUME[prefs.volume]);
+  };
+  const setVolume = (volume: Volume) => {
+    onChange({ ...prefs, volume });
+    chime("message", VOLUME[volume]);
   };
 
   return (
@@ -90,6 +94,25 @@ export function NotifyOptions({ prefs, onChange, host, onTurnOn, explained = fal
         checked={prefs.sound}
         onChange={(v) => set("sound", v)}
       />
+      {prefs.sound && (
+        <div className="notify-volume" role="radiogroup" aria-label="Volume">
+          {(["low", "medium", "high"] as const).map((v) => (
+            <button
+              key={v}
+              type="button"
+              role="radio"
+              aria-checked={prefs.volume === v}
+              className={prefs.volume === v ? "on" : ""}
+              onClick={() => setVolume(v)}
+            >
+              {v === "low" ? "Low" : v === "medium" ? "Medium" : "High"}
+            </button>
+          ))}
+          <button type="button" className="notify-test" onClick={() => chime("waiting", VOLUME[prefs.volume])}>
+            Test
+          </button>
+        </div>
+      )}
       {host?.available ? (
         <>
           <Toggle

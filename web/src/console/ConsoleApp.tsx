@@ -4,7 +4,7 @@ import { embedded, onHostMessage, postToHost } from "../lib/bridge";
 import { accent, applyColor } from "../lib/theme";
 import { ChatBubblesIcon, CloseIcon, ExpandIcon, SearchIcon, SettingsIcon, ThumbIcon } from "../lib/icons";
 import { loadPrefs, savePrefs, type NotifyPrefs } from "../lib/notifyPrefs";
-import { chime } from "../lib/sound";
+import { VOLUME, chime } from "../lib/sound";
 import { NotifyMenu, type HostNotifications } from "./NotifyMenu";
 import { PresenceMenu, usePresence } from "./PresenceMenu";
 import { noticeFor, type Notice } from "./notifications";
@@ -126,8 +126,8 @@ export function ConsoleApp({ getToken, freshToken, onUnauthorized, onSignOut, on
       // Embedded, the dashboard page plays it (sdk.js): browsers only allow sound in a page that was
       // clicked, and agents click the dashboard, not the console frame.
       if (prefs.sound) {
-        if (embedded) postToHost({ type: "console.sound", kind: notice.kind });
-        else chime(notice.kind);
+        if (embedded) postToHost({ type: "console.sound", kind: notice.kind, volume: VOLUME[prefs.volume] });
+        else chime(notice.kind, VOLUME[prefs.volume]);
       }
       const key = Date.now() + Math.random();
       setToasts((current) => [...current.slice(-2), { ...notice, key }]);

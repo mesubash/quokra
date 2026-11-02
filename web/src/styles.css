@@ -3469,6 +3469,37 @@ kbd {
 }
 
 
+/* Volume: Low / Medium / High, plus a Test button. */
+.notify-volume {
+  display: flex;
+  gap: 4px;
+  margin: 2px 6px 8px;
+}
+
+.notify-volume button {
+  flex: 1;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--raised);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.notify-volume button.on {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.notify-volume .notify-test {
+  flex: none;
+  color: var(--text);
+}
+
+
 /* A chat's rating, for the team: a line under the thread, a row in Details, a badge in the list. */
 .chat-rating-note {
   display: flex;
