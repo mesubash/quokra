@@ -47,6 +47,53 @@
   var ROBOT_VIEWBOX = "156 30 196 290"; // the robot and its waving arms, without the empty canvas around them
   var reducedMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+  // ---- Sounds ----
+  //
+  // The chat and the console ask for sounds; this page plays them. Browsers only allow sound in a page
+  // the visitor has clicked or typed in, and people click this page, not the frames inside it. Same
+  // tunes as the console's own (src/lib/sound.ts).
+  var TUNES = { waiting: [660, 990], message: [880], transfer: [523, 659, 784], note: [988, 784] };
+  var audio = null;
+
+  function unlockAudio() {
+    try {
+      var Context = window.AudioContext || window.webkitAudioContext;
+      if (!Context) return;
+      audio = audio || new Context();
+      if (audio.state === "suspended") audio.resume();
+    } catch (e) {
+      // No audio here: stay silent.
+    }
+  }
+  ["pointerdown", "keydown", "touchstart"].forEach(function (type) {
+    document.addEventListener(type, unlockAudio, { capture: true, passive: true });
+  });
+
+  function chime(tune) {
+    var notes = Object.prototype.hasOwnProperty.call(TUNES, tune) ? TUNES[tune] : null;
+    if (!audio || !notes) return; // nothing clicked yet: the browser wouldn't play it anyway
+    try {
+      if (audio.state === "suspended") audio.resume();
+      var start = audio.currentTime;
+      notes.forEach(function (frequency, i) {
+        var at = start + i * 0.12;
+        var osc = audio.createOscillator();
+        var gain = audio.createGain();
+        osc.type = "sine";
+        osc.frequency.value = frequency;
+        gain.gain.setValueAtTime(0.0001, at);
+        gain.gain.exponentialRampToValueAtTime(0.15, at + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.35);
+        osc.connect(gain);
+        gain.connect(audio.destination);
+        osc.start(at);
+        osc.stop(at + 0.4);
+      });
+    } catch (e) {
+      // Ignore: a missed sound isn't worth an error on the host page.
+    }
+  }
+
   var SVG_ATTRS =
     'xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
     'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
@@ -421,6 +468,8 @@
     } else if (data.type === "chat.close") {
       chat.close();
       if (state && state.button) state.button.focus();
+    } else if (data.type === "chat.sound") {
+      chime("message");
     } else if (data.type === "chat.unread" && typeof data.count === "number") {
       setBadge(data.count);
       emit("unread", data.count);
@@ -772,6 +821,8 @@
     else if (data.type === "console.unread" && typeof data.count === "number") {
       setConsoleBadge(data.count);
       consoleEmit("unread", data.count);
+    } else if (data.type === "console.sound" && typeof data.kind === "string") {
+      chime(data.kind);
     } else if (data.type === "console.notify") {
       showNotification(data);
     } else if (data.type === "console.notifications.check") {

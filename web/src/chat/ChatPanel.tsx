@@ -7,6 +7,7 @@ import { Composer } from "./Composer";
 import { MessageList, previewOf, quoteLabel, type TimelineItem } from "./MessageList";
 import { RobotAvatar } from "./RobotAvatar";
 import { activeOptions, countUnread } from "./messages";
+import { chime } from "../lib/sound";
 import { forgetSession, getSession, saveSession } from "./session";
 import { useChat } from "./useChat";
 
@@ -174,6 +175,18 @@ function Chat({ tenant, token, visible, onUnauthorized }: ChatProps) {
 
   useEffect(() => postToHost({ type: "chat.unread", count: unread }), [unread]);
 
+  // A sound for a new reply while the chat is closed or the tab is in the background. Played by the
+  // host page (sdk.js), since browsers only allow sound in a page the customer has clicked.
+  const heard = useRef<string | null>(null);
+  useEffect(() => {
+    const isNew = heard.current !== null && lastId !== heard.current;
+    heard.current = lastId;
+    if (!isNew || last?.senderType === "CUSTOMER" || (visible && !document.hidden) || !soundOn()) return;
+    if (embedded) postToHost({ type: "chat.sound" });
+    else chime("message");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastId]);
+
   // The typing dots never hang around if a reply doesn't come.
   useEffect(() => {
     if (!awaitingBot) return;
@@ -271,6 +284,7 @@ function ChatMenu({ conversation, onStartNew }: { conversation: Conversation | n
   const [open, setOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [sound, setSound] = useState(soundOn);
   const menu = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -325,14 +339,44 @@ function ChatMenu({ conversation, onStartNew }: { conversation: Conversation | n
               </div>
             </>
           ) : (
-            <button type="button" disabled={busy} onClick={() => (withTeam ? setConfirming(true) : void start())}>
-              Start a new chat
-            </button>
+            <>
+              <button type="button" disabled={busy} onClick={() => (withTeam ? setConfirming(true) : void start())}>
+                Start a new chat
+              </button>
+              <button
+                type="button"
+                role="menuitemcheckbox"
+                aria-checked={sound}
+                onClick={() => setSound(setSoundOn(!sound))}
+              >
+                {sound ? "Turn sound off" : "Turn sound on"}
+              </button>
+            </>
           )}
         </div>
       )}
     </div>
   );
+}
+
+// The customer's choice, kept in their browser. On unless they turned it off.
+const SOUND_KEY = "quokra.customer-sound";
+
+export function soundOn() {
+  try {
+    return localStorage.getItem(SOUND_KEY) !== "off";
+  } catch {
+    return true;
+  }
+}
+
+function setSoundOn(on: boolean) {
+  try {
+    localStorage.setItem(SOUND_KEY, on ? "on" : "off");
+  } catch {
+    // Storage blocked: the choice lasts until the page reloads.
+  }
+  return on;
 }
 
 function CloseButton() {
