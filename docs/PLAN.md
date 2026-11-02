@@ -127,7 +127,9 @@ Google can change at any time. With billing on, set a spending cap and quotas th
    Settings section stays hidden (`KNOWLEDGE_READY` in `AdminArea.tsx`) until step 3, so nobody fills it in
    before it does anything. Stored in the database, edited in Settings; importing from files can come later.
 2. **Search:** embeddings for chunks and questions, pgvector search per company; evaluation set of
-   questions with the document that should answer them, and a recall check in the tests.
+   questions with the document that should answer them, and a recall check in the tests. **Done**: with
+   `gemini-embedding-001` the right part came first for 15 of 15 questions (scores 0.63+), off-topic
+   questions scored 0.47 at most, so the minimum score is 0.55.
 3. **Answers:**
    - **3a, for agents:** in the console, a suggested reply from the documents with its sources; the agent
      edits or sends it. Nothing reaches the customer without a person.

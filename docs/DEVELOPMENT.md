@@ -88,6 +88,7 @@ curl -X POST localhost:8080/dev/agent-token -H 'Content-Type: application/json' 
 | `QUOKRA_AGENT_ROLES_CLAIM` / `QUOKRA_AGENT_ROLE` | server | `roles` / `SUPPORT_AGENT` |
 | `TENANT_SECRET_ENCRYPTION_KEY` | server | dev profile: a fixed dev-only key. Elsewhere: 32 random bytes, base64 (`openssl rand -base64 32`); unset turns identify off |
 | `PUBLIC_BASE_URL` | server | step 6 |
+| `QUOKRA_AI_KEY` | server | unset: AI is off. Put it in `server/.env` (git-ignored, loaded by the dev profile only), e.g. a free key from [Google AI Studio](https://aistudio.google.com/apikey). Other `QUOKRA_AI_*` settings: see DEPLOY.md |
 | `FORWARD_HEADERS_STRATEGY` | server | `native`: trusts `X-Forwarded-For` only from proxies on private networks, so rate limits see the real client. Use `none` if the server faces the internet directly |
 
 ### Tenant secret keys
@@ -157,6 +158,14 @@ Commands (CI runs the same, see `.github/workflows/ci.yml`):
 cd server && ./mvnw verify
 cd web && pnpm test
 cd e2e && pnpm test        # needs Quokra running, see e2e/README.md
+```
+
+Tests never call a real AI: they use a fake one (`FakeAi`). `KnowledgeEvalTests` checks search quality against the
+real provider and only runs with a key in the environment (CI skips it). Run it after changing the embedding model,
+the chunking or `QUOKRA_AI_MIN_SCORE`:
+
+```bash
+cd server && QUOKRA_AI_KEY="$(grep '^QUOKRA_AI_KEY=' .env | cut -d= -f2-)" ./mvnw test -Dtest=KnowledgeEvalTests
 ```
 
 ---

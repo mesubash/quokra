@@ -31,7 +31,7 @@ For a free public demo instead (no real customers, no login provider), see
 | | |
 |---|---|
 | Image | `ghcr.io/mesubash/quokra:<version>` (published for each release), or `docker build -t quokra .` from the repo root |
-| Database | PostgreSQL 15 or newer, an empty database; Quokra creates its tables on start (Flyway) |
+| Database | PostgreSQL 15 or newer **with the pgvector extension** (Neon and most hosted PostgreSQL have it; Docker: `pgvector/pgvector:pg17`), an empty database; Quokra creates its tables on start (Flyway) |
 | Identity provider | Any OIDC provider for agents (Keycloak, Auth0, Okta, Entra ID, your own); see [Connect your identity provider](EMBEDDING.md#connect-your-identity-provider) |
 | A domain with HTTPS | e.g. `chat.example.com`, in front of Quokra (reverse proxy or load balancer) |
 
@@ -55,6 +55,11 @@ All through environment variables. Generate random secrets with `openssl rand -b
 | `QUOKRA_AGENT_ROLE` / `QUOKRA_ADMIN_ROLE` | | Defaults `SUPPORT_AGENT` / `QUOKRA_ADMIN` (server admin: every company) |
 | `QUOKRA_COMPANY_ADMIN_CLAIM` / `QUOKRA_COMPANY_ADMIN_VALUE` | | Company admins from the token: the claim (e.g. `permissions`, `groups`, `scope`) and the value with `{tenant}` for the slug, default `quokra:{tenant}:admin`. Empty claim: only the Admin switch in Settings → Agents. See [API 4b](API.md#4b-admin-endpoints) |
 | `QUOKRA_BOTS_DIR` | | A folder with your bot files (`*.yml`), mounted into the container |
+| `QUOKRA_AI_KEY` | for AI | Key for an OpenAI-compatible API. Without it, AI is off and nothing is sent anywhere. A free Google AI Studio key without billing can't cost anything, but free tiers may use the data to improve their models: use a paid tier or your own model for real customers |
+| `QUOKRA_AI_BASE_URL` | | Default Gemini's `https://generativelanguage.googleapis.com/v1beta/openai/`; e.g. `https://api.openai.com/v1/` or Ollama's `http://localhost:11434/v1/` |
+| `QUOKRA_AI_EMBEDDING_MODEL` | | Default `gemini-embedding-001`. Must give 768 numbers (the request asks for 768). Changing it embeds every document again |
+| `QUOKRA_AI_MIN_SCORE` | | Default `0.55`, how close a document part must be to a question to count. Tuned for `gemini-embedding-001`; check it with `KnowledgeEvalTests` for another model |
+| `QUOKRA_AI_TIMEOUT` | | Default `PT15S`; slower answers count as no answer |
 | `SMTP_HOST` / `SMTP_PORT` | for email | Your mail server or provider (e.g. port 587 with STARTTLS). Without `SMTP_HOST` and `QUOKRA_MAIL_FROM`, email is simply off |
 | `SMTP_USERNAME` / `SMTP_PASSWORD` | for email | Its login, if it needs one. `SMTP_STARTTLS=false` for a server without STARTTLS |
 | `QUOKRA_MAIL_FROM` | for email | The sender, e.g. `Support <support@example.com>`; use a domain your provider is allowed to send for |
