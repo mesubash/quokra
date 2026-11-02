@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { adminApi, agentApi, ApiError, type ConversationSummary, type FreshToken, type Me, type TenantItem } from "../lib/api";
-import { onHostMessage, postToHost } from "../lib/bridge";
+import { embedded, onHostMessage, postToHost } from "../lib/bridge";
 import { accent, applyColor } from "../lib/theme";
 import { CloseIcon, ExpandIcon, SearchIcon, SettingsIcon } from "../lib/icons";
 import { loadPrefs, savePrefs, type NotifyPrefs } from "../lib/notifyPrefs";
@@ -117,7 +117,12 @@ export function ConsoleApp({ getToken, freshToken, onUnauthorized, onSignOut, on
   // Sound, a toast in the console, and (through sdk.js) a browser notification if the dashboard isn't in front.
   const notify = useCallback(
     (notice: Notice) => {
-      if (prefs.sound) chime(notice.kind);
+      // Embedded, the dashboard page plays it (sdk.js): browsers only allow sound in a page that was
+      // clicked, and agents click the dashboard, not the console frame.
+      if (prefs.sound) {
+        if (embedded) postToHost({ type: "console.sound", kind: notice.kind });
+        else chime(notice.kind);
+      }
       const key = Date.now() + Math.random();
       setToasts((current) => [...current.slice(-2), { ...notice, key }]);
       setTimeout(() => setToasts((current) => current.filter((t) => t.key !== key)), 6000);

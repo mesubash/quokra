@@ -28,7 +28,11 @@ notifications, so `sdk.js` shows them for the console. You can also listen with
    banner, turn them on there later. These settings are kept in your browser.
 3. If you blocked notifications earlier, allow them again in the browser's site settings.
 
-Sounds need one click on the page first (a browser rule); after that they play.
+Sounds need one click on the page first (a browser rule); after that they play. When the console is
+embedded, `sdk.js` plays them on the dashboard page, so a click anywhere on the dashboard counts.
+
+**For customers:** the chat plays a short sound for a new reply while it's closed or the tab is in the
+background. Customers can turn it off in the chat's **⋯** menu (kept in their browser).
 
 ## Email
 

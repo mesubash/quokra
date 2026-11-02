@@ -63,6 +63,31 @@ describe("sdk.js", () => {
     expect(document.querySelector(".quokra-badge")?.textContent).toBe("2");
   });
 
+  it("plays the chat's sound on this page, once the visitor has clicked it", () => {
+    const notes: number[] = [];
+    class FakeAudio {
+      state = "running";
+      currentTime = 0;
+      destination = {};
+      createOscillator() {
+        const osc = { type: "", frequency: { value: 0 }, connect: (g: unknown) => g, start: () => notes.push(osc.frequency.value), stop: () => {} };
+        return osc;
+      }
+      createGain() {
+        return { gain: { setValueAtTime: () => {}, exponentialRampToValueAtTime: () => {} }, connect: () => {} };
+      }
+    }
+    vi.stubGlobal("AudioContext", FakeAudio); // sdk.js only creates its audio on the first click
+
+    fromFrame({ source: "quokra", type: "chat.sound" });
+    expect(notes).toEqual([]); // nothing clicked yet: browsers wouldn't allow it
+
+    document.dispatchEvent(new Event("pointerdown"));
+    fromFrame({ source: "quokra", type: "chat.sound" });
+    expect(notes).toEqual([880]);
+    vi.unstubAllGlobals();
+  });
+
   it("ignores messages from another origin", () => {
     const onUnread = vi.fn();
     chat().on("unread", onUnread);
