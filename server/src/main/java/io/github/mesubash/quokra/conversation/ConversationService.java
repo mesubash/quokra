@@ -1,5 +1,6 @@
 package io.github.mesubash.quokra.conversation;
 
+import io.github.mesubash.quokra.ai.AiClient;
 import io.github.mesubash.quokra.attachment.FileStore;
 import io.github.mesubash.quokra.attachment.Images;
 import io.github.mesubash.quokra.attachment.StorageCheck;
@@ -46,6 +47,12 @@ public class ConversationService {
     static final String BAD_EMAIL = BotConfig.Texts.DEFAULT.badEmail();
     static final String ASK_NAME = BotConfig.Texts.DEFAULT.askName();
     static final String SKIP_OPTION = "skip";
+    // The button under an AI answer that says it helped (the other is "Talk to a person").
+    public static final String AI_HELPED_OPTION = "ai-helped";
+    static final String AI_HELPED_TITLE = "That helps";
+    static final String AI_HELPED_MESSAGE = "Glad that helped. Anything else?";
+    // AI answers per chat; after that, misses go the usual way (fallback, then handoff).
+    static final int AI_ANSWERS_PER_CHAT = 10;
     static final int MAX_NAME_LENGTH = 100;
     static final int MAX_EMAIL_LENGTH = 254;
     private static final Pattern EMAIL = Pattern.compile("[^\\s@]+@[^\\s@]+\\.[^\\s@]+");
@@ -63,12 +70,14 @@ public class ConversationService {
     private final Clock clock;
     private final FileStore files;
     private final StorageCheck storage;
+    private final AiClient ai;
 
     public ConversationService(ConversationRepository conversations, MessageRepository messages,
                                ConversationEventRepository events, TenantRepository tenants,
                                ContactRepository contacts, NoteRepository notes, TenantBots bots,
                                ApplicationEventPublisher publisher, Clock clock, FileStore files,
-                               StorageCheck storage) {
+                               StorageCheck storage, AiClient ai) {
+        this.ai = ai;
         this.files = files;
         this.storage = storage;
         this.conversations = conversations;
@@ -729,11 +738,24 @@ public class ConversationService {
         try {
             bot = botFor(conversation.getTenantId())
                 .orElseThrow(() -> new IllegalStateException("No bot config for tenant " + conversation.getTenantId()));
+            if (AI_HELPED_OPTION.equals(optionId)) {
+                conversation.resetFallbacks();
+                botMessage(conversation, AI_HELPED_MESSAGE, bot.options(), now);
+                return;
+            }
             decision = BotEngine.decide(bot, text, optionId, conversation.getFallbackCount());
         } catch (RuntimeException e) {
             // A broken bot must never leave the customer stuck: hand over to the team.
             log.warn("Bot failed for conversation {}, handing off", conversation.getId(), e);
             handOff(conversation, HandoffReason.BOT_ERROR, SenderType.BOT, HANDOFF_MESSAGE, now);
+            return;
+        }
+
+        boolean missed = decision instanceof BotEngine.Fallback
+            || decision instanceof BotEngine.Handoff h && h.reason() == BotEngine.Reason.FALLBACK_LIMIT;
+        if (missed && optionId == null && aiMayAnswer(conversation)) {
+            // The AI tries first, after this transaction: finishAiQuestion answers or carries on with the miss.
+            publisher.publishEvent(new AiQuestion(conversation.getId(), lastCustomerMessageId(conversation)));
             return;
         }
 
@@ -749,6 +771,47 @@ public class ConversationService {
             case BotEngine.Handoff handoff ->
                 handOff(conversation, HandoffReason.valueOf(handoff.reason().name()), SenderType.BOT, handoff.text(), now);
         }
+    }
+
+    // The AI's answer to an AiQuestion (null text: none), unless the chat moved on meanwhile: a newer customer
+    // message has its own turn, and a person or a handoff takes over from the bot.
+    @Transactional
+    public void finishAiQuestion(UUID conversationId, UUID questionId, String text, List<Message.Source> sources) {
+        Conversation conversation = get(conversationId);
+        if (conversation.getStatus() != Status.BOT || conversation.getPendingHandoff() != null
+                || !questionId.equals(lastCustomerMessageId(conversation))) {
+            return;
+        }
+        Instant now = clock.instant();
+        BotConfig bot = botFor(conversation.getTenantId()).orElse(null);
+        if (bot == null) {
+            handOff(conversation, HandoffReason.BOT_ERROR, SenderType.BOT, HANDOFF_MESSAGE, now);
+            return;
+        }
+        if (text != null) {
+            conversation.resetFallbacks();
+            Message answer = Message.create(conversationId, SenderType.BOT, null, null, text, null,
+                List.of(new BotConfig.Option(AI_HELPED_OPTION, AI_HELPED_TITLE),
+                    new BotConfig.Option(BotConfig.HUMAN_OPTION, bot.human().title())), now);
+            answer.cite(sources);
+            save(answer);
+        } else if (conversation.getFallbackCount() + 1 >= bot.maxFallbacks()) {
+            handOff(conversation, HandoffReason.FALLBACK_LIMIT, SenderType.BOT, bot.handoffMessage(), now);
+        } else {
+            conversation.countFallback();
+            botMessage(conversation, bot.fallback(), bot.options(), now);
+        }
+    }
+
+    private boolean aiMayAnswer(Conversation conversation) {
+        return ai.enabled()
+            && tenants.findById(conversation.getTenantId()).map(Tenant::isAiAnswersEnabled).orElse(false)
+            && messages.countByConversationIdAndSourcesIsNotNull(conversation.getId()) < AI_ANSWERS_PER_CHAT;
+    }
+
+    private UUID lastCustomerMessageId(Conversation conversation) {
+        return messages.findLatestFrom(conversation.getId(), SenderType.CUSTOMER, Limit.of(1)).stream()
+            .findFirst().map(Message::getId).orElse(null);
     }
 
     private void botMessage(Conversation conversation, String text, List<BotConfig.Option> options, Instant now) {
@@ -830,6 +893,9 @@ public class ConversationService {
     }
 
     private String optionTitle(UUID tenantId, String optionId) {
+        if (AI_HELPED_OPTION.equals(optionId)) {
+            return AI_HELPED_TITLE;
+        }
         return botFor(tenantId).flatMap(bot -> bot.optionTitle(optionId))
             .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Unknown option"));
     }

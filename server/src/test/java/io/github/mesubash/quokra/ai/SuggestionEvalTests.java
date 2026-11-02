@@ -22,7 +22,7 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
-// Suggested replies from the real provider, guardrails included: answers from the sample handbook, nothing for
+// Suggested replies and the bot's own answers from the real provider, guardrails included: answers from the sample handbook, nothing for
 // off-topic or tricky messages, and no injected links. Only runs with QUOKRA_AI_KEY set:
 //   cd server && QUOKRA_AI_KEY=… ./mvnw test -Dtest=SuggestionEvalTests
 @EnabledIfEnvironmentVariable(named = "QUOKRA_AI_KEY", matches = ".+")
@@ -50,6 +50,8 @@ class SuggestionEvalTests {
     JdbcTemplate jdbc;
 
     Tenant tenant;
+    // true: the bot's own answers to customers (3b); false: suggestions for agents (3a).
+    boolean toCustomer;
 
     Suggestion ask(String... customerMessages) throws InterruptedException {
         UUID id = service.startOrResume(tenant.getId(), UUID.randomUUID()).conversation().getId();
@@ -58,19 +60,31 @@ class SuggestionEvalTests {
         for (String m : customerMessages) {
             service.addCustomerMessage(id, "c-" + UUID.randomUUID(), m, null);
         }
-        Suggestion s = suggester.suggest(tenant, service.messages(id, null, 20));
-        System.out.printf("%-16s %-70s %s%n", s.reason() == null ? "SUGGESTED" : s.reason(),
+        var recent = service.messages(id, null, 20);
+        Suggestion s = toCustomer ? suggester.answerCustomer(tenant, recent) : suggester.suggest(tenant, recent);
+        System.out.printf("%-16s %-70s %s%n", s.reason() == null ? (toCustomer ? "ANSWERED" : "SUGGESTED") : s.reason(),
             String.join(" / ", customerMessages), s.text() == null ? "" : s.text() + "  " + s.sources());
         Thread.sleep(2000);   // stay under a low free-tier per-minute limit
         return s;
     }
 
     @Test
+    void suggestionsForAgents() throws Exception {
+        toCustomer = false;
+        answersFromTheHandbookAndNothingElse();
+    }
+
+    @Test
+    void answersForCustomers() throws Exception {
+        toCustomer = true;
+        answersFromTheHandbookAndNothingElse();
+    }
+
     void answersFromTheHandbookAndNothingElse() throws Exception {
         UUID id = UUID.randomUUID();
         jdbc.update("""
-            insert into tenants (id, slug, display_name, publishable_key, bot_config, ai_enabled)
-            values (?, 'eval', 'Example Shop', 'pk_test_eval', 'test', true)
+            insert into tenants (id, slug, display_name, publishable_key, bot_config, ai_enabled, ai_answers_enabled)
+            values (?, 'eval', 'Example Shop', 'pk_test_eval', 'test', true, true)
             """, id);
         tenant = tenants.findById(id).orElseThrow();
         documents.add(id, "Handbook", new ClassPathResource("knowledge-eval/handbook.md")

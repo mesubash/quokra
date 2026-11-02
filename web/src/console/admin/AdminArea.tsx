@@ -602,6 +602,7 @@ function TenantFormView({
   const [hours, setHours] = useState<OpeningHours | null>(tenant?.openingHours ?? null);
   const [images, setImages] = useState(tenant?.attachmentsEnabled ?? false);
   const [ai, setAi] = useState(tenant?.aiEnabled ?? false);
+  const [aiAnswers, setAiAnswers] = useState(tenant?.aiAnswersEnabled ?? false);
   const [retention, setRetention] = useState<number | undefined>(tenant?.retentionMonths);
   const [alertEmail, setAlertEmail] = useState(tenant?.alertEmail ?? "");
   const [waitingAlert, setWaitingAlert] = useState(tenant?.waitingAlertMinutes ?? 10);
@@ -630,6 +631,7 @@ function TenantFormView({
       openingHours: hours,
       attachmentsEnabled: images,
       aiEnabled: ai,
+      aiAnswersEnabled: aiAnswers,
       retentionMonths: retention,
       alertEmail: alertEmail.trim() || null,
       waitingAlertMinutes: waitingAlert,
@@ -733,7 +735,7 @@ function TenantFormView({
         </Row>
         <HoursField value={hours} onChange={setHours} />
         <ImagesField api={api} value={images} onChange={setImages} />
-        <AiField api={api} value={ai} onChange={setAi} />
+        <AiField api={api} suggest={ai} onSuggest={setAi} answer={aiAnswers} onAnswer={setAiAnswers} />
         <RetentionField api={api} value={retention} onChange={setRetention} />
       </section>
 
@@ -959,7 +961,19 @@ function RetentionField({
 }
 
 // "Allow images", with whether the server's storage for them works.
-function AiField({ api, value, onChange }: { api: AdminApi; value: boolean; onChange: (v: boolean) => void }) {
+function AiField({
+  api,
+  suggest,
+  onSuggest,
+  answer,
+  onAnswer,
+}: {
+  api: AdminApi;
+  suggest: boolean;
+  onSuggest: (v: boolean) => void;
+  answer: boolean;
+  onAnswer: (v: boolean) => void;
+}) {
   const [status, setStatus] = useState<AiStatus | null>(null);
 
   useEffect(() => {
@@ -971,16 +985,20 @@ function AiField({ api, value, onChange }: { api: AdminApi; value: boolean; onCh
 
   return (
     <Row
-      label="AI suggestions"
-      help="Agents can ask for a reply drafted from your documents (Settings → Knowledge) and edit it before sending. The customer's recent messages are sent to the AI provider."
+      label="AI"
+      help="Answers come only from your documents (Settings → Knowledge). Customers' recent messages are sent to the AI provider."
     >
       <label className="admin-check">
-        <input type="checkbox" role="switch" checked={value} onChange={(e) => onChange(e.target.checked)} />
-        Suggest replies
+        <input type="checkbox" role="switch" checked={suggest} onChange={(e) => onSuggest(e.target.checked)} />
+        Suggest replies to agents
+      </label>
+      <label className="admin-check">
+        <input type="checkbox" role="switch" checked={answer} onChange={(e) => onAnswer(e.target.checked)} />
+        Answer customers' questions the bot can't, marked as AI, before handing over
       </label>
       {status && !status.configured && (
         <p className="setting-note error-text" role="status">
-          This server has no AI key, so suggestions stay off.
+          This server has no AI key, so AI stays off.
         </p>
       )}
     </Row>

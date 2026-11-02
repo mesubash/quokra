@@ -39,6 +39,8 @@ export interface Message {
   attachment?: Attachment | null;
   // The earlier message this one answers, as it was when sent.
   replyTo?: Quote | null;
+  // Set on an AI answer: the document parts it came from. Shown as "AI answer · from …".
+  sources?: { title: string; heading: string | null }[] | null;
 }
 
 export interface Quote {
@@ -284,8 +286,10 @@ export interface AdminTenant {
   // null means always open.
   openingHours: OpeningHours | null;
   attachmentsEnabled: boolean;
-  // AI suggestions for agents; sends customers' messages to the AI provider.
+  // AI suggestions for agents, and AI answers to customers while the bot has the chat. Both send customers'
+  // messages to the AI provider.
   aiEnabled: boolean;
+  aiAnswersEnabled: boolean;
   // Resolved chats are deleted after this many months (0 = kept forever).
   retentionMonths: number;
   // Email alerts: where "a chat is waiting" goes (null: the agents' own emails), after how long (0 = never),
@@ -312,6 +316,7 @@ export interface TenantForm {
   openingHours: OpeningHours | null;
   attachmentsEnabled: boolean;
   aiEnabled: boolean;
+  aiAnswersEnabled: boolean;
   retentionMonths?: number;
   alertEmail: string | null;
   waitingAlertMinutes: number;

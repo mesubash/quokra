@@ -153,6 +153,8 @@ History, oldest first after the cursor. Use without `after` for the latest page.
 
 `replyTo` (optional) must be a customer's or agent's message in the same conversation (`400 VALIDATION_ERROR` otherwise); the stored message then carries a `replyTo` quote (see `Message`). The customer message is stored first. Bot replies arrive as realtime events, and also in the next `GET …/messages`. Errors: `409 NO_OPEN_CONVERSATION`, `422 MESSAGE_TOO_LONG`, `429 RATE_LIMITED`.
 
+**AI answers** (when the company turned on `aiAnswersEnabled` and the server has AI): a typed question the menu and keywords miss, while the bot has the chat, goes to the AI with the closest parts of the company's documents. Its answer comes a few seconds later as a bot message with `sources` and two options: `ai-helped` ("That helps", back to the menu) and `human` ("Talk to a person"). No close part, no answer, a failed check or a slow provider is an ordinary miss (fallback, then handoff). An answer is dropped if the customer wrote again, or the chat left the bot, meanwhile. Up to 10 AI answers per chat; after that, misses are ordinary again. Same checks as `4.21`.
+
 ### 3.8 `POST /widget/conversation/handoff`: "Talk to a person"
 
 No request body.
@@ -387,6 +389,7 @@ interface Tenant {
   autoResolveMinutes: number;            // close quiet chats after this long; 0 = never (default 1440)
   attachmentsEnabled: boolean;           // customers and agents may send images (default false)
   aiEnabled: boolean;                    // agents get suggested replies (default false); sends recent messages to the AI provider
+  aiAnswersEnabled: boolean;             // the bot answers customers from the documents (default false); same data goes to the provider
   retentionMonths: number;               // resolved chats are deleted after this long; 0 = forever (default 12)
   alertEmail: string | null;             // where "a chat is waiting" emails go (comma-separated, up to 5); null = agents' own emails
   waitingAlertMinutes: number;           // email the team after a chat waited this long with nobody online; 0 = never (default 10)
@@ -403,7 +406,7 @@ interface Tenant {
 |---|---|
 | `GET /admin/mail` | Whether the server can send email: `{ "configured": true, "ok": true, "problem": null }`. Emails go out only while `ok` |
 | `GET /admin/retention` | What companies may choose for `retentionMonths`: `{ "minMonths": 1, "maxMonths": 60 }`; `maxMonths: 0` means 0 (forever) is allowed too. Anything else is `400 VALIDATION_ERROR` |
-| `GET /admin/ai` | Whether the server has AI: `{ "configured": true, "chatModel": "gemini-3.1-flash-lite", "embeddingModel": "gemini-embedding-001" }`. Without it, `aiEnabled` has no effect and Settings hides Knowledge |
+| `GET /admin/ai` | Whether the server has AI: `{ "configured": true, "chatModel": "gemini-3.1-flash-lite", "embeddingModel": "gemini-embedding-001" }`. Without it, `aiEnabled` and `aiAnswersEnabled` have no effect and Settings hides Knowledge |
 | `GET /admin/storage` | Whether image storage works: `{ "ok": true, "store": "disk", "problem": null }`. Checked by writing and reading a small file, at most every 5 minutes |
 | `GET /admin/bots` | Bot files the server has: `{ "items": ["demo", …] }` |
 | `GET /admin/tenants` | The tenants the caller manages (all of them for server admins): `{ "items": [Tenant, …] }` |
@@ -423,7 +426,7 @@ interface Tenant {
 | `POST /admin/tenants/{slug}/replies` | `{ title, body }` → `201 { id, title, body }`. Title up to 80 characters, body up to 2,000; `{name}` in the body becomes the customer's name |
 | `PUT /admin/tenants/{slug}/replies/{id}` | Change one (same body). `404 REPLY_NOT_FOUND` |
 | `DELETE /admin/tenants/{slug}/replies/{id}` | Remove one (`204`). `404 REPLY_NOT_FOUND` |
-| `GET /admin/tenants/{slug}/knowledge` | Knowledge documents (v3, not used for answers yet): `{ "items": [{ id, title, length, chunks, updatedBy, updatedAt }] }`. `chunks` is how many parts it was split into |
+| `GET /admin/tenants/{slug}/knowledge` | Knowledge documents (v3), used for suggestions and AI answers: `{ "items": [{ id, title, length, chunks, updatedBy, updatedAt }] }`. `chunks` is how many parts it was split into |
 | `GET /admin/tenants/{slug}/knowledge/{id}` | One, with its text: `{ id, title, body, updatedBy, updatedAt }`. `404 DOCUMENT_NOT_FOUND` |
 | `POST /admin/tenants/{slug}/knowledge` | `{ title, body }` → `201` the document. Plain text or Markdown; title up to 120 characters, body up to 200,000. Up to 200 per company (`409 TOO_MANY_DOCUMENTS`). Markdown headings start a new part and name it ("Shipping › Returns"); parts are up to 1,000 characters |
 | `PUT /admin/tenants/{slug}/knowledge/{id}` | Replace title and text (same body); it's split again. `404 DOCUMENT_NOT_FOUND` |
@@ -518,6 +521,7 @@ interface Message {
   senderName: string | null;    // agent name, or bot display name
   body: string;                 // plain text
   options: { id: string; title: string }[] | null;   // menu buttons
+  sources: { title: string; heading: string | null }[] | null;   // set on AI answers: the document parts used
   clientMessageId: string | null;
   createdAt: string;
   attachment: { name: string; contentType: string; size: number } | null;   // an image; body is "Sent an image"

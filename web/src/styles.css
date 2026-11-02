@@ -614,6 +614,12 @@ button {
 }
 
 /* "Replying to …" above the input. */
+.ai-label {
+  margin: 2px 0 4px;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
 .composer-suggestion {
   margin: 0 0 6px;
   font-size: 0.78rem;

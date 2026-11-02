@@ -3,7 +3,7 @@ package io.github.mesubash.quokra.ai;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.mesubash.quokra.ai.ReplySuggester.Reason;
-import io.github.mesubash.quokra.ai.ReplySuggester.Source;
+import io.github.mesubash.quokra.conversation.Message.Source;
 import io.github.mesubash.quokra.ai.ReplySuggester.Suggestion;
 import io.github.mesubash.quokra.knowledge.KnowledgeSearch.Match;
 import java.util.List;

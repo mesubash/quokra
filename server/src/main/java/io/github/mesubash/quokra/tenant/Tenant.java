@@ -43,6 +43,9 @@ public class Tenant {
     // AI suggestions for agents (v3); also needs QUOKRA_AI_KEY on the server.
     private boolean aiEnabled;
 
+    // AI answers to customers while the bot has the chat (v3 step 3b).
+    private boolean aiAnswersEnabled;
+
     // The bot as edited in the Admin tab (JSON); null means the bot file above is used.
     private String botCustom;
 

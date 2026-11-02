@@ -136,7 +136,9 @@ Google can change at any time. With billing on, set a spending cap and quotas th
      (off by default) and Settings → Knowledge shown when the server has AI; `SuggestionEvalTests` passed
      against Gemini (answers cited, off-topic and injection attempts got nothing).
    - **3b, for customers** (per company, off by default): free-text questions the FAQ didn't match get an
-     answer from the documents, with the guardrails above; otherwise fallback and handoff.
+     answer from the documents, with the guardrails above; otherwise fallback and handoff. **Done**: marked
+     "AI answer" with its sources, "That helps" / "Talk to a person" buttons, at most 10 per chat;
+     `SuggestionEvalTests` runs the same cases for both modes and passed against Gemini.
 4. **In the chat and console:** AI answers marked, sources shown, "Talk to a person" always there; agents see
    which chunks were used. Settings → Knowledge shown.
 5. **Limits and ops:** on / off per company, the cost limits from decision 10, health check, logs without

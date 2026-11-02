@@ -54,6 +54,13 @@ public class Message {
     private Integer attachmentSize;
     private String attachmentName;
 
+    // Set on an AI answer (v3): the document parts it came from. Null for every other message.
+    @Convert(converter = SourcesConverter.class)
+    private List<Source> sources;
+
+    // A document part an AI answer or suggestion came from; heading is null before a document's first heading.
+    public record Source(String title, String heading) {}
+
     // The quoted message, copied when this one was sent.
     private UUID replyToId;
     @Enumerated(EnumType.STRING)
@@ -83,6 +90,10 @@ public class Message {
         m.attachmentSize = attachment.size();
         m.attachmentName = attachment.name();
         return m;
+    }
+
+    void cite(List<Source> sources) {
+        this.sources = sources == null || sources.isEmpty() ? null : List.copyOf(sources);
     }
 
     void quote(Quote quote) {
