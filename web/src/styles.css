@@ -371,6 +371,36 @@ button {
   gap: 14px;
 }
 
+/* Shown while scrolled up; sticks to the bottom of the thread. */
+.to-latest {
+  position: sticky;
+  bottom: 4px;
+  flex: none;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 34px;
+  height: 34px;
+  padding: 0 9px;
+  margin-top: -48px;
+  border: 1px solid var(--border);
+  border-radius: 17px;
+  background: var(--raised);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8rem;
+  box-shadow: 0 4px 12px rgb(var(--shadow-rgb) / 0.15);
+  cursor: pointer;
+  z-index: 2;
+}
+
+.to-latest.has-new {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);
+}
+
 .group {
   display: flex;
   gap: 8px;
