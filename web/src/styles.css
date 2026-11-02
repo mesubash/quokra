@@ -14,7 +14,6 @@
   --text: #1f2328;
   --muted: #6e7781;
   --placeholder: #8c959f;
-  --typing: #9aa1a9;
   --border: #e5e7eb;
   --link: var(--primary);
   --danger: #b42318;
@@ -55,7 +54,6 @@
   --text: #ececf0;
   --muted: #9b9ba4;
   --placeholder: #71717a;
-  --typing: #71717a;
   --border: #2a2a2f;
   --link: color-mix(in srgb, var(--primary) 55%, #fff);
   --danger: #f87171;
@@ -706,16 +704,18 @@ button {
 .typing {
   display: flex;
   flex-direction: row;
+  align-self: flex-start; /* only as wide as the dots, not the name above */
   align-items: center;
   gap: 4px;
-  padding: 14px 16px;
+  padding: 10px 2px;
+  background: none; /* just the dots, in the chat's colour */
 }
 
 .typing span {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--typing);
+  background: var(--link);
   animation: blink 1.2s infinite ease-in-out;
 }
 
