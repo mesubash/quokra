@@ -223,6 +223,20 @@ included. Times are in the tenant's opening-hours time zone, or UTC without one.
 Errors: `409 NO_OPEN_CONVERSATION` (no conversation yet), `409 EMAIL_OFF`, `409 NO_CUSTOMER_EMAIL`,
 `503 EMAIL_FAILED` (the mail server refused it), `429 RATE_LIMITED` (3 an hour per conversation, 10 an hour per IP address).
 
+### 3.13 `POST /widget/conversation/rating`: rate the chat
+
+The customer rates their current conversation once it's `RESOLVED`, if an agent had it (`conversation.canRate`). Thumbs up or down first; a comment can come with it or in a second call.
+
+```json
+{ "positive": true }                                  // the thumb
+{ "positive": true, "comment": "Quick and kind" }     // a comment, now or later (up to 1,000 characters)
+
+// 200
+{ "conversation": Conversation }   // with rating: { positive, comment } and canRate: false
+```
+
+One rating per conversation: the thumb can't change, and a comment can be added once, with the same thumb. The rating is kept for the agent who had the chat when it was rated. Errors: `409 NOT_RESOLVED`, `409 NO_AGENT` (only the bot, or closed from the queue), `409 ALREADY_RATED`, `409 NO_OPEN_CONVERSATION`, `400 VALIDATION_ERROR` (`positive` missing, comment too long), `429 RATE_LIMITED` (shares the message limit).
+
 ---
 
 ## 4. Agent endpoints
@@ -269,6 +283,7 @@ and membership of the conversation's tenant; anyone else gets `403`.
   "messages": [Message, …],      // latest 100
   "events": [ConversationEvent, …],
   "notes": [Note, …]             // agent-only, oldest first
+  "rating": { "positive": true, "comment": "…" }   // or null: how the customer rated it (3.13)
 }
 ```
 
@@ -466,6 +481,7 @@ interface Tenant {
 | `PUT /admin/tenants/{slug}/knowledge/{id}` | Replace title and text (same body); it's split again. `404 DOCUMENT_NOT_FOUND` |
 | `DELETE /admin/tenants/{slug}/knowledge/{id}` | Remove one and its parts (`204`). `404 DOCUMENT_NOT_FOUND` |
 | `GET /admin/tenants/{slug}/knowledge/search?q=…` | Tries a question (up to 500 characters): the 5 closest parts, `{ "items": [{ title, heading, body, score, match }] }`. `score` is cosine similarity (0–1); `match` is true at `QUOKRA_AI_MIN_SCORE` or above, the parts the AI would answer from. Parts are searchable a few seconds after saving, once they have embeddings. `409 AI_OFF` without `QUOKRA_AI_KEY`, `503 AI_UNAVAILABLE` when the provider doesn't answer |
+| `GET /admin/tenants/{slug}/ratings?days=30` | Customers' ratings over the last `days` (1–365, default 30): `{ positive, total, percentPositive, agents: [{ sub, name, positive, total }], recent: [{ conversationId, customerName, agentName, positive, comment, createdAt }] }`. `percentPositive` is rounded, `null` without ratings. `agents`: most ratings first. `recent`: the 50 newest ratings that have a comment |
 
 Validation (`400 VALIDATION_ERROR`, the message names the field): slug of 2–40 lowercase letters, digits or dashes; sites as plain origins (`https://www.example.com`, no path); colour `#rrggbb`; logo `https://`; an existing bot file; opening hours with a real time zone (`Europe/Berlin`), `HH:mm-HH:mm` ranges, and at least one day. A range that closes at or before it opens runs into the next day (`22:00-02:00` on `FRI` is open until 02:00 on Saturday); closing at `24:00` or `00:00` means midnight and is saved as `24:00`, so `00:00-24:00` is all day.
 
@@ -534,6 +550,9 @@ interface Conversation {
   createdAt: string;
   lastMessageAt: string;
   resolvedAt: string | null;
+  canRate: boolean;            // customer view only: resolved after a chat with an agent, not rated yet
+  rating: { positive: boolean; comment: string | null } | null; // customer view only; realtime events leave it null
+                                                                // (and their canRate doesn't check it)
 }
 
 interface ConversationSummary {
@@ -548,6 +567,7 @@ interface ConversationSummary {
   waitingSince: string | null;
   assignee: { sub: string; name: string } | null;
   unreadCount: number;          // customer messages this agent hasn't read (0 on resolved chats someone else handled)
+  rating?: boolean | null;      // the customer's thumb (true: up) if they rated the chat
 }
 
 interface Message {
@@ -699,6 +719,7 @@ Envelope:
 | 409 | `EMAIL_OFF` | Email isn't set up on the server |
 | 409 | `NO_CUSTOMER_EMAIL` | Transcript asked for, but the customer gave no email in this chat |
 | 503 | `EMAIL_FAILED` | The mail server didn't take the email |
+| 409 | `NOT_RESOLVED` / `NO_AGENT` / `ALREADY_RATED` | Rating a chat that's still open, that no agent had, or that's already rated |
 | 422 | `MESSAGE_TOO_LONG` | Body over 2,000 characters |
 | 403 | `ATTACHMENTS_OFF` | Images aren't allowed for this company |
 | 404 | `ATTACHMENT_NOT_FOUND` | No image for that message in this conversation |

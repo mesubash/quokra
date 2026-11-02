@@ -21,6 +21,8 @@ import io.github.mesubash.quokra.conversation.NoteView;
 import io.github.mesubash.quokra.conversation.PageCursor;
 import io.github.mesubash.quokra.conversation.Status;
 import io.github.mesubash.quokra.security.AgentJwtConverter;
+import io.github.mesubash.quokra.rating.ChatRatings;
+import io.github.mesubash.quokra.conversation.CustomerConversationView;
 import io.github.mesubash.quokra.security.TenantAccess;
 import io.github.mesubash.quokra.tenant.Tenant;
 import io.github.mesubash.quokra.tenant.TenantAgents;
@@ -71,8 +73,9 @@ public class AgentController {
 
     record Page<T>(List<T> items, String nextCursor) {}
 
+    // rating: how the customer rated the chat, if they did.
     record Detail(ConversationView conversation, List<MessageView> messages, List<EventView> events,
-                  List<NoteView> notes) {}
+                  List<NoteView> notes, CustomerConversationView.Rating rating) {}
 
     record One(ConversationView conversation) {}
 
@@ -109,12 +112,14 @@ public class AgentController {
     private final AgentPresence presence;
     private final TenantAccess access;
     private final ReplySuggester suggester;
+    private final ChatRatings ratings;
 
     public AgentController(ConversationService service, TenantRepository tenants, TenantAgents tenantAgents,
                            ContactRepository contacts, AgentReads reads, AgentJwtConverter agentTokens,
                            CannedReplies replies, TypingSignals typing, RateLimiter rateLimiter,
-                           AgentPresence presence, TenantAccess access, ReplySuggester suggester) {
+                           AgentPresence presence, TenantAccess access, ReplySuggester suggester, ChatRatings ratings) {
         this.suggester = suggester;
+        this.ratings = ratings;
         this.access = access;
         this.presence = presence;
         this.replies = replies;
@@ -176,11 +181,12 @@ public class AgentController {
             cursor == null ? null : PageCursor.decode(cursor), size);
         // ponytail: one query per row for the preview; fine for a page of 50, batch it if lists grow.
         Map<UUID, Integer> unread = reads.unreadCounts(jwt.getSubject(), page.stream().map(Conversation::getId).toList());
+        Map<UUID, Boolean> thumbs = ratings.thumbs(page.stream().map(Conversation::getId).toList());
         // A resolved chat's unread badge only matters to the agent who handled it.
         List<Summary> items = page.stream()
             .map(c -> Summary.of(c, mine.get(c.getTenantId()).getSlug(), service.lastMessage(c.getId()).orElse(null),
                 c.getStatus() == Status.RESOLVED && !jwt.getSubject().equals(c.getAssigneeSub()) ? 0
-                    : unread.getOrDefault(c.getId(), 0)))
+                    : unread.getOrDefault(c.getId(), 0), thumbs.get(c.getId())))
             .toList();
         String next = page.size() == size ? PageCursor.after(page.getLast()).encode() : null;
         return new Page<>(items, next);
@@ -204,7 +210,8 @@ public class AgentController {
         return new Detail(view(c),
             service.messages(id, null, HISTORY_LIMIT).stream().map(MessageView::of).toList(),
             service.events(id).stream().map(EventView::of).toList(),
-            service.notes(id).stream().map(NoteView::of).toList());
+            service.notes(id).stream().map(NoteView::of).toList(),
+            ratings.of(id).orElse(null));
     }
 
     @PostMapping("/conversations/{id}/accept")
@@ -286,7 +293,7 @@ public class AgentController {
         String slug = tenants.findById(c.getTenantId()).map(Tenant::getSlug).orElse(null);
         // ponytail: one query per row for the preview, like the lists; at most 20 rows.
         List<Summary> items = service.history(id, HISTORY_ITEMS).stream()
-            .map(h -> Summary.of(h, slug, service.lastMessage(h.getId()).orElse(null), 0))
+            .map(h -> Summary.of(h, slug, service.lastMessage(h.getId()).orElse(null), 0, null))
             .toList();
         return new Page<>(items, null);
     }

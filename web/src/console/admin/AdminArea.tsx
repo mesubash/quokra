@@ -6,6 +6,7 @@ import {
   type AdminTenant,
   type OpeningHours,
   type MailStatus,
+  type RatingSummary,
   type RetentionLimits,
   type SavedReply,
   type AiStatus,
@@ -14,7 +15,7 @@ import {
   type TenantForm,
 } from "../../lib/api";
 import { BackIcon, CheckIcon, CopyIcon } from "../../lib/icons";
-import { initials } from "../format";
+import { dateTime, initials } from "../format";
 import { NotifyOptions, type NotifyOptionsProps } from "../NotifyMenu";
 import { BotCard } from "./BotCard";
 import { KnowledgeCard } from "./KnowledgeCard";
@@ -62,7 +63,7 @@ export function useAdmin(api: AdminApi, enabled: boolean) {
 
 type Admin = ReturnType<typeof useAdmin>;
 
-type Section = "notifications" | "general" | "bot" | "knowledge" | "replies" | "agents" | "embed";
+type Section = "notifications" | "general" | "bot" | "knowledge" | "replies" | "agents" | "ratings" | "embed";
 
 // Notifications are each agent's own; the rest is per company, for admins.
 const COMPANY_SECTIONS: { id: Section; label: string }[] = [
@@ -72,6 +73,7 @@ const COMPANY_SECTIONS: { id: Section; label: string }[] = [
   { id: "knowledge", label: "Knowledge" },
   { id: "replies", label: "Saved replies" },
   { id: "agents", label: "Agents" },
+  { id: "ratings", label: "Ratings" },
   { id: "embed", label: "Embed & keys" },
 ];
 
@@ -83,13 +85,15 @@ const INTRO: Record<Section, (company: string) => string> = {
   replies: () => "Answers agents insert by typing / in the reply box. {name} becomes the customer's name.",
   agents: (c) =>
     `People who answer chats for ${c}. They sign in with your own login and need the agent role there. Admins can also change these settings.`,
+  ratings: () => "How customers rated their chats with an agent in the last 30 days.",
   embed: () => "Code for the website and the dashboard, and the key for identifying signed-in customers.",
 };
 
 // Settings, opened from the gear in the console header. Everyone gets their notifications; admins also get the
 // company's sections. A console embedded for one company (scope) only ever shows that company; the company
 // picker and "New company" are for Quokra's own console page. onClose is missing for admins without the agent
-// role, who only have settings. canCreate: server admins, who may add companies.
+// role, who only have settings. canCreate: server admins, who may add companies. onOpenChat: shows a chat in the
+// console (from Ratings).
 export function Settings({
   admin,
   api,
@@ -97,6 +101,7 @@ export function Settings({
   canCreate = false,
   notifications,
   onClose,
+  onOpenChat,
 }: {
   admin?: Admin;
   api?: AdminApi;
@@ -104,6 +109,7 @@ export function Settings({
   canCreate?: boolean;
   notifications: NotifyOptionsProps;
   onClose?: () => void;
+  onOpenChat?: (conversationId: string) => void;
 }) {
   const [section, setSection] = useState<Section>(admin ? "general" : "notifications");
 
@@ -211,6 +217,7 @@ export function Settings({
             {section === "knowledge" && <KnowledgeCard api={api} tenant={tenant} />}
             {section === "replies" && <RepliesCard api={api} tenant={tenant} />}
             {section === "agents" && <AgentsCard api={api} tenant={tenant} onChanged={admin.reload} />}
+            {section === "ratings" && <RatingsCard api={api} tenant={tenant} onOpenChat={onOpenChat} />}
             {section === "embed" && (
               <>
                 <EmbedCard tenant={tenant} />
@@ -459,6 +466,81 @@ function AgentsCard({ api, tenant, onChanged }: { api: AdminApi; tenant: AdminTe
           </li>
         ))}
         {data && data.agents.length === 0 && data.invites.length === 0 && <li className="muted">No agents yet.</li>}
+      </ul>
+    </section>
+  );
+}
+
+// The last 30 days: share of thumbs up, per agent, and the newest comments.
+function RatingsCard({
+  api,
+  tenant,
+  onOpenChat,
+}: {
+  api: AdminApi;
+  tenant: AdminTenant;
+  onOpenChat?: (conversationId: string) => void;
+}) {
+  const [data, setData] = useState<RatingSummary | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    api
+      .ratings(tenant.slug)
+      .then(setData)
+      .catch(() => setFailed(true));
+  }, [api, tenant.slug]);
+
+  if (failed) return <p className="console-error">Couldn't load the ratings.</p>;
+  if (!data) return <p className="muted">Loading…</p>;
+  if (data.total === 0) return <p className="muted">No ratings in the last 30 days.</p>;
+
+  return (
+    <section className="settings-group">
+      <p className="rating-stats">
+        <strong>{data.percentPositive}%</strong> positive
+        <span className="muted">
+          {data.positive} of {data.total} {data.total === 1 ? "rating" : "ratings"}
+        </span>
+      </p>
+
+      <h4>By agent</h4>
+      <ul className="admin-people">
+        {data.agents.map((a) => (
+          <li key={a.sub}>
+            <span className="avatar avatar-agent">{initials(a.name)}</span>
+            <span className="admin-person">
+              <strong>{a.name ?? a.sub}</strong>
+              <span className="muted">
+                {a.total} {a.total === 1 ? "rating" : "ratings"}
+              </span>
+            </span>
+            <span>{Math.round((100 * a.positive) / a.total)}% positive</span>
+          </li>
+        ))}
+      </ul>
+
+      <h4>Recent comments</h4>
+      <ul className="admin-people">
+        {data.recent.length === 0 && <li className="muted">No comments yet.</li>}
+        {data.recent.map((r) => (
+          <li key={r.conversationId}>
+            <span className="rating-thumb" aria-label={r.positive ? "Good" : "Not good"}>
+              {r.positive ? "👍" : "👎"}
+            </span>
+            <span className="admin-person">
+              <span className="rating-comment">{r.comment}</span>
+              <span className="muted">
+                {r.customerName ?? "Guest"} · {r.agentName ?? "Agent"} · {dateTime(r.createdAt)}
+              </span>
+            </span>
+            {onOpenChat && (
+              <button type="button" className="link-button" onClick={() => onOpenChat(r.conversationId)}>
+                Open chat
+              </button>
+            )}
+          </li>
+        ))}
       </ul>
     </section>
   );

@@ -12,10 +12,12 @@ import io.github.mesubash.quokra.conversation.Message;
 import io.github.mesubash.quokra.conversation.MessageView;
 import io.github.mesubash.quokra.conversation.Status;
 import io.github.mesubash.quokra.mail.Transcripts;
+import io.github.mesubash.quokra.rating.ChatRatings;
 import io.github.mesubash.quokra.realtime.TypingSignals;
 import io.github.mesubash.quokra.session.SessionTokens.Session;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.io.IOException;
 import java.util.List;
@@ -57,14 +59,18 @@ public class WidgetConversationController {
 
     public record TranscriptResponse(String sentTo) {}
 
+    public record RateRequest(@NotNull Boolean positive, @Size(max = ChatRatings.MAX_COMMENT) String comment) {}
+
     private final ConversationService service;
     private final RateLimiter rateLimiter;
     private final TypingSignals typing;
     private final Transcripts transcripts;
+    private final ChatRatings ratings;
 
     public WidgetConversationController(ConversationService service, RateLimiter rateLimiter, TypingSignals typing,
-                                        Transcripts transcripts) {
+                                        Transcripts transcripts, ChatRatings ratings) {
         this.transcripts = transcripts;
+        this.ratings = ratings;
         this.service = service;
         this.rateLimiter = rateLimiter;
         this.typing = typing;
@@ -73,7 +79,7 @@ public class WidgetConversationController {
     @GetMapping
     public CurrentResponse current(@AuthenticationPrincipal Session session) {
         return new CurrentResponse(service.current(session.tenantId(), session.visitorId(), session.customerSub())
-            .map(CustomerConversationView::of)
+            .map(this::view)
             .orElse(null));
     }
 
@@ -93,7 +99,7 @@ public class WidgetConversationController {
         List<MessageView> messages = service.messages(conversation.getId(), null, DEFAULT_LIMIT).stream()
             .map(MessageView::of).toList();
         return ResponseEntity.status(created ? HttpStatus.CREATED : HttpStatus.OK)
-            .body(new StartResponse(CustomerConversationView.of(conversation), messages));
+            .body(new StartResponse(view(conversation), messages));
     }
 
     // "Start a new chat": closes the current one (even with an agent) and starts over with the greeting.
@@ -174,6 +180,19 @@ public class WidgetConversationController {
         }
         return new CurrentResponse(CustomerConversationView.of(
             service.handoff(conversation.getId(), HandoffReason.CUSTOMER_REQUEST, SenderType.CUSTOMER)));
+    }
+
+    // Rates the customer's latest chat once it's closed: the thumb first, a comment with it or after.
+    @PostMapping("/rating")
+    public CurrentResponse rate(@AuthenticationPrincipal Session session, @Valid @RequestBody RateRequest request) {
+        rateLimiter.check("messages:" + session.visitorId(), RateLimiter.MESSAGES_PER_MINUTE);
+        Conversation conversation = openConversation(session);
+        var rating = ratings.rate(conversation, request.positive(), request.comment());
+        return new CurrentResponse(CustomerConversationView.of(conversation, rating));
+    }
+
+    private CustomerConversationView view(Conversation c) {
+        return CustomerConversationView.of(c, c.getStatus() == Status.RESOLVED ? ratings.of(c.getId()).orElse(null) : null);
     }
 
     private Conversation openConversation(Session session) {

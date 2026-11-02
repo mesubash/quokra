@@ -5,6 +5,7 @@ import { BellIcon, CloseIcon, MailIcon, MoreIcon, PlusIcon } from "../lib/icons"
 import { ApiError, widgetApi, type Conversation, type Tenant } from "../lib/api";
 import { Composer } from "./Composer";
 import { MessageList, previewOf, quoteLabel, type TimelineItem } from "./MessageList";
+import { RatingCard } from "./RatingCard";
 import { RobotAvatar } from "./RobotAvatar";
 import { activeOptions, countUnread } from "./messages";
 import { chime } from "../lib/sound";
@@ -250,6 +251,15 @@ function Chat({ tenant, token, visible, onUnauthorized }: ChatProps) {
             onRetry={(id) => void retry(id)}
             loadImage={chat.loadImage}
             onReply={setReplyingTo}
+            footer={
+              chat.conversation && (
+                <RatingCard
+                  key={chat.conversation.id}
+                  conversation={chat.conversation}
+                  rate={(positive, comment) => widgetApi.rate(token, positive, comment)}
+                />
+              )
+            }
           />
           {notice && (
             <p className="composer-notice" role="alert">
