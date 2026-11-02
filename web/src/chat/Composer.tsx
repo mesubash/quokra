@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { IMAGE_TYPES } from "../lib/api";
 import { TYPING_EVERY_MS } from "./typing";
+import { EmojiPicker } from "./EmojiPicker";
 import { CloseIcon, PaperclipIcon, SendIcon, SparkleIcon } from "../lib/icons";
 
 const MAX_LENGTH = 2000;
@@ -105,6 +106,20 @@ export function Composer({
   function submit(e: FormEvent) {
     e.preventDefault();
     send();
+  }
+
+  // Puts the emoji where the cursor is (or at the end), and keeps typing from there.
+  function insert(emoji: string) {
+    const el = input.current;
+    const start = el?.selectionStart ?? text.length;
+    const end = el?.selectionEnd ?? text.length;
+    const next = text.slice(0, start) + emoji + text.slice(end);
+    if (next.length > MAX_LENGTH) return;
+    type(next);
+    requestAnimationFrame(() => {
+      el?.focus();
+      el?.setSelectionRange(start + emoji.length, start + emoji.length);
+    });
   }
 
   function pick(body: string) {
@@ -230,6 +245,7 @@ export function Composer({
             />
           </>
         )}
+        {!asking && <EmojiPicker onPick={insert} disabled={disabled} />}
         <textarea
           ref={input}
           rows={1}
