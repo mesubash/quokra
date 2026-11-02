@@ -109,7 +109,7 @@ function Bubble({
   return (
     <p className="bubble">
       {quote}
-      <span className="bubble-text">{linkify(message.body)}</span>
+      <span className="bubble-text">{linkify(message.body, { labels: message.senderType === "BOT" })}</span>
       <time className="bubble-time" dateTime={message.createdAt}>
         {time(message.createdAt)}
       </time>

@@ -25,6 +25,17 @@ describe("linkify", () => {
     expect(links("javascript:alert(1)")).toEqual([]);
   });
 
+  it("shows labels on the bot's links only", () => {
+    const text = "Terms: [Help centre](https://www.example.com/help/terms) or www.example.org";
+    const { container } = render(<p>{linkify(text, { labels: true })}</p>);
+    expect([...container.querySelectorAll("a")].map((a) => [a.textContent, a.getAttribute("href")])).toEqual([
+      ["Help centre ↗", "https://www.example.com/help/terms"],
+      ["www.example.org", "https://www.example.org"],
+    ]);
+    expect(links("[Safe](https://evil.test)")).toEqual([["https://evil.test", "https://evil.test"]]);
+    expect(links("[x](javascript:alert(1))")).toEqual([]);
+  });
+
   it("keeps the text around links", () => {
     const { container } = render(<p>{linkify("a example.net b")}</p>);
     expect(container.textContent).toBe("a example.net b");
