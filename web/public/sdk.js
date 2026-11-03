@@ -191,7 +191,23 @@
 
   function frameUrl(slug, pk, mode, theme, accent) {
     return ORIGIN + "/w/" + encodeURIComponent(slug) + "?pk=" + encodeURIComponent(pk) + "&mode=" + mode +
-      "&theme=" + theme + accentParam(accent) + hostParam();
+      "&theme=" + theme + accentParam(accent) + hostParam() + visitParams();
+  }
+
+  // Where the visitor is: the page's path (never its query), the other site that sent them (its name only), and
+  // any campaign tags. The chat keeps them with the conversation for the team.
+  function visitParams() {
+    var out = "&page=" + encodeURIComponent(location.pathname);
+    try {
+      var from = document.referrer ? new URL(document.referrer).hostname : "";
+      if (from && from !== location.hostname) out += "&ref=" + encodeURIComponent(from);
+    } catch (e) {}
+    var query = new URLSearchParams(location.search);
+    ["utm_source", "utm_medium", "utm_campaign"].forEach(function (tag) {
+      var value = query.get(tag);
+      if (value) out += "&" + tag + "=" + encodeURIComponent(value.slice(0, 100));
+    });
+    return out;
   }
 
   // The page's own origin, so the frame sends its messages only here (frame-ancestors decides who may embed).

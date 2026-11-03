@@ -31,6 +31,20 @@ export interface Option {
   title: string;
 }
 
+// Where a chat came from. The chat sends these (all optional) when it starts; agents get them back with the
+// server's country (ISO code from Cloudflare).
+export interface VisitInfo {
+  page?: string;
+  referrer?: string;
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+  device?: "mobile" | "tablet" | "desktop";
+  language?: string;
+  timeZone?: string;
+  country?: string | null;
+}
+
 export interface Message {
   id: string;
   senderType: SenderType;
@@ -155,12 +169,21 @@ export const widgetApi = {
   startSession: (pk: string) =>
     request<Session>("/widget/sessions", { method: "POST", body: JSON.stringify({ publishableKey: pk }) }),
 
-  startConversation: (token: string) =>
-    request<{ conversation: Conversation; messages: Message[] }>("/widget/conversation", { method: "POST", token }),
+  // visit: where this chat came from, kept on a new conversation.
+  startConversation: (token: string, visit?: VisitInfo) =>
+    request<{ conversation: Conversation; messages: Message[] }>("/widget/conversation", {
+      method: "POST",
+      token,
+      body: visit ? JSON.stringify(visit) : undefined,
+    }),
 
   // Closes the current conversation (even with an agent) and starts over with the greeting.
-  newConversation: (token: string) =>
-    request<{ conversation: Conversation; messages: Message[] }>("/widget/conversation/new", { method: "POST", token }),
+  newConversation: (token: string, visit?: VisitInfo) =>
+    request<{ conversation: Conversation; messages: Message[] }>("/widget/conversation/new", {
+      method: "POST",
+      token,
+      body: visit ? JSON.stringify(visit) : undefined,
+    }),
 
   messagesAfter: (token: string, after: string) =>
     request<{ items: Message[]; nextCursor: string | null }>(
@@ -255,6 +278,8 @@ export interface AgentConversation {
   lastMessageAt: string;
   waitingSince: string | null;
   resolvedAt: string | null;
+  // Where the chat came from; null for chats from before it was recorded.
+  visit: VisitInfo | null;
 }
 
 export interface ConversationEvent {
