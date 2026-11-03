@@ -1,6 +1,7 @@
 package io.github.mesubash.quokra.agent;
 
 import io.github.mesubash.quokra.conversation.Conversation;
+import io.github.mesubash.quokra.conversation.Visit;
 import io.github.mesubash.quokra.conversation.ConversationEvent;
 import io.github.mesubash.quokra.conversation.Enums.EventType;
 import io.github.mesubash.quokra.conversation.Enums.HandoffReason;
@@ -22,11 +23,13 @@ final class AgentViews {
 
     record ConversationView(UUID id, String tenantSlug, Status status, Priority priority, HandoffReason handoffReason,
                             Customer customer, Person assignee, Instant createdAt, Instant lastMessageAt,
-                            Instant waitingSince, Instant resolvedAt) {
+                            Instant waitingSince, Instant resolvedAt, Visit visit) {
 
+        // visit: where the chat came from; null for chats from before it was recorded.
         static ConversationView of(Conversation c, String tenantSlug, boolean blocked) {
             return new ConversationView(c.getId(), tenantSlug, c.getStatus(), c.getPriority(), c.getHandoffReason(),
-                customerOf(c, blocked), assigneeOf(c), c.getCreatedAt(), c.getLastMessageAt(), c.getWaitingSince(), c.getResolvedAt());
+                customerOf(c, blocked), assigneeOf(c), c.getCreatedAt(), c.getLastMessageAt(), c.getWaitingSince(), c.getResolvedAt(),
+                c.getVisit());
         }
     }
 

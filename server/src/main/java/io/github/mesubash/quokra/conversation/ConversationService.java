@@ -96,17 +96,23 @@ public class ConversationService {
 
     @Transactional
     public Started startOrResume(UUID tenantId, UUID visitorId) {
-        return startOrResume(tenantId, visitorId, null);
+        return startOrResume(tenantId, visitorId, null, Visit.NONE);
+    }
+
+    @Transactional
+    public Started startOrResume(UUID tenantId, UUID visitorId, CustomerIdentity customer) {
+        return startOrResume(tenantId, visitorId, customer, Visit.NONE);
     }
 
     // A logged-in customer gets their latest conversation from any device; a guest, this visitor's.
+    // visit: where this chat came from, kept on a new conversation (a resumed one keeps its own).
     @Transactional
-    public Started startOrResume(UUID tenantId, UUID visitorId, CustomerIdentity customer) {
+    public Started startOrResume(UUID tenantId, UUID visitorId, CustomerIdentity customer, Visit visit) {
         var latest = current(tenantId, visitorId, customer == null ? null : customer.sub());
         if (latest.isPresent()) {
             return new Started(latest.get(), false);
         }
-        return new Started(create(tenantId, visitorId, customer, clock.instant()), true);
+        return new Started(create(tenantId, visitorId, customer, visit, clock.instant()), true);
     }
 
     public static final String CUSTOMER_ENDED = "CUSTOMER";
@@ -116,6 +122,11 @@ public class ConversationService {
     // blocked contact stays blocked.
     @Transactional
     public Conversation startNew(UUID tenantId, UUID visitorId, CustomerIdentity customer) {
+        return startNew(tenantId, visitorId, customer, Visit.NONE);
+    }
+
+    @Transactional
+    public Conversation startNew(UUID tenantId, UUID visitorId, CustomerIdentity customer, Visit visit) {
         Optional<Conversation> latest = current(tenantId, visitorId, customer == null ? null : customer.sub());
         Instant now = clock.instant();
         latest.ifPresent(this::requireNotBlocked);
@@ -130,15 +141,16 @@ public class ConversationService {
         });
         // The old one must be closed in the database before the new one is inserted (one open per visitor).
         conversations.flush();
-        Conversation started = create(tenantId, visitorId, customer, now);
+        Conversation started = create(tenantId, visitorId, customer, visit, now);
         latest.map(Conversation::getContactId).flatMap(contacts::findById).ifPresent(contact -> {
             started.linkContact(contact.getId(), contact.getName(), contact.getEmail(), now);
         });
         return started;
     }
 
-    private Conversation create(UUID tenantId, UUID visitorId, CustomerIdentity customer, Instant now) {
+    private Conversation create(UUID tenantId, UUID visitorId, CustomerIdentity customer, Visit visit, Instant now) {
         Conversation started = Conversation.start(tenantId, visitorId, now);
+        started.recordVisit(visit);
         if (customer != null) {
             started.identify(customer, now);
         }
