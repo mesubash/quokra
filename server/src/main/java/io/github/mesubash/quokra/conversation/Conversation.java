@@ -68,6 +68,10 @@ public class Conversation {
     private Instant createdAt;
     private Instant updatedAt;
     private Instant lastMessageAt;
+
+    // Where the chat came from; set when it starts.
+    @jakarta.persistence.Embedded
+    private Visit visit;
     private Instant waitingSince;
     private Instant resolvedAt;
 
@@ -137,6 +141,10 @@ public class Conversation {
     // Guests leave their details before talking to a person; identified customers already have them.
     boolean needsContact() {
         return contactId == null && customerSub == null;
+    }
+
+    void recordVisit(Visit visit) {
+        this.visit = visit;
     }
 
     void awaitContact(HandoffReason reason, Instant now) {

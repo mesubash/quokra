@@ -129,6 +129,18 @@ If this browser's open conversation belongs to a *different* customer (someone e
 
 Returns the open conversation, creating one (status `BOT`, greeting + menu) if none exists.
 
+Optional body, where the chat came from, kept on a new conversation (a resumed one keeps its own). Each field is
+dropped unless it looks right; no IP address is stored:
+
+```json
+{ "page": "/plans", "referrer": "www.google.com", "utmSource": "facebook", "utmMedium": "cpc",
+  "utmCampaign": "ebc-oct", "device": "mobile", "language": "zh-CN", "timeZone": "Asia/Shanghai" }
+```
+
+`page` keeps only the path (no query or `#`), `referrer` only a host name, `device` is `mobile`, `tablet` or
+`desktop`. The country is taken from Cloudflare's `CF-IPCountry` header (two-letter code; `XX` and `T1` are
+dropped). `sdk.js` passes the page, referrer and UTM tags to the chat; the chat adds the rest.
+
 ```json
 201 / 200
 { "conversation": Conversation, "messages": [Message, …] }
@@ -196,7 +208,7 @@ No body; `204`. Tells the agent the customer is typing (event `typing`). The cha
 
 ### 3.9 `POST /widget/conversation/new`: "Start a new chat"
 
-No request body. Closes the current conversation, whoever has it (event `RESOLVED`, reason `CUSTOMER`, so agents see "Customer started a new chat"), and starts a new one with the greeting. Nothing is deleted: the old one stays in the team's history. A guest's email and name carry over, so they aren't asked again.
+Optional body: the same visit details as 3.5. Closes the current conversation, whoever has it (event `RESOLVED`, reason `CUSTOMER`, so agents see "Customer started a new chat"), and starts a new one with the greeting. Nothing is deleted: the old one stays in the team's history. A guest's email and name carry over, so they aren't asked again.
 
 ```json
 // 201
@@ -289,6 +301,8 @@ and membership of the conversation's tenant; anyone else gets `403`.
 ```
 
 `conversation.customer` includes `contactId` and `blocked` when the customer left their details.
+`conversation.visit` is where it came from: `{ page, referrer, utmSource, utmMedium, utmCampaign, country,
+device, language, timeZone }` (fields `null` when unknown), or `null` for chats from before it was recorded.
 
 ### 4.4 `POST /agent/conversations/{id}/accept`
 

@@ -31,6 +31,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import io.github.mesubash.quokra.conversation.Visit;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -83,12 +85,31 @@ public class WidgetConversationController {
             .orElse(null));
     }
 
+    // What the chat window knows about this visit; all optional. The country comes from Cloudflare, not from here.
+    public record VisitRequest(String page, String referrer, String utmSource, String utmMedium, String utmCampaign,
+                               String device, String language, String timeZone) {
+
+        Visit with(String country) {
+            return Visit.of(page, referrer, utmSource, utmMedium, utmCampaign, country, device, language, timeZone);
+        }
+    }
+
+    // Cloudflare's guess of the visitor's country, when the server sits behind Cloudflare; empty elsewhere.
+    static final String COUNTRY_HEADER = "CF-IPCountry";
+
+    private static Visit visit(VisitRequest request, String country) {
+        return (request == null ? new VisitRequest(null, null, null, null, null, null, null, null) : request).with(country);
+    }
+
     @PostMapping
-    public ResponseEntity<StartResponse> start(@AuthenticationPrincipal Session session) {
+    public ResponseEntity<StartResponse> start(@AuthenticationPrincipal Session session,
+                                               @RequestBody(required = false) VisitRequest visit,
+                                               @RequestHeader(name = COUNTRY_HEADER, required = false) String country) {
         Conversation conversation;
         boolean created;
         try {
-            var started = service.startOrResume(session.tenantId(), session.visitorId(), session.customer());
+            var started = service.startOrResume(session.tenantId(), session.visitorId(), session.customer(),
+                visit(visit, country));
             conversation = started.conversation();
             created = started.created();
         } catch (DataIntegrityViolationException e) {
@@ -105,9 +126,12 @@ public class WidgetConversationController {
     // "Start a new chat": closes the current one (even with an agent) and starts over with the greeting.
     @PostMapping("/new")
     @ResponseStatus(HttpStatus.CREATED)
-    public StartResponse startNew(@AuthenticationPrincipal Session session) {
+    public StartResponse startNew(@AuthenticationPrincipal Session session,
+                                  @RequestBody(required = false) VisitRequest visit,
+                                  @RequestHeader(name = COUNTRY_HEADER, required = false) String country) {
         rateLimiter.check("messages:" + session.visitorId(), RateLimiter.MESSAGES_PER_MINUTE);
-        Conversation conversation = service.startNew(session.tenantId(), session.visitorId(), session.customer());
+        Conversation conversation = service.startNew(session.tenantId(), session.visitorId(), session.customer(),
+            visit(visit, country));
         List<MessageView> messages = service.messages(conversation.getId(), null, DEFAULT_LIMIT).stream()
             .map(MessageView::of).toList();
         return new StartResponse(CustomerConversationView.of(conversation), messages);
