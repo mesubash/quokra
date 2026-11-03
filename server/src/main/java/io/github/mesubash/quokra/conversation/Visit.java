@@ -8,6 +8,8 @@ import java.util.regex.Pattern;
 
 // Where a chat came from, recorded when it starts. page is a path only (no query, which can hold personal
 // data), referrer only the other site's name, country the code Cloudflare sends. Nothing here is an IP address.
+// siteVisitor: the website's own visitor id, for matching with its visitor logs; sites send it only with the
+// visitor's consent for analytics.
 @Embeddable
 public record Visit(
     @Column(name = "visit_page") String page,
@@ -18,9 +20,11 @@ public record Visit(
     @Column(name = "visit_country") String country,
     @Column(name = "visit_device") String device,
     @Column(name = "visit_language") String language,
-    @Column(name = "visit_time_zone") String timeZone) {
+    @Column(name = "visit_time_zone") String timeZone,
+    @Column(name = "visit_site_visitor") String siteVisitor) {
 
-    public static final Visit NONE = new Visit(null, null, null, null, null, null, null, null, null);
+    public static final Visit NONE = new Visit(null, null, null, null, null, null, null, null, null, null);
+    private static final Pattern SITE_VISITOR = Pattern.compile("[A-Za-z0-9_.:-]{1,100}");
 
     private static final Set<String> DEVICES = Set.of("mobile", "tablet", "desktop");
     private static final Pattern COUNTRY = Pattern.compile("[A-Z]{2}");
@@ -32,7 +36,7 @@ public record Visit(
 
     // What the browser says, kept only when it looks like what it claims to be.
     public static Visit of(String page, String referrer, String utmSource, String utmMedium, String utmCampaign,
-                           String country, String device, String language, String timeZone) {
+                           String country, String device, String language, String timeZone, String siteVisitor) {
         String code = country == null ? null : country.strip().toUpperCase(Locale.ROOT);
         return new Visit(
             path(page),
@@ -42,7 +46,8 @@ public record Visit(
             code != null && COUNTRY.matcher(code).matches() && !NO_COUNTRY.contains(code) ? code : null,
             device != null && DEVICES.contains(device) ? device : null,
             language != null && LANGUAGE.matcher(language).matches() ? language : null,
-            timeZone != null && timeZone.length() <= 64 && TIME_ZONE.matcher(timeZone).matches() ? timeZone : null);
+            timeZone != null && timeZone.length() <= 64 && TIME_ZONE.matcher(timeZone).matches() ? timeZone : null,
+            siteVisitor != null && SITE_VISITOR.matcher(siteVisitor).matches() ? siteVisitor : null);
     }
 
     private static String path(String page) {

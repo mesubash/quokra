@@ -884,6 +884,7 @@ function CameFrom({ visit }: { visit: VisitInfo }) {
     ["Campaign", campaign || undefined],
     ["Language", visit.language],
     ["Time zone", visit.timeZone],
+    ["Site visitor", visit.siteVisitor],
   ];
   const shown = rows.filter(([, value]) => value);
   if (shown.length === 0) return null;
@@ -894,7 +895,7 @@ function CameFrom({ visit }: { visit: VisitInfo }) {
         {shown.map(([label, value]) => (
           <Fragment key={label}>
             <dt>{label}</dt>
-            <dd>{label === "Started on" ? <code>{value}</code> : value}</dd>
+            <dd>{label === "Started on" || label === "Site visitor" ? <code>{value}</code> : value}</dd>
           </Fragment>
         ))}
       </dl>

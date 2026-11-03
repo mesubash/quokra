@@ -134,11 +134,14 @@ dropped unless it looks right; no IP address is stored:
 
 ```json
 { "page": "/plans", "referrer": "www.google.com", "utmSource": "facebook", "utmMedium": "cpc",
-  "utmCampaign": "ebc-oct", "device": "mobile", "language": "zh-CN", "timeZone": "Asia/Shanghai" }
+  "utmCampaign": "ebc-oct", "device": "mobile", "language": "zh-CN", "timeZone": "Asia/Shanghai",
+  "siteVisitor": "dev_k3x9" }
 ```
 
 `page` keeps only the path (no query or `#`), `referrer` only a host name, `device` is `mobile`, `tablet` or
-`desktop`. The country is taken from Cloudflare's `CF-IPCountry` header (two-letter code; `XX` and `T1` are
+`desktop`. `siteVisitor` is the website's own visitor id (letters, digits, `_ . : -`, up to 100), for matching
+the chat with its visitor logs; sites pass it to `sdk.js` (`visitorId`) only with the visitor's consent for
+analytics. The country is taken from Cloudflare's `CF-IPCountry` header (two-letter code; `XX` and `T1` are
 dropped). `sdk.js` passes the page, referrer and UTM tags to the chat; the chat adds the rest.
 
 ```json
@@ -302,7 +305,7 @@ and membership of the conversation's tenant; anyone else gets `403`.
 
 `conversation.customer` includes `contactId` and `blocked` when the customer left their details.
 `conversation.visit` is where it came from: `{ page, referrer, utmSource, utmMedium, utmCampaign, country,
-device, language, timeZone }` (fields `null` when unknown), or `null` for chats from before it was recorded.
+device, language, timeZone, siteVisitor }` (fields `null` when unknown), or `null` for chats from before it was recorded.
 
 ### 4.4 `POST /agent/conversations/{id}/accept`
 

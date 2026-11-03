@@ -189,15 +189,19 @@
     document.head.appendChild(style);
   }
 
-  function frameUrl(slug, pk, mode, theme, accent) {
+  function frameUrl(slug, pk, mode, theme, accent, visitorId) {
     return ORIGIN + "/w/" + encodeURIComponent(slug) + "?pk=" + encodeURIComponent(pk) + "&mode=" + mode +
-      "&theme=" + theme + accentParam(accent) + hostParam() + visitParams();
+      "&theme=" + theme + accentParam(accent) + hostParam() + visitParams(visitorId);
   }
 
   // Where the visitor is: the page's path (never its query), the other site that sent them (its name only), and
   // any campaign tags. The chat keeps them with the conversation for the team.
-  function visitParams() {
+  // visitorId: the site's own id for this visitor (its visitor logs); pass it only with their analytics consent.
+  function visitParams(visitorId) {
     var out = "&page=" + encodeURIComponent(location.pathname);
+    if (typeof visitorId === "string" && /^[A-Za-z0-9_.:-]{1,100}$/.test(visitorId)) {
+      out += "&sv=" + encodeURIComponent(visitorId);
+    }
     try {
       var from = document.referrer ? new URL(document.referrer).hostname : "";
       if (from && from !== location.hostname) out += "&ref=" + encodeURIComponent(from);
@@ -516,7 +520,7 @@
       frame.title = "Chat";
       var theme = themeOf(options.theme);
       var applied = resolveTheme(theme);
-      frame.src = frameUrl(options.slug, options.pk, mode, applied, options.accent);
+      frame.src = frameUrl(options.slug, options.pk, mode, applied, options.accent, options.visitorId);
       paintFrame(frame, applied);
       if (theme === "host") watchHost();
       state = {
@@ -976,6 +980,7 @@
         theme: script.dataset.quokraTheme,
         accent: script.dataset.quokraAccent,
         teaserDelay: script.dataset.quokraTeaserDelay,
+        visitorId: script.dataset.quokraVisitorId,
       });
       return;
     }

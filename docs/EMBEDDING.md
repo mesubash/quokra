@@ -34,7 +34,7 @@ Add one line before `</body>`:
 
 A chat bubble appears in the bottom-right corner. Branding (logo, colour, name) comes from your tenant settings; no code change is needed when it changes.
 
-Optional attributes: `data-quokra-theme` is `host` (default), `light`, `dark` or `auto`; `data-quokra-accent="#0f766e"` replaces the brand colour; `data-quokra-position="left"` puts the bubble on the left; `data-quokra-teaser-delay` sets when the greeting card appears next to the bubble, in milliseconds (default `5000`, `off` to never show it). The card's text is the `teaser` in your bot file.
+Optional attributes: `data-quokra-theme` is `host` (default), `light`, `dark` or `auto`; `data-quokra-accent="#0f766e"` replaces the brand colour; `data-quokra-position="left"` puts the bubble on the left; `data-quokra-teaser-delay` sets when the greeting card appears next to the bubble, in milliseconds (default `5000`, `off` to never show it). The card's text is the `teaser` in your bot file. `data-quokra-visitor-id` (or `visitorId` in `init`) passes your own visitor id, so chats can be matched with your visitor logs; only pass it when the visitor agreed to analytics.
 
 ---
 

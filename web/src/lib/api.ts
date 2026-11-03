@@ -43,6 +43,8 @@ export interface VisitInfo {
   language?: string;
   timeZone?: string;
   country?: string | null;
+  // The website's own visitor id (its visitor logs), when it has the visitor's consent to send it.
+  siteVisitor?: string;
 }
 
 export interface Message {

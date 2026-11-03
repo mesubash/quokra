@@ -87,10 +87,11 @@ public class WidgetConversationController {
 
     // What the chat window knows about this visit; all optional. The country comes from Cloudflare, not from here.
     public record VisitRequest(String page, String referrer, String utmSource, String utmMedium, String utmCampaign,
-                               String device, String language, String timeZone) {
+                               String device, String language, String timeZone, String siteVisitor) {
 
         Visit with(String country) {
-            return Visit.of(page, referrer, utmSource, utmMedium, utmCampaign, country, device, language, timeZone);
+            return Visit.of(page, referrer, utmSource, utmMedium, utmCampaign, country, device, language, timeZone,
+                siteVisitor);
         }
     }
 
@@ -98,7 +99,8 @@ public class WidgetConversationController {
     static final String COUNTRY_HEADER = "CF-IPCountry";
 
     private static Visit visit(VisitRequest request, String country) {
-        return (request == null ? new VisitRequest(null, null, null, null, null, null, null, null) : request).with(country);
+        return (request == null ? new VisitRequest(null, null, null, null, null, null, null, null, null) : request)
+            .with(country);
     }
 
     @PostMapping
