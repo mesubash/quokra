@@ -12,6 +12,16 @@ export interface PendingMessage {
   // The message this answers, kept so a retry sends the same reply.
   replyTo?: { id: string };
   status: "sending" | "failed";
+  // Why it failed, in words for the customer.
+  reason?: string;
+}
+
+// The customer sees why a message didn't go: too fast (the limits), too long, or no connection.
+export function failureReason(e: unknown): string {
+  if (e instanceof ApiError && e.code === "RATE_LIMITED") return "You're sending too fast. Try again in a moment.";
+  if (e instanceof ApiError && e.code === "MESSAGE_TOO_LONG") return "That message is too long.";
+  if (!(e instanceof ApiError)) return "No connection.";
+  return "Not sent.";
 }
 
 export interface ChatState {
@@ -139,7 +149,9 @@ export function useChat(token: string | null, onUnauthorized?: () => void) {
         }
         setState((s) => ({
           ...s,
-          pending: s.pending.map((p) => (p.clientMessageId === item.clientMessageId ? { ...p, status: "failed" } : p)),
+          pending: s.pending.map((p) =>
+            p.clientMessageId === item.clientMessageId ? { ...p, status: "failed", reason: failureReason(e) } : p,
+          ),
         }));
         return false;
       }
