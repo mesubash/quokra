@@ -14,6 +14,7 @@ export function currentVisit(search = window.location.search, userAgent = naviga
     device: deviceOf(userAgent),
     language: navigator.language,
     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    siteVisitor: params.get("sv") ?? undefined,
   };
 }
 

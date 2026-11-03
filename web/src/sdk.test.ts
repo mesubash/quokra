@@ -145,6 +145,19 @@ describe("sdk.js", () => {
   });
 });
 
+describe("sdk.js visitor id", () => {
+  it("passes the site's visitor id to the chat only when it looks like one", () => {
+    chat().destroy();
+    document.body.innerHTML = "";
+    chat().init({ slug: "demo", pk: "pk_test_demo", visitorId: "dev_k3x9" });
+    expect(frame().src).toContain("&sv=dev_k3x9");
+    chat().destroy();
+    document.body.innerHTML = "";
+    chat().init({ slug: "demo", pk: "pk_test_demo", visitorId: "<script>" });
+    expect(frame().src).not.toContain("sv=");
+  });
+});
+
 describe("sdk.js identify", () => {
   it("passes the identity token to its own frame once the panel is ready", () => {
     chat().identify("id-token");
