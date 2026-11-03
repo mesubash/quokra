@@ -322,7 +322,7 @@ export function MessageList({
                   <span className="delivery">Sending…</span>
                 ) : (
                   <span className="delivery delivery-failed">
-                    Not sent ·{" "}
+                    {p.reason ?? "Not sent."}{" "}
                     <button type="button" onClick={() => onRetry?.(p.clientMessageId)}>
                       Retry
                     </button>
