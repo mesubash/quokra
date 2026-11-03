@@ -7,6 +7,7 @@ import { Composer } from "./Composer";
 import { MessageList, previewOf, quoteLabel, type TimelineItem } from "./MessageList";
 import { RatingCard } from "./RatingCard";
 import { RobotAvatar } from "./RobotAvatar";
+import { exampleDomain } from "./emailHelp";
 import { activeOptions, countUnread } from "./messages";
 import { chime, VOLUME } from "../lib/sound";
 import { forgetSession, getSession, saveSession } from "./session";
@@ -311,7 +312,7 @@ export function canEmailTranscript(conversation: Conversation | null, tenant: Te
 }
 
 function placeholder(conversation: Conversation | null, tenant: Tenant) {
-  if (conversation?.asking === "EMAIL") return "Your email address…";
+  if (conversation?.asking === "EMAIL") return `Your email, e.g. name@${exampleDomain()}`;
   if (conversation?.asking === "NAME") return "Your name…";
   const name = conversation?.status === "HUMAN" && conversation.assignee ? conversation.assignee.name : tenant.displayName;
   return tenant.texts.placeholder.replace("{name}", name);

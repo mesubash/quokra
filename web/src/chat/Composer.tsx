@@ -3,6 +3,7 @@ import { IMAGE_TYPES } from "../lib/api";
 import { TYPING_EVERY_MS } from "./typing";
 import { EmojiPicker } from "./EmojiPicker";
 import { CloseIcon, PaperclipIcon, SendIcon, SparkleIcon } from "../lib/icons";
+import { suggestEmail } from "./emailHelp";
 
 const MAX_LENGTH = 2000;
 const MAX_HEIGHT = 120;
@@ -61,6 +62,8 @@ export function Composer({
   const [hidden, setHidden] = useState(false);
   const [suggesting, setSuggesting] = useState(false);
   const [suggestNote, setSuggestNote] = useState<string | null>(null);
+  // While asking for the email: a likely typo's fix, offered once before sending.
+  const [suggestion, setSuggestion] = useState<{ typed: string; fixed: string } | null>(null);
   const matches = hidden ? [] : matchReplies(text, replies);
 
   useEffect(() => {
@@ -83,9 +86,19 @@ export function Composer({
   function send() {
     const body = text.trim();
     if (!body || disabled) return;
+    const fixed = asking === "EMAIL" ? suggestEmail(body) : null;
+    if (fixed) {
+      setSuggestion({ typed: body, fixed });
+      return;
+    }
+    finish(body);
+  }
+
+  function finish(body: string) {
     onSend(body);
     setText("");
     setSuggestNote(null);
+    setSuggestion(null);
     input.current?.focus();
   }
 
@@ -129,6 +142,7 @@ export function Composer({
 
   function type(value: string) {
     setText(value);
+    setSuggestion(null);
     const now = Date.now();
     if (onTyping && value.trim() && !value.startsWith("/") && now - lastTyping.current > TYPING_EVERY_MS) {
       lastTyping.current = now;
@@ -190,6 +204,21 @@ export function Composer({
             </li>
           ))}
         </ul>
+      )}
+      {suggestion && (
+        <div className="composer-suggestion" role="status">
+          <span>
+            Did you mean <strong>{suggestion.fixed}</strong>?
+          </span>
+          <span className="composer-suggestion-actions">
+            <button type="button" className="button button-small" onClick={() => finish(suggestion.fixed)}>
+              Yes, use it
+            </button>
+            <button type="button" className="button button-quiet button-small" onClick={() => finish(suggestion.typed)}>
+              No, keep mine
+            </button>
+          </span>
+        </div>
       )}
       {quote && (
         <div className="composer-quote">

@@ -742,6 +742,30 @@ button {
   font-size: 0.8rem;
 }
 
+/* "Did you mean pat@gmail.com?" above the email box. */
+.composer-suggestion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+  padding: 8px 10px;
+  border-left: 3px solid var(--primary);
+  border-radius: 8px;
+  background: var(--hover);
+  font-size: 0.85rem;
+}
+
+.composer-suggestion strong {
+  overflow-wrap: anywhere;
+}
+
+.composer-suggestion-actions {
+  display: flex;
+  gap: 6px;
+}
+
 .composer-quote > span {
   display: flex;
   flex: 1;
