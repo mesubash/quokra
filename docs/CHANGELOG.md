@@ -6,28 +6,31 @@ What changed, newest first. Each entry says what people notice; the commits have
 
 ---
 
-## Unreleased
+## 2.2.0 (AI suggestions and answers), 2026-11-03
 
-- Opening hours can run past midnight (`22:00-02:00`) and close at midnight (`18:00-24:00`); `00:00-24:00`
-  is all day.
-**AI suggestions and answers (v3)**
-- Agents can ask for a reply drafted from the company's own documents (the ✨ button in the reply box). It
-  shows where it came from, and the agent edits or sends it; nothing reaches the customer without them.
-- Companies add documents in Settings → Knowledge (text or Markdown) and turn on **Suggest replies to agents** in
-  Settings → General. Off by default, since it sends customers' recent messages to the AI provider.
+**AI from the company's documents (v3)**
+- Companies add documents in Settings → Knowledge (text or Markdown). They're split into parts and searched
+  by meaning.
+- Agents can ask for a reply drafted from them (the ✨ button in the reply box). It shows where it came
+  from, and the agent edits or sends it; nothing reaches the customer without them. Turn on **Suggest
+  replies to agents** in Settings → General → AI.
+- The bot can answer customers itself (the second switch there): a typed question the menu didn't match
+  gets an answer from the documents, marked "AI answer" with its sources, and buttons "That helps" and
+  "Talk to a person". No good answer means the usual fallback and handoff. At most 10 per chat.
+- Both are off by default, since they send customers' recent messages to the AI provider.
 - Guardrails: the AI is only asked when the documents have a close match, answers only from them, and the
   server drops answers that don't cite them, link elsewhere or aren't plain text.
-- The bot can answer customers itself (Settings → General → AI, off by default): a typed
-  question the menu didn't match gets an answer from the documents, marked "AI answer" with its sources,
-  and buttons "That helps" and "Talk to a person". No good answer means the usual fallback and handoff.
-- Calls to the AI provider are retried once when it's busy.
 - Needs an OpenAI-compatible provider: `QUOKRA_AI_KEY` and friends (DEPLOY.md). Without a key, AI is off.
+
+**Other changes**
+- Opening hours can run past midnight (`22:00-02:00`) and close at midnight (`18:00-24:00`); `00:00-24:00`
+  is all day.
+- A company admin can no longer switch off their own Admin or remove themselves by mistake; another admin
+  of the company (or a server admin) still can.
 
 **Upgrading:** the database now needs the **pgvector** extension. Neon and most hosted PostgreSQL have it; with
 Docker, use `pgvector/pgvector:pg17` instead of `postgres:17-alpine`. Back up first: the pgvector image is
 Debian-based, so either move the data with `pg_dump` / `pg_restore`, or reindex text indexes after switching.
-- A company admin can no longer switch off their own Admin or remove themselves by mistake; another admin
-  of the company (or a server admin) still can.
 
 ## 2.1.0 (company admins and review fixes), 2026-10-31
 
