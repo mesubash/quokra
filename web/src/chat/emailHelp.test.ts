@@ -20,8 +20,8 @@ describe("suggestEmail", () => {
   it("leaves good and unknown addresses alone", () => {
     expect(suggestEmail("pat@gmail.com", null)).toBeNull();
     expect(suggestEmail("li@qq.com", "CN")).toBeNull();
-    expect(suggestEmail("ops@himalayanguardian.com", null)).toBeNull();
-    expect(suggestEmail("ram@wlink.com.np", null)).toBeNull();
+    expect(suggestEmail("ops@example-company.com", null)).toBeNull();
+    expect(suggestEmail("ram@isp.example.np", null)).toBeNull();
     expect(suggestEmail("not an email", null)).toBeNull();
   });
 });
