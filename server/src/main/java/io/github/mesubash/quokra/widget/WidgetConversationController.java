@@ -127,7 +127,11 @@ public class WidgetConversationController {
     @PostMapping("/messages")
     @ResponseStatus(HttpStatus.CREATED)
     public SendResponse send(@AuthenticationPrincipal Session session, @Valid @RequestBody SendRequest request) {
-        rateLimiter.check("messages:" + session.visitorId(), RateLimiter.MESSAGES_PER_MINUTE);
+        if (request.optionId() != null) {
+            rateLimiter.check("options:" + session.visitorId(), RateLimiter.OPTIONS_PER_MINUTE);
+        } else {
+            rateLimiter.check("messages:" + session.visitorId(), RateLimiter.MESSAGES_PER_MINUTE);
+        }
         UUID id = openConversation(session).getId();
         Message message = service.addCustomerMessage(id, request.clientMessageId(), request.body(), request.optionId(),
             request.replyTo());

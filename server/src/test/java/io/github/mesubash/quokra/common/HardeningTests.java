@@ -84,6 +84,21 @@ class HardeningTests {
         assertThat(last).hasStatus(HttpStatus.TOO_MANY_REQUESTS);
     }
 
+    @Test
+    void tappingTopicsDoesntUseUpTheTypedMessageLimit() {
+        String token = sessionTokens.issue(tenantId).token();
+        mvc.post().uri("/api/v1/widget/conversation").header(HttpHeaders.AUTHORIZATION, "Bearer " + token).exchange();
+        for (int i = 0; i <= RateLimiter.MESSAGES_PER_MINUTE; i++) {
+            assertThat(mvc.post().uri("/api/v1/widget/conversation/messages")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"optionId\":\"pricing\"}")).hasStatus(HttpStatus.CREATED);
+        }
+
+        assertThat(mvc.post().uri("/api/v1/widget/conversation/messages")
+            .header(HttpHeaders.AUTHORIZATION, "Bearer " + token).contentType(MediaType.APPLICATION_JSON)
+            .content("{\"body\":\"still here\"}")).hasStatus(HttpStatus.CREATED);
+    }
+
     String agentToken() throws Exception {
         String agent = mvc.post().uri("/dev/agent-token").contentType(MediaType.APPLICATION_JSON)
             .content("{\"sub\":\"alice\"}").exchange().getResponse().getContentAsString();

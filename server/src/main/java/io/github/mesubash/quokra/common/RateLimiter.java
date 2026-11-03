@@ -12,7 +12,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class RateLimiter {
 
+    // Typed messages, per chat session.
     public static final int MESSAGES_PER_MINUTE = 20;
+    // Taps on the bot's buttons, per chat session: kept apart, so clicking through the topics never blocks typing.
+    public static final int OPTIONS_PER_MINUTE = 60;
     // Clients send "typing" at most every 3 seconds; this leaves room for a couple of tabs.
     public static final int TYPING_PER_MINUTE = 40;
     // Image uploads, per IP address (customers can open several sessions) and per agent.
