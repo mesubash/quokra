@@ -23,6 +23,7 @@ function conversation(overrides: Partial<AgentConversation> = {}): AgentConversa
     lastMessageAt: "2026-10-29T10:00:00Z",
     waitingSince: "2026-10-29T10:00:00Z",
     resolvedAt: null,
+    visit: null,
     ...overrides,
   };
 }
@@ -116,6 +117,16 @@ describe("ConversationView", () => {
     expect(screen.getByRole("button", { name: "Pat: show details" })).toBeTruthy();
     expect(screen.getByText("· pat@example.test")).toBeTruthy();
     expect(screen.getByText("Sending assigns this chat to you")).toBeTruthy();
+  });
+
+  it("shows where the chat came from in the details", async () => {
+    renderView(fakeApi(conversation({ visit: { country: "NP", device: "mobile", page: "/plans", utmCampaign: "ebc-oct" } })));
+
+    fireEvent.click(await screen.findByRole("button", { name: "Pat: show details" }));
+    expect(await screen.findByText("Came from")).toBeTruthy();
+    expect(screen.getByText("🇳🇵 Nepal")).toBeTruthy();
+    expect(screen.getByText("/plans")).toBeTruthy();
+    expect(screen.getByText("ebc-oct")).toBeTruthy();
   });
 
   it("accepts from the keyboard shortcut, and focuses the reply box", async () => {

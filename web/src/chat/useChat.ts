@@ -3,6 +3,7 @@ import { ApiError, MAX_IMAGE_BYTES, widgetApi, type Conversation, type Message }
 import { connectConversation } from "../lib/realtime";
 import { mergeMessages } from "./messages";
 import { useTypingSignal } from "./typing";
+import { currentVisit } from "./visit";
 
 // A message the customer sent that the server hasn't confirmed yet.
 export interface PendingMessage {
@@ -62,7 +63,7 @@ export function useChat(token: string | null, onUnauthorized?: () => void) {
     let cancelled = false;
 
     widgetApi
-      .startConversation(token)
+      .startConversation(token, currentVisit())
       .then(({ conversation, messages }) => {
         if (!cancelled) setState((s) => ({ ...s, conversation, messages: mergeMessages(s.messages, messages) }));
       })
@@ -109,7 +110,7 @@ export function useChat(token: string | null, onUnauthorized?: () => void) {
   const startNew = useCallback(async (): Promise<boolean> => {
     if (!token) return false;
     try {
-      const { conversation, messages } = await widgetApi.newConversation(token);
+      const { conversation, messages } = await widgetApi.newConversation(token, currentVisit());
       currentId.current = conversation.id;
       setState((s) => ({ ...s, conversation, messages, pending: [] }));
       return true;

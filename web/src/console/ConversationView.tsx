@@ -12,6 +12,7 @@ import {
   type Person,
   type SavedReply,
   type Suggestion,
+  type VisitInfo,
 } from "../lib/api";
 import type { Socket } from "../lib/realtime";
 import { BackIcon, BanIcon, BotIcon, CheckIcon, CloseIcon, CopyIcon, ExpandIcon, MoreIcon, PanelIcon, ThumbIcon, TransferIcon } from "../lib/icons";
@@ -19,7 +20,7 @@ import { Composer } from "../chat/Composer";
 import { MessageList, previewOf, quoteLabel, type TimelineItem } from "../chat/MessageList";
 import { useTypingSignal } from "../chat/typing";
 import { mergeMessages } from "../chat/messages";
-import { dateTime, eventLabel, eventTone, initials, priorityLabel, reasonLabel, shortTime, toneOf } from "./format";
+import { countryName, dateTime, eventLabel, eventTone, initials, priorityLabel, reasonLabel, shortTime, toneOf } from "./format";
 import { copyText } from "../lib/copy";
 
 interface Props {
@@ -681,6 +682,8 @@ function Details({
         </dl>
       </section>
 
+      {c.visit && <CameFrom visit={c.visit} />}
+
       <History api={api} conversationId={c.id} known={!!contact} onOpen={onOpen} />
 
       <section className="details-section">
@@ -867,5 +870,34 @@ function TransferDialog({
         </button>
       </div>
     </Modal>
+  );
+}
+
+// Where the chat came from: country, device, the page it started on and what brought them there.
+function CameFrom({ visit }: { visit: VisitInfo }) {
+  const campaign = [visit.utmSource, visit.utmMedium, visit.utmCampaign].filter(Boolean).join(" · ");
+  const rows: [string, string | undefined][] = [
+    ["Country", visit.country ? countryName(visit.country) : undefined],
+    ["Device", visit.device ? visit.device[0].toUpperCase() + visit.device.slice(1) : undefined],
+    ["Started on", visit.page],
+    ["From", visit.referrer],
+    ["Campaign", campaign || undefined],
+    ["Language", visit.language],
+    ["Time zone", visit.timeZone],
+  ];
+  const shown = rows.filter(([, value]) => value);
+  if (shown.length === 0) return null;
+  return (
+    <section className="details-section">
+      <h3>Came from</h3>
+      <dl className="details-list">
+        {shown.map(([label, value]) => (
+          <Fragment key={label}>
+            <dt>{label}</dt>
+            <dd>{label === "Started on" ? <code>{value}</code> : value}</dd>
+          </Fragment>
+        ))}
+      </dl>
+    </section>
   );
 }
