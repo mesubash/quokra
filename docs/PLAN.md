@@ -4,12 +4,24 @@ Quokra is an embeddable customer support platform. A FAQ bot answers first; when
 
 | | |
 |---|---|
-| **Status** | Plan v7: v1 and v2 done; next is putting it in front of the first real company. See the table below and the [changelog](CHANGELOG.md) |
-| **Last updated** | 2026-10-30 |
-| **Current target** | v1: FAQ bot + human handoff on the web |
-| **Stack** | Spring Boot 4.1 (Java 21) + PostgreSQL · React + TypeScript (Vite), served by the server · one repository, one deployable |
+| **Status** | Plan v8: v1, v2 and v3 done (release 2.4). Next: v4 lookups. See [where things stand](#where-things-stand) and the [changelog](CHANGELOG.md) |
+| **Last updated** | 2026-11-04 |
+| **Current target** | v4: lookups through the host's backend ([plan](#v4-lookups-plan)) |
+| **Stack** | Spring Boot 4.1 (Java 21) + PostgreSQL with pgvector · React + TypeScript (Vite), served by the server · one repository, one deployable |
 
 **Other docs:** [Architecture](ARCHITECTURE.md) · [API](API.md) · [Embedding guide](EMBEDDING.md) · [Development](DEVELOPMENT.md)
+
+## Where things stand
+
+| | |
+|---|---|
+| **Done** | v1 FAQ bot and handoff · v2 daily operations · v2.1 company admins · v3 AI from the company's documents (suggestions, answers, limits, handoff summary) · chat ratings, emailed chats, visit details, bot follow-ups |
+| **Next** | v4 lookups: a bot topic answers a logged-in customer from the host's backend ([plan](#v4-lookups-plan)) |
+| **Not planned for now** | WhatsApp and email channels (decision 11), v5 platform features |
+| **Live** | Public demo on Render + Neon, playground on Vercel, images on GHCR (`ghcr.io/mesubash/quokra`) |
+
+How we work: `docs/PLAN.md` holds the plan, one step at a time; features go in through pull requests to
+`develop`, and `main` only gets releases ([Contributing](../CONTRIBUTING.md)).
 
 ---
 
@@ -51,7 +63,7 @@ The embedding follows the usual pattern for embeddable widgets (Intercom, Stripe
 
 ## 3. Non-goals (until a version below adds them)
 
-AI answers · WhatsApp / Instagram / email · reports · automations · file attachments · native mobile SDKs · voice · tenant self-service.
+WhatsApp / Instagram / email channels · reports and analytics · automations · native mobile SDKs · voice · tenant self-service. (AI answers came in v3, images in v2.)
 
 ---
 
@@ -188,7 +200,7 @@ customer is (from identify), and the backend answers or refuses.
 
 ---
 
-## 5. v1 scope
+## 5. v1 scope (done, kept for history)
 
 ### In
 
@@ -213,7 +225,7 @@ Admin tab (companies, keys and embed snippets, allowed sites, agents by email in
 
 ---
 
-## 6. v1 build steps
+## 6. v1 build steps (done, kept for history)
 
 | # | Step | Done when |
 |---|---|---|
