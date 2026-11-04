@@ -43,16 +43,17 @@ class PublicDemoTests {
     }
 
     @Test
-    void theSampleDocumentIsSplitAsSavingItWould() {
-        String body = jdbc.queryForObject("""
-            select d.body from knowledge_documents d join tenants t on t.id = d.tenant_id
-            where t.slug = 'demo' and d.title = 'Quokra handbook'
-            """, String.class);
-        List<KnowledgeChunker.Chunk> seeded = jdbc.query("""
-            select heading, body from knowledge_chunks where document_id = '0192f000-0000-7000-8000-00000000d0c1'
-            order by position
-            """, (rs, i) -> new KnowledgeChunker.Chunk(rs.getString(1), rs.getString(2)));
-        assertThat(seeded).isEqualTo(KnowledgeChunker.split(body));
+    void theSampleDocumentsAreSplitAsSavingThemWould() {
+        var documents = jdbc.queryForList("""
+            select d.id, d.body from knowledge_documents d join tenants t on t.id = d.tenant_id where t.slug = 'demo'
+            """);
+        assertThat(documents).hasSizeGreaterThanOrEqualTo(7);
+        for (var d : documents) {
+            List<KnowledgeChunker.Chunk> seeded = jdbc.query(
+                "select heading, body from knowledge_chunks where document_id = ? order by position",
+                (rs, i) -> new KnowledgeChunker.Chunk(rs.getString(1), rs.getString(2)), d.get("id"));
+            assertThat(seeded).isEqualTo(KnowledgeChunker.split((String) d.get("body")));
+        }
     }
 
     @Test
