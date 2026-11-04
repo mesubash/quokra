@@ -134,7 +134,7 @@ function daysAgo(d: Date, now: Date) {
   return Math.round((day(now) - day(d)) / 86_400_000);
 }
 
-// "🇳🇵 Nepal" from "NP"; the code itself if the browser can't name it.
+// "🇩🇪 Germany" from "DE"; the code itself if the browser can't name it.
 export function countryName(code: string) {
   const flag = /^[A-Z]{2}$/.test(code)
     ? String.fromCodePoint(...[...code].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65))

@@ -2,11 +2,11 @@ import { expect, it } from "vitest";
 import { currentVisit, deviceOf } from "./visit";
 
 it("reads the page and campaign sdk.js passed, and the kind of device", () => {
-  const visit = currentVisit("?pk=x&page=%2Fplans&ref=www.google.com&utm_campaign=ebc-oct&sv=dev_1", "Mozilla/5.0 (iPhone)");
+  const visit = currentVisit("?pk=x&page=%2Fplans&ref=www.google.com&utm_campaign=spring-sale&sv=dev_1", "Mozilla/5.0 (iPhone)");
   expect(visit).toMatchObject({
     page: "/plans",
     referrer: "www.google.com",
-    utmCampaign: "ebc-oct",
+    utmCampaign: "spring-sale",
     device: "mobile",
     siteVisitor: "dev_1",
   });

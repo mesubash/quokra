@@ -134,7 +134,7 @@ dropped unless it looks right; no IP address is stored:
 
 ```json
 { "page": "/plans", "referrer": "www.google.com", "utmSource": "facebook", "utmMedium": "cpc",
-  "utmCampaign": "ebc-oct", "device": "mobile", "language": "zh-CN", "timeZone": "Asia/Shanghai",
+  "utmCampaign": "spring-sale", "device": "mobile", "language": "zh-CN", "timeZone": "Asia/Shanghai",
   "siteVisitor": "dev_k3x9" }
 ```
 

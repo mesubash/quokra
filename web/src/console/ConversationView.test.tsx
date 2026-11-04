@@ -120,13 +120,13 @@ describe("ConversationView", () => {
   });
 
   it("shows where the chat came from in the details", async () => {
-    renderView(fakeApi(conversation({ visit: { country: "NP", device: "mobile", page: "/plans", utmCampaign: "ebc-oct" } })));
+    renderView(fakeApi(conversation({ visit: { country: "DE", device: "mobile", page: "/plans", utmCampaign: "spring-sale" } })));
 
     fireEvent.click(await screen.findByRole("button", { name: "Pat: show details" }));
     expect(await screen.findByText("Came from")).toBeTruthy();
-    expect(screen.getByText("🇳🇵 Nepal")).toBeTruthy();
+    expect(screen.getByText("🇩🇪 Germany")).toBeTruthy();
     expect(screen.getByText("/plans")).toBeTruthy();
-    expect(screen.getByText("ebc-oct")).toBeTruthy();
+    expect(screen.getByText("spring-sale")).toBeTruthy();
   });
 
   it("accepts from the keyboard shortcut, and focuses the reply box", async () => {

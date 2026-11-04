@@ -74,9 +74,9 @@ class WidgetConversationControllerTests {
     @Test
     void aNewChatRecordsWhereItCameFromWithoutPersonalBits() {
         MvcTestResult started = mvc.post().uri(BASE).header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
-            .header("CF-IPCountry", "np").contentType(MediaType.APPLICATION_JSON).content("""
-                {"page":"/plans?email=pat@example.test#top","referrer":"www.google.com","utmCampaign":"ebc-oct",
-                 "device":"mobile","language":"zh-CN","timeZone":"Asia/Kathmandu","utmSource":"   ",
+            .header("CF-IPCountry", "de").contentType(MediaType.APPLICATION_JSON).content("""
+                {"page":"/plans?email=pat@example.test#top","referrer":"www.google.com","utmCampaign":"spring-sale",
+                 "device":"mobile","language":"zh-CN","timeZone":"Europe/Berlin","utmSource":"   ",
                  "siteVisitor":"dev_k3x9"}
                 """).exchange();
         assertThat(started).hasStatus(HttpStatus.CREATED);
@@ -86,9 +86,9 @@ class WidgetConversationControllerTests {
                    visit_language, visit_time_zone, visit_site_visitor from conversations where id = ?::uuid
             """, id(started, "$.conversation.id"));
         assertThat(visit).containsEntry("visit_page", "/plans").containsEntry("visit_referrer", "www.google.com")
-            .containsEntry("visit_utm_campaign", "ebc-oct").containsEntry("visit_utm_source", null)
-            .containsEntry("visit_country", "NP").containsEntry("visit_device", "mobile")
-            .containsEntry("visit_language", "zh-CN").containsEntry("visit_time_zone", "Asia/Kathmandu")
+            .containsEntry("visit_utm_campaign", "spring-sale").containsEntry("visit_utm_source", null)
+            .containsEntry("visit_country", "DE").containsEntry("visit_device", "mobile")
+            .containsEntry("visit_language", "zh-CN").containsEntry("visit_time_zone", "Europe/Berlin")
             .containsEntry("visit_site_visitor", "dev_k3x9");
     }
 
