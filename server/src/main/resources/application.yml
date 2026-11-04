@@ -58,6 +58,8 @@ quokra:
     # Must match the database column (vector(768)).
     dimensions: 768
     timeout: ${QUOKRA_AI_TIMEOUT:PT15S}
+    # Waits before trying again when the provider is busy (429, 5xx); free tiers often are for a moment.
+    retry-waits: ${QUOKRA_AI_RETRY_WAITS:PT1S,PT3S}
     # How close a part must be to a question (cosine similarity, 0 to 1) to count as a match. Depends on the
     # embedding model: for gemini-embedding-001 right answers scored 0.63+ and off-topic questions 0.47 at most
     # (KnowledgeEvalTests).

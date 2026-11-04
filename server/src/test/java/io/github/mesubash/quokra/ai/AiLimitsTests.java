@@ -23,7 +23,7 @@ import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.transaction.annotation.Transactional;
 
 // The cost limits (v3 step 5), set low here: reaching one means no AI that time, never an error.
-@SpringBootTest(properties = {"quokra.ai.key=test-key", "quokra.ai.min-score=0.3", "quokra.ai.per-ip-hour=2",
+@SpringBootTest(properties = {"quokra.ai.key=test-key", "quokra.ai.retry-waits=PT0.01S,PT0.01S", "quokra.ai.min-score=0.3", "quokra.ai.per-ip-hour=2",
     "quokra.ai.per-company-day=3", "quokra.ai.per-server-day=5"})
 @Import(TestcontainersConfiguration.class)
 @Transactional

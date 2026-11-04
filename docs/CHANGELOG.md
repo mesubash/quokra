@@ -8,6 +8,8 @@ What changed, newest first. Each entry says what people notice; the commits have
 
 ## Unreleased
 
+- When the AI provider is busy, Quokra tries twice more (after 1 and 3 seconds) instead of once, so free tiers
+  that are briefly overloaded give fewer "Sorry, I didn't get that" (`QUOKRA_AI_RETRY_WAITS`).
 - The demo company has six more documents about Quokra (adding it, the console, the bot, AI, privacy,
   licence), so its AI can answer most questions about it. The demo bot's keywords are narrower, so more
   typed questions reach the AI instead of a menu answer.

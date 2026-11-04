@@ -25,7 +25,7 @@ import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.transaction.annotation.Transactional;
 
 // The AI's summary for the agent when a chat joins the queue (v3 step 6), against a fake AI.
-@SpringBootTest(properties = "quokra.ai.key=test-key")
+@SpringBootTest(properties = {"quokra.ai.key=test-key", "quokra.ai.retry-waits=PT0.01S,PT0.01S"})
 @Import(TestcontainersConfiguration.class)
 @Transactional
 @RecordApplicationEvents

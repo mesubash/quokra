@@ -12,19 +12,19 @@ class AiClientTests {
     static final FakeAi AI = new FakeAi();
 
     final AiClient client = new AiClient(true, AI.baseUrl(), "test-key", "chat-model", "none", "embedding-model", 768,
-        Duration.ofSeconds(5));
+        Duration.ofSeconds(5), "PT0.01S,PT0.01S");
 
     @Test
-    void aBusyProviderIsTriedOnceMore() {
-        AI.failNext.set(1);
+    void aBusyProviderIsTriedAgainTwice() {
+        AI.failNext.set(2);
         assertThat(client.embed(List.of("hello there"))).hasSize(1);
-        AI.failNext.set(1);
+        AI.failNext.set(2);
         assertThat(client.chat("system", "user")).contains("NONE");
     }
 
     @Test
-    void notMoreThanOnce() {
-        AI.failNext.set(2);
+    void notMoreThanTwice() {
+        AI.failNext.set(3);
         assertThatThrownBy(() -> client.embed(List.of("hello there"))).hasMessage("embeddings: HTTP 503");
         AI.failNext.set(0);
     }
@@ -41,7 +41,7 @@ class AiClientTests {
 
     @Test
     void offWithoutAKey() {
-        AiClient off = new AiClient(true, AI.baseUrl(), " ", "chat-model", "", "embedding-model", 768, Duration.ofSeconds(5));
+        AiClient off = new AiClient(true, AI.baseUrl(), " ", "chat-model", "", "embedding-model", 768, Duration.ofSeconds(5), "");
         assertThat(off.enabled()).isFalse();
         assertThatThrownBy(() -> off.embed(List.of("x"))).hasMessageContaining("AI is off");
     }
@@ -49,7 +49,7 @@ class AiClientTests {
     @Test
     void switchedOffForTheServerEvenWithAKey() {
         AiClient off = new AiClient(false, AI.baseUrl(), "test-key", "chat-model", "", "embedding-model", 768,
-            Duration.ofSeconds(5));
+            Duration.ofSeconds(5), "");
         assertThat(off.enabled()).isFalse();
     }
 }

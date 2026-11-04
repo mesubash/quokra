@@ -6,9 +6,11 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -28,7 +30,8 @@ public class AiClient {
 
     private static final JsonMapper JSON = JsonMapper.builder().build();
     private static final Set<Integer> BUSY = Set.of(429, 500, 502, 503, 504);
-    static final Duration RETRY_AFTER = Duration.ofSeconds(1);
+    // A provider's Retry-After is followed up to this long; longer waits count as no answer.
+    static final Duration MAX_RETRY_AFTER = Duration.ofSeconds(5);
 
     private final HttpClient http;
     private final String baseUrl;
@@ -39,6 +42,7 @@ public class AiClient {
     private final int dimensions;
     private final Duration timeout;
     private final boolean switchedOn;
+    private final List<Duration> retryWaits;
 
     public AiClient(@Value("${quokra.ai.enabled:true}") boolean switchedOn,
                     @Value("${quokra.ai.base-url}") String baseUrl,
@@ -47,8 +51,11 @@ public class AiClient {
                     @Value("${quokra.ai.reasoning-effort:}") String reasoningEffort,
                     @Value("${quokra.ai.embedding-model}") String embeddingModel,
                     @Value("${quokra.ai.dimensions}") int dimensions,
-                    @Value("${quokra.ai.timeout}") Duration timeout) {
+                    @Value("${quokra.ai.timeout}") Duration timeout,
+                    @Value("${quokra.ai.retry-waits:PT1S,PT3S}") String retryWaits) {
         this.switchedOn = switchedOn;
+        this.retryWaits = Arrays.stream(retryWaits.split(",")).map(String::strip).filter(w -> !w.isEmpty())
+            .map(Duration::parse).toList();
         this.baseUrl = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
         this.key = key.strip();
         this.chatModel = chatModel;
@@ -121,9 +128,13 @@ public class AiClient {
             .build();
         try {
             HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
-            // Busy or briefly down (free tiers often are): one more try after a second.
-            if (BUSY.contains(response.statusCode())) {
-                Thread.sleep(RETRY_AFTER.toMillis());
+            // Busy or briefly down (free tiers often are): tried again after each wait, or after the provider's
+            // Retry-After when it's short.
+            for (Duration wait : retryWaits) {
+                if (!BUSY.contains(response.statusCode())) {
+                    break;
+                }
+                Thread.sleep(retryAfter(response).orElse(wait).toMillis());
                 response = http.send(request, HttpResponse.BodyHandlers.ofString());
             }
             if (response.statusCode() != 200) {
@@ -137,5 +148,10 @@ public class AiClient {
             Thread.currentThread().interrupt();
             throw new AiException(path + ": interrupted");
         }
+    }
+
+    private static Optional<Duration> retryAfter(HttpResponse<String> response) {
+        return response.headers().firstValue("Retry-After").filter(v -> v.strip().matches("\\d{1,4}"))
+            .map(v -> Duration.ofSeconds(Long.parseLong(v.strip()))).filter(d -> d.compareTo(MAX_RETRY_AFTER) <= 0);
     }
 }

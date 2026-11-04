@@ -62,6 +62,7 @@ All through environment variables. Generate random secrets with `openssl rand -b
 | `QUOKRA_AI_EMBEDDING_MODEL` | | Default `gemini-embedding-001`. Must give 768 numbers (the request asks for 768). Changing it embeds every document again |
 | `QUOKRA_AI_MIN_SCORE` | | Default `0.55`, how close a document part must be to a question to count. Tuned for `gemini-embedding-001`; check it with `KnowledgeEvalTests` for another model |
 | `QUOKRA_AI_TIMEOUT` | | Default `PT15S`; slower answers count as no answer |
+| `QUOKRA_AI_RETRY_WAITS` | | Default `PT1S,PT3S`: when the provider is busy (429 or 5xx), it's tried again after each of these waits, or after its own `Retry-After` when that's 5 seconds or less |
 | `QUOKRA_AI_ENABLED` | | Default `true`. `false` switches AI off for the whole server, key or not |
 | `QUOKRA_AI_PER_CHAT` | | Default `10`, AI answers a customer can get in one chat |
 | `QUOKRA_AI_PER_IP_HOUR` | | Default `20`, AI answers per customer IP address per hour (kept in memory, per instance) |
