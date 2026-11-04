@@ -28,7 +28,7 @@ import org.springframework.test.web.servlet.assertj.MvcTestResult;
 import org.springframework.transaction.annotation.Transactional;
 
 // POST /agent/conversations/{id}/suggestion against a fake AI.
-@SpringBootTest(properties = {"quokra.dev.agent-tokens=true", "quokra.ai.key=test-key", "quokra.ai.min-score=0.3"})
+@SpringBootTest(properties = {"quokra.dev.agent-tokens=true", "quokra.ai.key=test-key", "quokra.ai.retry-waits=PT0.01S,PT0.01S", "quokra.ai.min-score=0.3"})
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
 @Transactional

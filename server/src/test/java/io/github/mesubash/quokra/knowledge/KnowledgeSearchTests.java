@@ -26,7 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 // Embedding and search against a fake AI. Tests run in a transaction, so the scheduled embedder (its own
 // transaction) never sees their rows; they call it directly instead.
-@SpringBootTest(properties = {"quokra.dev.agent-tokens=true", "quokra.ai.key=test-key", "quokra.ai.min-score=0.3"})
+@SpringBootTest(properties = {"quokra.dev.agent-tokens=true", "quokra.ai.key=test-key", "quokra.ai.retry-waits=PT0.01S,PT0.01S", "quokra.ai.min-score=0.3"})
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
 @Transactional

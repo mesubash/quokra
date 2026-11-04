@@ -27,7 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 // The bot asking the AI when it can't match a typed question (v3 step 3b), against a fake AI. The test
 // transaction never commits, so the listener doesn't run by itself; each test hands the question over.
-@SpringBootTest(properties = {"quokra.ai.key=test-key", "quokra.ai.min-score=0.3"})
+@SpringBootTest(properties = {"quokra.ai.key=test-key", "quokra.ai.retry-waits=PT0.01S,PT0.01S", "quokra.ai.min-score=0.3"})
 @Import(TestcontainersConfiguration.class)
 @Transactional
 @RecordApplicationEvents
