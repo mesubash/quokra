@@ -31,7 +31,7 @@ describe("visitorRegion", () => {
     expect(visitorRegion("Asia/Shanghai", ["en-US"])).toBe("CN");
     expect(visitorRegion("UTC", ["zh-CN"])).toBe("CN");
     expect(visitorRegion("UTC", ["ko-KR"])).toBe("KR");
-    expect(visitorRegion("Asia/Kathmandu", ["en-US"])).toBeNull();
+    expect(visitorRegion("America/Chicago", ["en-US"])).toBeNull();
   });
 
   it("gives an example address from the region", () => {
