@@ -305,6 +305,8 @@ Blocks the conversation's contact and closes the conversation if it's open. The 
 
 Any agent of the tenant. Notes are never sent to the customer.
 
+**Handoff summary** (when the company has `aiEnabled` and the server has AI): a few seconds after a chat joins the queue, the AI adds a note with `authorSub` `quokra-ai` and `authorName` "AI summary": what the customer wants and the details they gave, from the last 30 messages. Only when the customer typed something; it counts towards the daily AI limits. No note if the AI is off, over a limit, or fails.
+
 ```ts
 interface Note { id: string; author: { sub: string; name: string }; body: string; createdAt: string }
 ```

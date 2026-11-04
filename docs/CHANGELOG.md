@@ -8,6 +8,8 @@ What changed, newest first. Each entry says what people notice; the commits have
 
 ## Unreleased
 
+- Handoff summary: when a chat joins the queue, the AI leaves the agent a private note saying what the
+  customer wants and the details they gave (with **Suggest replies to agents** on).
 - New guide: [Set up AI](guides/10-set-up-ai.md).
 - The demo company has a sample knowledge document, so its AI can answer once the server has a key, and the
   demo bot's "Is there AI?" answer is up to date.
