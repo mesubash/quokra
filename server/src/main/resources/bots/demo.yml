@@ -23,7 +23,7 @@ menu:
   - id: ai
     title: "Is there AI?"
     keywords: [ai, gpt, llm, chatgpt, machine learning, smart]
-    answer: "Not yet. Today the bot answers from a list of questions and keywords that each company writes in a simple file. AI answers grounded in your own documents are planned."
+    answer: "Yes, if a company turns it on. Agents get suggested replies, and the bot answers questions its menu doesn't cover, only from the company's own documents, marked as AI with sources. In this demo, type a question about running Quokra, images or opening hours to try it."
 
 human:
   title: "Talk to a person"
