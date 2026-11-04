@@ -63,7 +63,7 @@ AI answers · WhatsApp / Instagram / email · reports · automations · file att
 | **v2** | **Daily operations (done)** | Notifications in the console and browser, email alerts (when SMTP is set up), auto-resolve after silence, saved replies, business hours + offline message, the bot and its wording edited in Settings, Settings behind a gear (scoped to the console's company), images (disk or S3), "start a new chat", replying to a message, typing indicator, agent online / away, retention per company within server limits. **Later, when someone asks:** more languages, mobile push, standalone console login | 2–3 weeks |
 | **v2.1** | **Company admins** | Admins per company (Admin switch in Settings → Agents, or a claim in the identity provider's token) next to the server-wide admin role, so one server can host many companies, or many products of one company, each managing itself | days |
 | **v3** | **AI answers (done, 2.2–2.4)** | Knowledge documents, search with sources, grounded LLM answers, evaluation set, cost limits, AI summary on handoff | 3–4 weeks |
-| v4 | Channels + lookups | WhatsApp Cloud API, email; identity-verified lookups through backend-validated tools | 3–4 weeks |
+| v4 | Lookups (channels later) | Identity-verified lookups through the host's backend, started by bot topics. WhatsApp and email channels wait for a real need (decision 11) | 1–2 weeks |
 | v5 | Platform | Tenant self-service, per-tenant identity providers, analytics, CSAT, public release | later |
 
 A version starts only when the previous one is in real use and there's a clear need. Sizes are rough, for one developer.
@@ -149,6 +149,43 @@ Google can change at any time. With billing on, set a spending cap and quotas th
 6. **Handoff summary:** a short AI summary for the agent when a chat reaches the queue. **Done**: a private
    note by "AI summary", with the agent switch (`aiEnabled`), counted in the daily limits.
 
+### v4 lookups, plan
+
+A logged-in customer asks "where's my order?" and gets their own answer from the host's backend, in the same
+chat. Quokra never sees the host's database and never decides whose data it is: it passes on who the
+customer is (from identify), and the backend answers or refuses.
+
+**How it works**
+- A bot topic names a lookup: `lookup: orders`. Its button or keywords start it, like any topic.
+- A guest gets the topic's `answer` instead (e.g. "Log in to see your orders"); only identified customers
+  are looked up.
+- Quokra POSTs to the company's **lookup URL** (Settings → Embed & keys): `{ "lookup": "orders",
+  "customerId": "<the identify token's sub>", "conversationId": "…" }`, signed with the company's secret key
+  (`X-Quokra-Timestamp` and `X-Quokra-Signature: sha256=HMAC(secret, timestamp + "." + body)`), like webhooks
+  elsewhere. The backend checks the signature and the time (at most 5 minutes old).
+- The backend answers `{ "text": "Order 1042 shipped on 3 Nov and arrives Thursday." }` (plain text, up to
+  1,000 characters, `[label](https://…)` links allowed as in bot answers). Quokra shows it as a bot message
+  with the topic's follow-ups, "Main topics" and "Talk to a person".
+- No answer within 5 seconds, an error, or a bad reply: "Couldn't look that up right now." (a wording text)
+  with "Talk to a person". The customer's message is never sent to the backend, only the lookup's name.
+
+**Safety**
+- The customer id comes only from the verified identify token, never from what the customer types or
+  the page sends.
+- Only https lookup URLs (http only for `localhost` in dev), no redirects followed, a short timeout, and a
+  limit per customer (10 a minute).
+- Lookup replies are bot messages, so agents see them in the chat; the request and reply aren't logged.
+- AI isn't involved: lookups work with AI off, and lookup replies aren't sent to the AI provider as
+  documents (they may be part of the recent chat an AI answer or summary sees, like any message).
+
+**Steps**
+1. **Server:** `lookup` on bot topics (file and Settings → Bot), the lookup URL per company, the signed
+   call after commit (like AI answers), replies and failures in the chat. Tests with a fake backend.
+2. **Console:** the lookup URL in Settings → Embed & keys, and `lookup` in Settings → Bot's topic editor.
+3. **Docs:** a guide "Look up customer data", with a small backend example that checks the signature.
+4. **Playground:** Vercel functions for the identity token and a fake orders backend (made-up orders per
+   demo customer), and a "My orders" topic in the demo bot, so visitors can log in as a customer and try it.
+
 ---
 
 ## 5. v1 scope
@@ -209,6 +246,8 @@ Admin tab (companies, keys and embed snippets, allowed sites, agents by email in
 | 8 | v3: AI provider and models (answers and embeddings) | OpenAI-compatible client; Gemini free tier locally and on the demo (decided 2026-11-02) |
 | 9 | v3: AI inside the Spring Boot server, or a separate Python service | Spring Boot (decided 2026-11-02) |
 | 10 | v3: cost limits | 10 per chat, 20 per IP per hour, 200 per company per day, 1,000 per server per day, all set by env (decided 2026-11-02) |
+| 11 | v4: channels (WhatsApp, email) or lookups first | Lookups only. Channels can't be tried by demo visitors and add a gateway to run (an unofficial one like OpenWA risks the number); they wait for a real need (decided 2026-11-04) |
+| 12 | v4: how a lookup starts and who writes the reply | A bot topic with `lookup:`; the host's backend writes the reply text, Quokra shows it (decided 2026-11-04) |
 
 ---
 
