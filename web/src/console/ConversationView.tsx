@@ -56,6 +56,8 @@ export function suggestionNote(s: Suggestion): string {
       return "The AI didn't answer. Try again in a moment.";
     case "OFF":
       return "Suggestions are off for this company.";
+    case "LIMIT":
+      return "AI limit reached. Try again later.";
     default:
       return "Couldn't draft a reply from your documents.";
   }

@@ -86,7 +86,7 @@ class AiAnswersTests {
         int before = questions().size();
         service.addCustomerMessage(id, "c-" + UUID.randomUUID(), question, null);
         if (questions().size() > before) {
-            answers.answer(questions().getLast());
+            answers.answer(questions().getLast(), null);
         }
     }
 
@@ -177,7 +177,7 @@ class AiAnswersTests {
         AiQuestion first = questions().getLast();
         service.addCustomerMessage(id, "c-2", "Also, what does it cost?", null);   // the bot answers this one
 
-        answers.answer(first);
+        answers.answer(first, null);
         assertThat(last(id).getBody()).isEqualTo("Pricing answer.");
     }
 

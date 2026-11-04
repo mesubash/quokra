@@ -61,7 +61,7 @@ class SuggestionEvalTests {
             service.addCustomerMessage(id, "c-" + UUID.randomUUID(), m, null);
         }
         var recent = service.messages(id, null, 20);
-        Suggestion s = toCustomer ? suggester.answerCustomer(tenant, recent) : suggester.suggest(tenant, recent);
+        Suggestion s = toCustomer ? suggester.answerCustomer(tenant, recent, null) : suggester.suggest(tenant, recent);
         System.out.printf("%-16s %-70s %s%n", s.reason() == null ? (toCustomer ? "ANSWERED" : "SUGGESTED") : s.reason(),
             String.join(" / ", customerMessages), s.text() == null ? "" : s.text() + "  " + s.sources());
         Thread.sleep(2000);   // stay under a low free-tier per-minute limit

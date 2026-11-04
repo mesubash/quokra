@@ -11,7 +11,7 @@ class AiClientTests {
 
     static final FakeAi AI = new FakeAi();
 
-    final AiClient client = new AiClient(AI.baseUrl(), "test-key", "chat-model", "none", "embedding-model", 768,
+    final AiClient client = new AiClient(true, AI.baseUrl(), "test-key", "chat-model", "none", "embedding-model", 768,
         Duration.ofSeconds(5));
 
     @Test
@@ -41,8 +41,15 @@ class AiClientTests {
 
     @Test
     void offWithoutAKey() {
-        AiClient off = new AiClient(AI.baseUrl(), " ", "chat-model", "", "embedding-model", 768, Duration.ofSeconds(5));
+        AiClient off = new AiClient(true, AI.baseUrl(), " ", "chat-model", "", "embedding-model", 768, Duration.ofSeconds(5));
         assertThat(off.enabled()).isFalse();
         assertThatThrownBy(() -> off.embed(List.of("x"))).hasMessageContaining("AI is off");
+    }
+
+    @Test
+    void switchedOffForTheServerEvenWithAKey() {
+        AiClient off = new AiClient(false, AI.baseUrl(), "test-key", "chat-model", "", "embedding-model", 768,
+            Duration.ofSeconds(5));
+        assertThat(off.enabled()).isFalse();
     }
 }

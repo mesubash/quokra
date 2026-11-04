@@ -31,7 +31,7 @@ public class ReplySuggester {
     // Messages of the chat the model sees, newest last.
     static final int CONTEXT = 8;
 
-    public enum Reason { OFF, NO_QUESTION, NO_MATCH, NO_ANSWER, AI_UNAVAILABLE }
+    public enum Reason { OFF, NO_QUESTION, NO_MATCH, NO_ANSWER, AI_UNAVAILABLE, LIMIT }
 
     // text and sources, or reason when there's no suggestion.
     public record Suggestion(String text, List<Source> sources, Reason reason) {
@@ -68,10 +68,12 @@ public class ReplySuggester {
 
     private final AiClient ai;
     private final KnowledgeSearch search;
+    private final AiUsage usage;
 
-    public ReplySuggester(AiClient ai, KnowledgeSearch search) {
+    public ReplySuggester(AiClient ai, KnowledgeSearch search, AiUsage usage) {
         this.ai = ai;
         this.search = search;
+        this.usage = usage;
     }
 
     public boolean availableFor(Tenant tenant) {
@@ -87,18 +89,19 @@ public class ReplySuggester {
         if (!availableFor(tenant)) {
             return Suggestion.none(Reason.OFF);
         }
-        return draft(tenant, recent, SYSTEM, "Draft the agent's reply to the customer's latest message.");
+        return draft(tenant, recent, null, SYSTEM, "Draft the agent's reply to the customer's latest message.");
     }
 
-    // The bot's own answer to the customer's latest message (3b), with the same checks.
-    public Suggestion answerCustomer(Tenant tenant, List<Message> recent) {
+    // The bot's own answer to the customer's latest message (3b), with the same checks. ip: the customer's, for
+    // the per-IP limit (null when unknown).
+    public Suggestion answerCustomer(Tenant tenant, List<Message> recent, String ip) {
         if (!answersCustomersOf(tenant)) {
             return Suggestion.none(Reason.OFF);
         }
-        return draft(tenant, recent, FOR_CUSTOMER, "Answer the customer's latest message.");
+        return draft(tenant, recent, ip, FOR_CUSTOMER, "Answer the customer's latest message.");
     }
 
-    private Suggestion draft(Tenant tenant, List<Message> recent, String system, String task) {
+    private Suggestion draft(Tenant tenant, List<Message> recent, String ip, String system, String task) {
         List<String> asked = recent.stream()
             .filter(m -> m.getSenderType() == SenderType.CUSTOMER && m.getBody() != null && !m.getBody().isBlank())
             .map(Message::getBody)
@@ -112,6 +115,10 @@ public class ReplySuggester {
             List<Match> passages = search.search(tenant.getId(), question);
             if (passages.isEmpty()) {
                 return Suggestion.none(Reason.NO_MATCH);
+            }
+            // Counted only when the model is really asked: off-topic messages cost nothing.
+            if (usage.use(tenant.getId(), ip) != null) {
+                return Suggestion.none(Reason.LIMIT);
             }
             String raw = ai.chat(system.formatted(tenant.getDisplayName()), prompt(passages, recent, task));
             return check(raw, passages);

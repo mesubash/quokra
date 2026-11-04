@@ -7,7 +7,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
-// Counts requests per key in fixed one-minute windows and refuses the ones over the limit.
+// Counts requests per key in fixed windows (one minute unless given) and refuses the ones over the limit.
 // ponytail: in memory, per instance; move it to Redis when there's more than one instance.
 @Component
 public class RateLimiter {
@@ -25,7 +25,7 @@ public class RateLimiter {
     // Old windows are dropped once the map grows past this, so it can't grow without limit.
     static final int CLEANUP_AT = 10_000;
 
-    private record Window(long start, int count) {}
+    private record Window(long start, long length, int count) {}
 
     private final Map<String, Window> windows = new ConcurrentHashMap<>();
     private final Clock clock;
@@ -35,12 +35,16 @@ public class RateLimiter {
     }
 
     public void check(String key, int limit) {
+        check(key, limit, WINDOW);
+    }
+
+    public void check(String key, int limit, Duration length) {
         long now = clock.millis();
-        long windowMs = WINDOW.toMillis();
-        Window window = windows.compute(key, (k, w) ->
-            w == null || now - w.start() >= windowMs ? new Window(now, 1) : new Window(w.start(), w.count() + 1));
+        long windowMs = length.toMillis();
+        Window window = windows.compute(key, (k, w) -> w == null || now - w.start() >= w.length()
+            ? new Window(now, windowMs, 1) : new Window(w.start(), w.length(), w.count() + 1));
         if (windows.size() > CLEANUP_AT) {
-            windows.values().removeIf(w -> now - w.start() >= windowMs);
+            windows.values().removeIf(w -> now - w.start() >= w.length());
         }
         if (window.count() > limit) {
             long retryAfter = Math.max(1, (window.start() + windowMs - now + 999) / 1000);

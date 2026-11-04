@@ -9,6 +9,7 @@ import {
   type RetentionLimits,
   type SavedReply,
   type AiStatus,
+  type AiUsage,
   type StorageStatus,
   type TenantForm,
 } from "../../lib/api";
@@ -735,7 +736,7 @@ function TenantFormView({
         </Row>
         <HoursField value={hours} onChange={setHours} />
         <ImagesField api={api} value={images} onChange={setImages} />
-        <AiField api={api} suggest={ai} onSuggest={setAi} answer={aiAnswers} onAnswer={setAiAnswers} />
+        <AiField api={api} slug={tenant?.slug} suggest={ai} onSuggest={setAi} answer={aiAnswers} onAnswer={setAiAnswers} />
         <RetentionField api={api} value={retention} onChange={setRetention} />
       </section>
 
@@ -960,21 +961,24 @@ function RetentionField({
   );
 }
 
-// "Allow images", with whether the server's storage for them works.
+// The AI switches, with whether the server has AI and how much the company used today.
 function AiField({
   api,
+  slug,
   suggest,
   onSuggest,
   answer,
   onAnswer,
 }: {
   api: AdminApi;
+  slug?: string;
   suggest: boolean;
   onSuggest: (v: boolean) => void;
   answer: boolean;
   onAnswer: (v: boolean) => void;
 }) {
   const [status, setStatus] = useState<AiStatus | null>(null);
+  const [usage, setUsage] = useState<AiUsage | null>(null);
 
   useEffect(() => {
     api
@@ -982,6 +986,14 @@ function AiField({
       .then(setStatus)
       .catch(() => setStatus(null));
   }, [api]);
+
+  useEffect(() => {
+    if (!slug) return;
+    api
+      .aiUsage(slug)
+      .then(setUsage)
+      .catch(() => setUsage(null));
+  }, [api, slug]);
 
   return (
     <Row
@@ -999,6 +1011,12 @@ function AiField({
       {status && !status.configured && (
         <p className="setting-note error-text" role="status">
           This server has no AI key, so AI stays off.
+        </p>
+      )}
+      {status?.configured && usage && (
+        <p className="setting-note" role="status">
+          {usage.calls} of {usage.perDay} AI calls used today (UTC).
+          {usage.calls >= usage.perDay && " Limit reached: the bot hands over as usual until tomorrow."}
         </p>
       )}
     </Row>

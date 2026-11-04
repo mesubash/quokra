@@ -3,6 +3,7 @@ package io.github.mesubash.quokra.admin;
 import io.github.mesubash.quokra.admin.TenantAdmin.TenantForm;
 import io.github.mesubash.quokra.admin.TenantAdmin.TenantView;
 import io.github.mesubash.quokra.ai.AiClient;
+import io.github.mesubash.quokra.ai.AiUsage;
 import io.github.mesubash.quokra.attachment.StorageCheck;
 import io.github.mesubash.quokra.bot.BotConfigRegistry;
 import io.github.mesubash.quokra.presence.AgentPresence;
@@ -81,12 +82,14 @@ public class AdminController {
     private final MailCheck mail;
     private final TenantAccess access;
     private final AiClient ai;
+    private final AiUsage aiUsage;
 
     public AdminController(TenantAdmin tenants, TenantAgents agents, TenantSecrets secrets, BotConfigRegistry bots,
                            CannedReplies replies, TenantBots tenantBots, TenantRepository tenantRepository,
                            StorageCheck storage, AgentPresence presence, RetentionLimits retention,
-                           MailCheck mail, TenantAccess access, AiClient ai) {
+                           MailCheck mail, TenantAccess access, AiClient ai, AiUsage aiUsage) {
         this.ai = ai;
+        this.aiUsage = aiUsage;
         this.access = access;
         this.mail = mail;
         this.retention = retention;
@@ -149,6 +152,12 @@ public class AdminController {
     @GetMapping("/tenants/{slug}")
     public TenantView get(@PathVariable String slug) {
         return tenants.get(slug);
+    }
+
+    // Today's AI calls (suggestions and answers) against the company's daily limit, for Settings.
+    @GetMapping("/tenants/{slug}/ai-usage")
+    public AiUsage.Today aiUsage(@PathVariable String slug) {
+        return aiUsage.today(tenants.get(slug).id());
     }
 
     @PutMapping("/tenants/{slug}")
