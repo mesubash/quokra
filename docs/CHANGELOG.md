@@ -6,7 +6,14 @@ What changed, newest first. Each entry says what people notice; the commits have
 
 ---
 
-## Unreleased
+## 2.4.0 (v3 complete, chat and console improvements), 2026-11-04
+
+**AI (v3 is complete)**
+- Handoff summary: when a chat joins the queue, the AI leaves the agent a private note saying what the
+  customer wants and the details they gave (with **Suggest replies to agents** on).
+- New guide: [Set up AI](guides/10-set-up-ai.md).
+- The demo company has a sample knowledge document, so its AI can answer once the server has a key, and the
+  demo bot's "Is there AI?" answer is up to date.
 
 **Chat and console**
 - Notification sounds now play when the console or chat is embedded: `sdk.js` plays them on the host page,
@@ -36,6 +43,15 @@ What changed, newest first. Each entry says what people notice; the commits have
 - The server's address (`/`) opens the console instead of "Not found".
 - Highlights follow the company's colour, text on it stays white unless the colour is very light, and the
   chat's robot avatar is redrawn as an outline head.
+- Bot topics can have follow-up questions (`follow_ups`, buttons after the answer, then **Main topics** and
+  **Talk to a person**), and `in_menu: false` keeps a topic out of the main list while its keywords still
+  match. Bot messages can show links with short labels (`[label](https://…)`).
+- While the bot asks for an email and name, customers can go back to the topics instead.
+- The chat catches likely typos in a guest's email (`gmial.com`) and offers the fix once before sending.
+- A message that didn't send says why, instead of a bare "Not sent".
+- Each chat records where it came from (page path, referring site, campaign tags, country, device,
+  language, time zone; no IP address), shown as **Came from** in the console. Sites can pass their own
+  visitor id (`visitorId`), only with the visitor's consent.
 
 **Admins**
 - Company admins and server admins who aren't agents can read their companies' chats, notes and history,
@@ -43,17 +59,12 @@ What changed, newest first. Each entry says what people notice; the commits have
 - An agent's name is never shown as an email: a name claim like `sam.lee@…` shows as `Sam Lee`.
 
 **Fixes**
+- Tapping bot buttons has its own limit (60 a minute), so clicking through topics no longer blocks typing.
 - Agent tokens with a `type` claim other than `access` (refresh tokens from some providers) are refused.
 - The typing dots no longer sit in a stretched bubble; long agent names in the console header end in "…".
 - The dev `compose.yaml` has its own project name (`quokra-dev`), so it no longer shares containers with
   other checkouts. Remove the old containers once (`docker compose -p server down`), since both use port
   8180; the dev database starts fresh with the dev seed.
-
-- Handoff summary: when a chat joins the queue, the AI leaves the agent a private note saying what the
-  customer wants and the details they gave (with **Suggest replies to agents** on).
-- New guide: [Set up AI](guides/10-set-up-ai.md).
-- The demo company has a sample knowledge document, so its AI can answer once the server has a key, and the
-  demo bot's "Is there AI?" answer is up to date.
 
 ## 2.3.0 (AI limits), 2026-11-04
 
