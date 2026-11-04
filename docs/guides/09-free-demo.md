@@ -59,6 +59,11 @@ the demo sign-in.
 Open the playground: chat as a customer, and in another window sign in as Sam or Alex on the Support
 page.
 
+**AI (optional):** set `QUOKRA_AI_KEY` in Render to a free Google AI Studio key. The demo company already
+has AI switched on and a sample document, so typed questions the menu doesn't cover get AI answers. Anyone
+can use a public demo and free tiers may use the data, so keep it to test data; the AI limits cap how
+much it uses ([Set up AI](10-set-up-ai.md)).
+
 ## If something's wrong
 
 - **The playground can't sign in an agent, or the chat doesn't appear:** `QUOKRA_DEMO_ORIGINS` doesn't

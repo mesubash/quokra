@@ -15,3 +15,4 @@ Step-by-step guides for the common tasks. For every option and endpoint, see the
 | [7. Write the bot](07-write-the-bot.md) | Set the FAQ, the wording and when quiet chats close |
 | [8. Notifications](08-notifications.md) | Make sure agents notice new chats and replies |
 | [9. A free public demo](09-free-demo.md) | Put Quokra and the playground online on free plans (Render, Neon, Vercel) |
+| [10. Set up AI](10-set-up-ai.md) | Let AI suggest replies and answer customers from your documents |

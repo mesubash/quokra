@@ -6,6 +6,12 @@ What changed, newest first. Each entry says what people notice; the commits have
 
 ---
 
+## Unreleased
+
+- New guide: [Set up AI](guides/10-set-up-ai.md).
+- The demo company has a sample knowledge document, so its AI can answer once the server has a key, and the
+  demo bot's "Is there AI?" answer is up to date.
+
 ## 2.3.0 (AI limits), 2026-11-04
 
 - AI limits: 10 answers per chat, 20 per customer IP per hour, 200 calls per company and 1,000 per server per

@@ -3,6 +3,7 @@ package io.github.mesubash.quokra.security;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.mesubash.quokra.TestcontainersConfiguration;
+import io.github.mesubash.quokra.knowledge.KnowledgeChunker;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +40,19 @@ class PublicDemoTests {
     @Test
     void thePublicDemoNeverSendsEmailEvenWithSmtpSet() {
         assertThat(mail.configured()).isFalse();
+    }
+
+    @Test
+    void theSampleDocumentIsSplitAsSavingItWould() {
+        String body = jdbc.queryForObject("""
+            select d.body from knowledge_documents d join tenants t on t.id = d.tenant_id
+            where t.slug = 'demo' and d.title = 'Quokra handbook'
+            """, String.class);
+        List<KnowledgeChunker.Chunk> seeded = jdbc.query("""
+            select heading, body from knowledge_chunks where document_id = '0192f000-0000-7000-8000-00000000d0c1'
+            order by position
+            """, (rs, i) -> new KnowledgeChunker.Chunk(rs.getString(1), rs.getString(2)));
+        assertThat(seeded).isEqualTo(KnowledgeChunker.split(body));
     }
 
     @Test

@@ -21,6 +21,7 @@
 - Images (screenshots, photos), shown full size in the chat; stored on disk or in S3-compatible storage.
 - Reply to a particular message: the answer quotes it. See when the agent is typing.
 - "Start a new chat" from the chat's menu; the team keeps the old one in its history.
+- Optional AI answers from the company's own documents, marked as AI with their sources; with no good answer, the chat goes to a person ([Set up AI](docs/guides/10-set-up-ai.md)).
 
 **For agents**
 - A console for your dashboard: full page, or a drawer opened from a floating button, with "open full view".
@@ -28,9 +29,10 @@
 - Online / Away status; customers see the team as online only while someone is.
 - Reply (which also accepts the chat), reply to a particular message, images, saved replies picked with `/`, private notes, transfer to a colleague or back to the queue, return to the bot, resolve, reopen, block a contact.
 - Notifications: sounds, toasts and browser notifications for new chats, replies in my chats, transfers and notes; email alerts when nobody is online (with your SMTP server).
+- Optional AI-suggested replies from the company's documents, to edit or send.
 - Quiet chats close by themselves after a time each company sets.
 - Opening hours: outside them, customers are told when the team is back.
-- Settings behind the gear icon: notifications for each agent; for admins, the company's look, bot and wording, saved replies, agents, embed code and how long chats are kept.
+- Settings behind the gear icon: notifications for each agent; for admins, the company's look, bot and wording, knowledge documents and AI, saved replies, agents, embed code and how long chats are kept. Company admins manage only their own company.
 
 **For the site embedding it**
 - Follows your page's light or dark mode by itself, or a theme you choose, and your own accent colour.

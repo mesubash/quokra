@@ -55,7 +55,7 @@ All through environment variables. Generate random secrets with `openssl rand -b
 | `QUOKRA_AGENT_ROLE` / `QUOKRA_ADMIN_ROLE` | | Defaults `SUPPORT_AGENT` / `QUOKRA_ADMIN` (server admin: every company) |
 | `QUOKRA_COMPANY_ADMIN_CLAIM` / `QUOKRA_COMPANY_ADMIN_VALUE` | | Company admins from the token: the claim (e.g. `permissions`, `groups`, `scope`) and the value with `{tenant}` for the slug, default `quokra:{tenant}:admin`. Empty claim: only the Admin switch in Settings → Agents. See [API 4b](API.md#4b-admin-endpoints) |
 | `QUOKRA_BOTS_DIR` | | A folder with your bot files (`*.yml`), mounted into the container |
-| `QUOKRA_AI_KEY` | for AI | Key for an OpenAI-compatible API. Without it, AI is off and nothing is sent anywhere. A free Google AI Studio key without billing can't cost anything, but free tiers may use the data to improve their models: use a paid tier or your own model for real customers |
+| `QUOKRA_AI_KEY` | for AI | Key for an OpenAI-compatible API ([Set up AI](guides/10-set-up-ai.md)). Without it, AI is off and nothing is sent anywhere. A free Google AI Studio key without billing can't cost anything, but free tiers may use the data to improve their models: use a paid tier or your own model for real customers |
 | `QUOKRA_AI_BASE_URL` | | Default Gemini's `https://generativelanguage.googleapis.com/v1beta/openai/`; e.g. `https://api.openai.com/v1/` or Ollama's `http://localhost:11434/v1/` |
 | `QUOKRA_AI_CHAT_MODEL` | | Default `gemini-3.1-flash-lite`, for suggested replies and AI answers. Use a fast model: answers slower than `QUOKRA_AI_TIMEOUT` are dropped |
 | `QUOKRA_AI_REASONING_EFFORT` | | Default `none` (keeps Gemini's flash models fast). Set it empty for providers that don't take `reasoning_effort` |
