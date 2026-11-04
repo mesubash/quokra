@@ -344,6 +344,12 @@ export interface AiStatus {
   embeddingModel: string;
 }
 
+// Today's AI calls for a company against its daily limit (GET /admin/tenants/{slug}/ai-usage).
+export interface AiUsage {
+  calls: number;
+  perDay: number;
+}
+
 export interface StorageStatus {
   ok: boolean;
   store: string;
@@ -414,6 +420,7 @@ export function adminApi(getToken: () => string, refresh?: FreshToken) {
     bots: () => call<{ items: string[] }>("GET", "/bots"),
     storage: () => call<StorageStatus>("GET", "/storage"),
     ai: () => call<AiStatus>("GET", "/ai"),
+    aiUsage: (s: string) => call<AiUsage>("GET", `/tenants/${slug(s)}/ai-usage`),
     retention: () => call<RetentionLimits>("GET", "/retention"),
     mail: () => call<MailStatus>("GET", "/mail"),
     tenants: () => call<{ items: AdminTenant[] }>("GET", "/tenants"),
@@ -463,7 +470,7 @@ export interface TenantItem {
 export interface Suggestion {
   text: string | null;
   sources: { title: string; heading: string | null }[];
-  reason: "OFF" | "NO_QUESTION" | "NO_MATCH" | "NO_ANSWER" | "AI_UNAVAILABLE" | null;
+  reason: "OFF" | "NO_QUESTION" | "NO_MATCH" | "NO_ANSWER" | "AI_UNAVAILABLE" | "LIMIT" | null;
 }
 
 // getToken returns the agent's current token, so a refreshed token is used without rebuilding anything.

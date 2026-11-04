@@ -142,7 +142,9 @@ Google can change at any time. With billing on, set a spending cap and quotas th
 4. **In the chat and console:** AI answers marked, sources shown, "Talk to a person" always there; agents see
    which chunks were used. Settings → Knowledge shown.
 5. **Limits and ops:** on / off per company, the cost limits from decision 10, health check, logs without
-   customer text.
+   customer text. **Done**: all limits from decision 10 as env settings, daily counts in `ai_usage`, "AI limit
+   reached" for suggestions and today's use in Settings → AI. Health stays `/actuator/health` (AI being down
+   is a fallback, not an outage); logs name the limit or the HTTP status, never the text.
 6. **Handoff summary:** a short AI summary for the agent when a chat reaches the queue.
 
 ---

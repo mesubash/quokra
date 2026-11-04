@@ -1,6 +1,7 @@
 package io.github.mesubash.quokra.conversation;
 
 import io.github.mesubash.quokra.ai.AiClient;
+import io.github.mesubash.quokra.ai.AiUsage;
 import io.github.mesubash.quokra.attachment.FileStore;
 import io.github.mesubash.quokra.attachment.Images;
 import io.github.mesubash.quokra.attachment.StorageCheck;
@@ -51,8 +52,6 @@ public class ConversationService {
     public static final String AI_HELPED_OPTION = "ai-helped";
     static final String AI_HELPED_TITLE = "That helps";
     static final String AI_HELPED_MESSAGE = "Glad that helped. Anything else?";
-    // AI answers per chat; after that, misses go the usual way (fallback, then handoff).
-    static final int AI_ANSWERS_PER_CHAT = 10;
     static final int MAX_NAME_LENGTH = 100;
     static final int MAX_EMAIL_LENGTH = 254;
     private static final Pattern EMAIL = Pattern.compile("[^\\s@]+@[^\\s@]+\\.[^\\s@]+");
@@ -71,13 +70,15 @@ public class ConversationService {
     private final FileStore files;
     private final StorageCheck storage;
     private final AiClient ai;
+    private final AiUsage aiUsage;
 
     public ConversationService(ConversationRepository conversations, MessageRepository messages,
                                ConversationEventRepository events, TenantRepository tenants,
                                ContactRepository contacts, NoteRepository notes, TenantBots bots,
                                ApplicationEventPublisher publisher, Clock clock, FileStore files,
-                               StorageCheck storage, AiClient ai) {
+                               StorageCheck storage, AiClient ai, AiUsage aiUsage) {
         this.ai = ai;
+        this.aiUsage = aiUsage;
         this.files = files;
         this.storage = storage;
         this.conversations = conversations;
@@ -806,7 +807,8 @@ public class ConversationService {
     private boolean aiMayAnswer(Conversation conversation) {
         return ai.enabled()
             && tenants.findById(conversation.getTenantId()).map(Tenant::isAiAnswersEnabled).orElse(false)
-            && messages.countByConversationIdAndSourcesIsNotNull(conversation.getId()) < AI_ANSWERS_PER_CHAT;
+            // After this many AI answers in a chat, misses go the usual way (fallback, then handoff).
+            && messages.countByConversationIdAndSourcesIsNotNull(conversation.getId()) < aiUsage.perChat();
     }
 
     private UUID lastCustomerMessageId(Conversation conversation) {

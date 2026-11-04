@@ -63,4 +63,15 @@ class RateLimiterTests {
 
         limiter.check("a", 1);
     }
+
+    @Test
+    void longerWindowsKeepCounting() {
+        limiter.check("a", 1, Duration.ofHours(1));
+        clock.now = clock.now.plus(Duration.ofMinutes(30));
+        assertThatThrownBy(() -> limiter.check("a", 1, Duration.ofHours(1)))
+            .isInstanceOf(RateLimiter.RateLimitedException.class);
+
+        clock.now = clock.now.plus(Duration.ofMinutes(30));
+        limiter.check("a", 1, Duration.ofHours(1));
+    }
 }

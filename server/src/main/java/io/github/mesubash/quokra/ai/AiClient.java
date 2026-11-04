@@ -38,14 +38,17 @@ public class AiClient {
     private final String embeddingModel;
     private final int dimensions;
     private final Duration timeout;
+    private final boolean switchedOn;
 
-    public AiClient(@Value("${quokra.ai.base-url}") String baseUrl,
+    public AiClient(@Value("${quokra.ai.enabled:true}") boolean switchedOn,
+                    @Value("${quokra.ai.base-url}") String baseUrl,
                     @Value("${quokra.ai.key:}") String key,
                     @Value("${quokra.ai.chat-model}") String chatModel,
                     @Value("${quokra.ai.reasoning-effort:}") String reasoningEffort,
                     @Value("${quokra.ai.embedding-model}") String embeddingModel,
                     @Value("${quokra.ai.dimensions}") int dimensions,
                     @Value("${quokra.ai.timeout}") Duration timeout) {
+        this.switchedOn = switchedOn;
         this.baseUrl = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
         this.key = key.strip();
         this.chatModel = chatModel;
@@ -56,8 +59,9 @@ public class AiClient {
         this.http = HttpClient.newBuilder().connectTimeout(timeout).build();
     }
 
+    // On with a key, unless switched off for the whole server (QUOKRA_AI_ENABLED=false).
     public boolean enabled() {
-        return !key.isEmpty();
+        return switchedOn && !key.isEmpty();
     }
 
     public String chatModel() {
@@ -107,7 +111,7 @@ public class AiClient {
 
     private JsonNode post(String path, Object body) {
         if (!enabled()) {
-            throw new AiException("AI is off: no QUOKRA_AI_KEY");
+            throw new AiException("AI is off");
         }
         HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl + path))
             .timeout(timeout)

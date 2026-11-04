@@ -57,5 +57,6 @@ describe("suggestionNote", () => {
     ).toBe("Suggested from Handbook › Returns, FAQ. Check it before sending.");
     expect(suggestionNote({ text: null, sources: [], reason: "NO_MATCH" })).toBe("Nothing in your documents answers this.");
     expect(suggestionNote({ text: null, sources: [], reason: "AI_UNAVAILABLE" })).toContain("Try again");
+    expect(suggestionNote({ text: null, sources: [], reason: "LIMIT" })).toContain("AI limit reached");
   });
 });

@@ -153,7 +153,7 @@ History, oldest first after the cursor. Use without `after` for the latest page.
 
 `replyTo` (optional) must be a customer's or agent's message in the same conversation (`400 VALIDATION_ERROR` otherwise); the stored message then carries a `replyTo` quote (see `Message`). The customer message is stored first. Bot replies arrive as realtime events, and also in the next `GET …/messages`. Errors: `409 NO_OPEN_CONVERSATION`, `422 MESSAGE_TOO_LONG`, `429 RATE_LIMITED`.
 
-**AI answers** (when the company turned on `aiAnswersEnabled` and the server has AI): a typed question the menu and keywords miss, while the bot has the chat, goes to the AI with the closest parts of the company's documents. Its answer comes a few seconds later as a bot message with `sources` and two options: `ai-helped` ("That helps", back to the menu) and `human` ("Talk to a person"). No close part, no answer, a failed check or a slow provider is an ordinary miss (fallback, then handoff). An answer is dropped if the customer wrote again, or the chat left the bot, meanwhile. Up to 10 AI answers per chat; after that, misses are ordinary again. Same checks as `4.21`.
+**AI answers** (when the company turned on `aiAnswersEnabled` and the server has AI): a typed question the menu and keywords miss, while the bot has the chat, goes to the AI with the closest parts of the company's documents. Its answer comes a few seconds later as a bot message with `sources` and two options: `ai-helped` ("That helps", back to the menu) and `human` ("Talk to a person"). No close part, no answer, a failed check or a slow provider is an ordinary miss (fallback, then handoff). An answer is dropped if the customer wrote again, or the chat left the bot, meanwhile. Up to 10 AI answers per chat (`QUOKRA_AI_PER_CHAT`); after that, or when another AI limit is reached (DEPLOY.md), misses are ordinary again. Same checks as `4.21`.
 
 ### 3.8 `POST /widget/conversation/handoff`: "Talk to a person"
 
@@ -360,7 +360,7 @@ A reply drafted from the company's knowledge documents, for the agent to edit or
 200 { "text": null, "sources": [], "reason": "NO_MATCH" }
 ```
 
-`reason` says why there's no suggestion: `OFF` (AI off for the server or the company), `NO_QUESTION` (the customer hasn't written anything), `NO_MATCH` (nothing in the documents is close enough to the customer's latest messages; the AI isn't asked), `NO_ANSWER` (the AI found no answer in the passages, or its answer failed a check), `AI_UNAVAILABLE` (the provider didn't answer in time). The AI gets the matching passages and the last 8 messages, and answers only from the passages; the server drops answers that don't cite the passages it got, link anywhere they don't, contain HTML or run over 1,000 characters.
+`reason` says why there's no suggestion: `OFF` (AI off for the server or the company), `NO_QUESTION` (the customer hasn't written anything), `NO_MATCH` (nothing in the documents is close enough to the customer's latest messages; the AI isn't asked), `NO_ANSWER` (the AI found no answer in the passages, or its answer failed a check), `AI_UNAVAILABLE` (the provider didn't answer in time), `LIMIT` (the company's or the server's daily AI limit is reached; the console shows "AI limit reached"). Suggestions count towards the daily limits, not the per-IP one. The AI gets the matching passages and the last 8 messages, and answers only from the passages; the server drops answers that don't cite the passages it got, link anywhere they don't, contain HTML or run over 1,000 characters.
 
 ### 4.19 Images
 
@@ -413,6 +413,7 @@ interface Tenant {
 | `POST /admin/tenants` | Server admins only. Create one: `{ slug, displayName, widgetOrigins, consoleOrigins, logoUrl?, primaryColor?, botConfig, autoResolveMinutes?, openingHours? }` → `201 Tenant` with a new publishable key. `409 SLUG_TAKEN` |
 | `GET /admin/tenants/{slug}` | One tenant |
 | `PUT /admin/tenants/{slug}` | Replace its settings (same body; the slug can't change) |
+| `GET /admin/tenants/{slug}/ai-usage` | Today's AI calls (suggestions and answers, UTC day) against the daily limit: `{ "calls": 37, "perDay": 200 }` |
 | `POST /admin/tenants/{slug}/secret` | New secret key for identifying customers: `{ "secretKey": "sk_…" }`, shown only this once; the old one stops working. `409 SECRETS_DISABLED` without `TENANT_SECRET_ENCRYPTION_KEY` |
 | `GET /admin/tenants/{slug}/agents` | `{ "agents": [{ sub, name, email, admin, online }], "invites": [{ email, admin, createdAt }] }`. `admin` is the switch only; people who are admins through their token aren't listed unless they're agents here too |
 | `POST /admin/tenants/{slug}/agents` | `{ "email": "…", "admin": false }` → `{ "result": "ADDED" }` if someone already signed in with that verified email, else `"INVITED"`. `admin: true` makes them company admin (adding someone again never takes it away) |

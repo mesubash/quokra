@@ -62,6 +62,11 @@ All through environment variables. Generate random secrets with `openssl rand -b
 | `QUOKRA_AI_EMBEDDING_MODEL` | | Default `gemini-embedding-001`. Must give 768 numbers (the request asks for 768). Changing it embeds every document again |
 | `QUOKRA_AI_MIN_SCORE` | | Default `0.55`, how close a document part must be to a question to count. Tuned for `gemini-embedding-001`; check it with `KnowledgeEvalTests` for another model |
 | `QUOKRA_AI_TIMEOUT` | | Default `PT15S`; slower answers count as no answer |
+| `QUOKRA_AI_ENABLED` | | Default `true`. `false` switches AI off for the whole server, key or not |
+| `QUOKRA_AI_PER_CHAT` | | Default `10`, AI answers a customer can get in one chat |
+| `QUOKRA_AI_PER_IP_HOUR` | | Default `20`, AI answers per customer IP address per hour (kept in memory, per instance) |
+| `QUOKRA_AI_PER_COMPANY_DAY` | | Default `200`, AI calls (answers and suggestions) per company per day (UTC) |
+| `QUOKRA_AI_PER_SERVER_DAY` | | Default `1000`, AI calls for all companies together per day. Only calls that reach the model count: questions with no close document part cost nothing. Reaching a limit means the usual fallback and handoff, and "AI limit reached" for suggestions |
 | `SMTP_HOST` / `SMTP_PORT` | for email | Your mail server or provider (e.g. port 587 with STARTTLS). Without `SMTP_HOST` and `QUOKRA_MAIL_FROM`, email is simply off |
 | `SMTP_USERNAME` / `SMTP_PASSWORD` | for email | Its login, if it needs one. `SMTP_STARTTLS=false` for a server without STARTTLS |
 | `QUOKRA_MAIL_FROM` | for email | The sender, e.g. `Support <support@example.com>`; use a domain your provider is allowed to send for |

@@ -6,6 +6,13 @@ What changed, newest first. Each entry says what people notice; the commits have
 
 ---
 
+## Unreleased
+
+- AI limits: 10 answers per chat, 20 per customer IP per hour, 200 calls per company and 1,000 per server per
+  day, all set by env (`QUOKRA_AI_PER_*`, DEPLOY.md). Reaching one means the usual fallback and handoff, and
+  "AI limit reached" for suggestions. Settings → AI shows today's use. `QUOKRA_AI_ENABLED=false` switches AI
+  off for the whole server.
+
 ## 2.2.0 (AI suggestions and answers), 2026-11-03
 
 **AI from the company's documents (v3)**

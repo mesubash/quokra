@@ -9,6 +9,8 @@ import java.util.concurrent.Executors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 // Answers a customer's typed question with the AI (v3 step 3b) once the question is saved, off the request
 // thread, so the customer's message isn't held up and no transaction waits on the provider. Whatever happens,
@@ -28,18 +30,21 @@ public class CustomerAnswers {
         this.tenants = tenants;
     }
 
+    // Runs after the commit, still on the customer's request thread, so their IP is at hand for the per-IP limit.
     @TransactionalEventListener
     public void on(AiQuestion question) {
-        executor.execute(() -> answer(question));
+        String ip = RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes request
+            ? request.getRequest().getRemoteAddr() : null;
+        executor.execute(() -> answer(question, ip));
     }
 
     // Public for tests, which run in a transaction that never commits.
-    public void answer(AiQuestion question) {
+    public void answer(AiQuestion question, String ip) {
         ReplySuggester.Suggestion answer = ReplySuggester.Suggestion.none(ReplySuggester.Reason.AI_UNAVAILABLE);
         try {
             var conversation = conversations.get(question.conversationId());
             var tenant = tenants.findById(conversation.getTenantId()).orElseThrow();
-            answer = suggester.answerCustomer(tenant, conversations.messages(conversation.getId(), null, 20));
+            answer = suggester.answerCustomer(tenant, conversations.messages(conversation.getId(), null, 20), ip);
         } catch (RuntimeException e) {
             log.warn("AI answer failed for conversation {}", question.conversationId(), e);
         }
