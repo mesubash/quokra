@@ -840,6 +840,7 @@ public class ConversationService {
         save(Message.create(conversation.getId(), SenderType.SYSTEM, null, null, offlineOr(conversation, text, now), null,
             null, now));
         publishUpdate(conversation);
+        publisher.publishEvent(new HandedOff(conversation.getId()));
     }
 
     private Message save(Message message) {

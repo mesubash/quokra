@@ -145,7 +145,8 @@ Google can change at any time. With billing on, set a spending cap and quotas th
    customer text. **Done**: all limits from decision 10 as env settings, daily counts in `ai_usage`, "AI limit
    reached" for suggestions and today's use in Settings → AI. Health stays `/actuator/health` (AI being down
    is a fallback, not an outage); logs name the limit or the HTTP status, never the text.
-6. **Handoff summary:** a short AI summary for the agent when a chat reaches the queue.
+6. **Handoff summary:** a short AI summary for the agent when a chat reaches the queue. **Done**: a private
+   note by "AI summary", with the agent switch (`aiEnabled`), counted in the daily limits.
 
 ---
 

@@ -1,14 +1,16 @@
 # 10. Set up AI
 
-Quokra can use AI in two ways, both only from documents a company adds itself:
+Quokra can use AI in three ways. Replies and answers come only from documents the company adds itself.
 
 - **Suggested replies for agents:** the ✨ button in the console's reply box drafts an answer with its
   sources. The agent edits or sends it; nothing reaches the customer without them.
+- **Handoff summaries:** when a chat joins the queue, a private note by "AI summary" tells the agent what
+  the customer wants and the details they gave. It comes with suggested replies.
 - **Answers to customers:** when the bot's menu and keywords don't match a typed question, the bot answers
   from the documents, marked "AI answer" with its sources and the buttons "That helps" and "Talk to a
   person". With no good answer, the chat goes the usual way: fallback, then a person.
 
-Both are off by default for every company, since they send customers' recent messages to the AI provider.
+All three are off by default for every company, since they send customers' recent messages to the AI provider.
 
 **You need:** a key for an OpenAI-compatible API, and a server admin or company admin to change Settings.
 
