@@ -10,27 +10,27 @@ menu:
     answer: "Quokra is a support chat you add to your site with one script tag. A bot like me answers common questions first; when you need a person, the chat moves to the support team's console in the same conversation, with the whole history."
   - id: embed
     title: "How do I add it?"
-    keywords: [embed, install, setup, set up, add, integrate, integration, script, sdk, react, nextjs, vue]
+    keywords: [embed, install, integrate, integration, script tag, sdk, react, nextjs, vue]
     answer: "Add one script tag to your page for the chat, and Quokra.console.mount(...) in your dashboard for your team. It works with any stack: plain HTML, React, Next.js or Vue. The embedding guide in the Quokra repo has copy-paste examples."
   - id: pricing
     title: "Pricing"
-    keywords: [price, prices, pricing, cost, costs, free, pay, paid, plan, plans, license, open source]
+    keywords: [price, prices, pricing, cost, costs, pay, paid, plan, plans, license, licence, open source]
     answer: "Quokra is free and self-hosted: you run it on your own server with PostgreSQL. There's no hosted paid plan."
   - id: console
     title: "The agent console"
-    keywords: [console, dashboard, inbox, agents, team, queue, transfer, notes]
+    keywords: [agent console, console, inbox]
     answer: "Your team answers from a console inside your own dashboard, using your existing login. It has a queue, unread counts, search, private notes, transfers between agents, and it follows your dashboard's light or dark theme."
   - id: ai
     title: "Is there AI?"
-    keywords: [ai, gpt, llm, chatgpt, machine learning, smart]
-    answer: "Yes, if a company turns it on. Agents get suggested replies, and the bot answers questions its menu doesn't cover, only from the company's own documents, marked as AI with sources. In this demo, type a question about running Quokra, images or opening hours to try it."
+    keywords: [is there ai, any ai, uses ai, gpt, chatgpt, llm]
+    answer: "Yes, if a company turns it on. Agents get suggested replies, and the bot answers questions its menu doesn't cover, only from the company's own documents, marked as AI with sources. In this demo, type any question about Quokra, like how the bot works, what agents can do or how data is kept, to try it."
 
 human:
   title: "Talk to a person"
   keywords: [human, person, someone, representative, real agent, live agent, support team, talk to]
 
 urgent:
-  keywords: [urgent, outage, down, not working, broken, security]
+  keywords: [urgent, outage, not working, broken]
   message: "Sorry about that. I'm connecting you to the team right away."
 
 fallback: "Sorry, I didn't get that. Pick a topic below, or choose 'Talk to a person'."

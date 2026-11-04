@@ -6,6 +6,12 @@ What changed, newest first. Each entry says what people notice; the commits have
 
 ---
 
+## Unreleased
+
+- The demo company has six more documents about Quokra (adding it, the console, the bot, AI, privacy,
+  licence), so its AI can answer most questions about it. The demo bot's keywords are narrower, so more
+  typed questions reach the AI instead of a menu answer.
+
 ## 2.4.0 (v3 complete, chat and console improvements), 2026-11-04
 
 **AI (v3 is complete)**
