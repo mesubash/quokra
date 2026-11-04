@@ -8,6 +8,7 @@ Thanks for helping. Small, focused changes are the easiest to review.
 - For a feature, open an issue first, so we can agree on it before you spend time on code. The
   [plan](docs/PLAN.md) says what's next.
 - Security problems: see [SECURITY.md](SECURITY.md), not a public issue.
+- Everyone follows the [code of conduct](CODE_OF_CONDUCT.md).
 
 ## Working on it
 
