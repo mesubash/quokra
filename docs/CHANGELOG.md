@@ -6,7 +6,7 @@ What changed, newest first. Each entry says what people notice; the commits have
 
 ---
 
-## Unreleased
+## 2.4.1 (demo documents, steadier AI), 2026-11-05
 
 - When the AI provider is busy, Quokra tries twice more (after 1 and 3 seconds) instead of once, so free tiers
   that are briefly overloaded give fewer "Sorry, I didn't get that" (`QUOKRA_AI_RETRY_WAITS`).
