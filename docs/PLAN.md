@@ -4,9 +4,9 @@ Quokra is an embeddable customer support platform. A FAQ bot answers first; when
 
 | | |
 |---|---|
-| **Status** | Plan v8: v1, v2 and v3 done (release 2.4). Next: v4 lookups. See [where things stand](#where-things-stand) and the [changelog](CHANGELOG.md) |
-| **Last updated** | 2026-11-04 |
-| **Current target** | v4: lookups through the host's backend ([plan](#v4-lookups-plan)) |
+| **Status** | Plan v9: feature-complete. v1, v2 and v3 are done (release 2.4.1); no further versions are planned. See [where things stand](#where-things-stand) and the [changelog](CHANGELOG.md) |
+| **Last updated** | 2026-11-05 |
+| **Current target** | None: fixes and dependency updates only (decision 13) |
 | **Stack** | Spring Boot 4.1 (Java 21) + PostgreSQL with pgvector · React + TypeScript (Vite), served by the server · one repository, one deployable |
 
 **Other docs:** [Architecture](ARCHITECTURE.md) · [API](API.md) · [Embedding guide](EMBEDDING.md) · [Development](DEVELOPMENT.md)
@@ -16,11 +16,11 @@ Quokra is an embeddable customer support platform. A FAQ bot answers first; when
 | | |
 |---|---|
 | **Done** | v1 FAQ bot and handoff · v2 daily operations · v2.1 company admins · v3 AI from the company's documents (suggestions, answers, limits, handoff summary) · chat ratings, emailed chats, visit details, bot follow-ups |
-| **Next** | v4 lookups: a bot topic answers a logged-in customer from the host's backend ([plan](#v4-lookups-plan)) |
-| **Not planned for now** | WhatsApp and email channels (decision 11), v5 platform features |
+| **Next** | Nothing planned. Bugs get fixed and dependencies kept up to date |
+| **Not planned** | v4 (lookups, WhatsApp and email channels) and v5. Their plans stay below in case a real need comes up (decisions 11 and 13) |
 | **Live** | Public demo on Render + Neon, playground on Vercel, images on GHCR (`ghcr.io/mesubash/quokra`) |
 
-How we work: `docs/PLAN.md` holds the plan, one step at a time; features go in through pull requests to
+How we work: `docs/PLAN.md` holds the plan, one step at a time, if work starts again; features go in through pull requests to
 `develop`, and `main` only gets releases ([Contributing](../CONTRIBUTING.md)).
 
 ---
@@ -75,8 +75,8 @@ WhatsApp / Instagram / email channels · reports and analytics · automations ·
 | **v2** | **Daily operations (done)** | Notifications in the console and browser, email alerts (when SMTP is set up), auto-resolve after silence, saved replies, business hours + offline message, the bot and its wording edited in Settings, Settings behind a gear (scoped to the console's company), images (disk or S3), "start a new chat", replying to a message, typing indicator, agent online / away, retention per company within server limits. **Later, when someone asks:** more languages, mobile push, standalone console login | 2–3 weeks |
 | **v2.1** | **Company admins** | Admins per company (Admin switch in Settings → Agents, or a claim in the identity provider's token) next to the server-wide admin role, so one server can host many companies, or many products of one company, each managing itself | days |
 | **v3** | **AI answers (done, 2.2–2.4)** | Knowledge documents, search with sources, grounded LLM answers, evaluation set, cost limits, AI summary on handoff | 3–4 weeks |
-| v4 | Lookups (channels later) | Identity-verified lookups through the host's backend, started by bot topics. WhatsApp and email channels wait for a real need (decision 11) | 1–2 weeks |
-| v5 | Platform | Tenant self-service, per-tenant identity providers, analytics, CSAT, public release | later |
+| v4 | Lookups and channels (not planned) | Identity-verified lookups through the host's backend, started by bot topics; WhatsApp and email channels (decisions 11–13) | 1–2 weeks |
+| v5 | Platform (not planned) | Tenant self-service, per-tenant identity providers, analytics, public release | later |
 
 A version starts only when the previous one is in real use and there's a clear need. Sizes are rough, for one developer.
 
@@ -161,7 +161,7 @@ Google can change at any time. With billing on, set a spending cap and quotas th
 6. **Handoff summary:** a short AI summary for the agent when a chat reaches the queue. **Done**: a private
    note by "AI summary", with the agent switch (`aiEnabled`), counted in the daily limits.
 
-### v4 lookups, plan
+### v4 lookups, plan (not planned, kept for reference)
 
 A logged-in customer asks "where's my order?" and gets their own answer from the host's backend, in the same
 chat. Quokra never sees the host's database and never decides whose data it is: it passes on who the
@@ -260,6 +260,7 @@ Admin tab (companies, keys and embed snippets, allowed sites, agents by email in
 | 10 | v3: cost limits | 10 per chat, 20 per IP per hour, 200 per company per day, 1,000 per server per day, all set by env (decided 2026-11-02) |
 | 11 | v4: channels (WhatsApp, email) or lookups first | Lookups only. Channels can't be tried by demo visitors and add a gateway to run (an unofficial one like OpenWA risks the number); they wait for a real need (decided 2026-11-04) |
 | 12 | v4: how a lookup starts and who writes the reply | A bot topic with `lookup:`; the host's backend writes the reply text, Quokra shows it (decided 2026-11-04) |
+| 13 | Build v4 lookups, or stop at v3 | Stop at v3. Quokra is a demo project and already shows what it's for; v4 waits for a real need (decided 2026-11-05) |
 
 ---
 
